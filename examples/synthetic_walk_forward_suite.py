@@ -15,6 +15,8 @@ import numpy as np
 
 from topology_gate import (
     RLS,
+    MeanCovarianceCUSUM,
+    MeanCovarianceCUSUMConfig,
     OnlineRunConfig,
     RLSConfig,
     generate_synthetic_regimes,
@@ -34,6 +36,40 @@ from topology_gate.pl_cusum import PersistentCUSUMConfig, PersistentLaplacianCUS
 N_STEPS = 256
 CHANGE_POINTS = (64, 128, 192)
 SEEDS = (11, 17, 23, 29)
+
+
+class RollingWindowRLS:
+    """Small fixed-window learner used only for the declared benchmark."""
+
+    lambda_min = 1.0
+    lambda_max = 1.0
+    n_features = 2
+
+    def __init__(self, window: int = 32, ridge: float = 1.0) -> None:
+        self.window = window
+        self.ridge = ridge
+        self._rows: list[np.ndarray[Any, Any]] = []
+        self._labels: list[float] = []
+        self._theta = np.zeros(self.n_features, dtype=float)
+
+    def reset(self) -> None:
+        self._rows = []
+        self._labels = []
+        self._theta = np.zeros(self.n_features, dtype=float)
+
+    def predict(self, features: Any) -> float:
+        return float(np.asarray(features, dtype=float) @ self._theta)
+
+    def update(self, features: Any, target: Any, forgetting_factor: Any = None) -> None:
+        del forgetting_factor
+        row = np.asarray(features, dtype=float).reshape(-1)
+        self._rows.append(np.array(row, copy=True))
+        self._labels.append(float(target))
+        self._rows = self._rows[-self.window :]
+        self._labels = self._labels[-self.window :]
+        matrix = np.vstack(self._rows)
+        gram = matrix.T @ matrix + self.ridge * np.eye(self.n_features)
+        self._theta = np.linalg.solve(gram, matrix.T @ np.asarray(self._labels))
 
 
 def _calibration_source() -> np.ndarray:
@@ -73,6 +109,19 @@ def _detector_factory(threshold: float) -> PersistentLaplacianCUSUM:
     )
 
 
+def _cpd_factory(threshold: float) -> MeanCovarianceCUSUM:
+    return MeanCovarianceCUSUM(
+        MeanCovarianceCUSUMConfig(
+            n_features=2,
+            block_window=8,
+            threshold=threshold,
+            forgetting_lambda_min=0.8,
+            forgetting_lambda_max=0.99,
+            forgetting_sensitivity=1.0,
+        )
+    )
+
+
 def _calibrate_detector() -> Any:
     source = _calibration_source()
     factory = StationaryBlockBootstrap(
@@ -109,12 +158,49 @@ def _calibrate_detector() -> Any:
     return result
 
 
+def _calibrate_cpd() -> Any:
+    source = _calibration_source()
+    result = calibrate_threshold(
+        _cpd_factory,
+        StationaryBlockBootstrap(
+            source,
+            block_length=16,
+            source_id="ar1-surrogate:v1",
+        ),
+        StationaryBlockBootstrap(
+            source,
+            block_length=16,
+            source_id="ar1-surrogate:v1",
+        ),
+        detector_family_identity="mean-covariance-cusum-family:v1",
+        candidate_thresholds=(2.0, 4.0, 8.0, 16.0, 32.0),
+        calibration_config=CalibrationConfig(
+            trials=64,
+            horizon=64,
+            n_features=2,
+            seed=13,
+        ),
+        evaluation_config=CalibrationConfig(
+            trials=64,
+            horizon=64,
+            n_features=2,
+            seed=37,
+        ),
+        max_false_alarm_rate=0.15,
+    )
+    if not result.approved:
+        raise RuntimeError("separate synthetic mean/covariance calibration was not approved")
+    return result
+
+
 def _run_one(
     name: str,
     seed: int,
     *,
-    threshold: float | None = None,
-    certificate: Any | None = None,
+    pl_threshold: float | None = None,
+    pl_certificate: Any | None = None,
+    cpd_threshold: float | None = None,
+    cpd_certificate: Any | None = None,
 ) -> dict[str, Any]:
     dataset = generate_synthetic_regimes(
         n_steps=N_STEPS,
@@ -149,8 +235,24 @@ def _run_one(
             )
         )
         detector = None
+    elif name == "rolling-rls":
+        learner = RollingWindowRLS(window=32)
+        detector = None
+    elif name == "standard-cpd-rls":
+        if cpd_threshold is None or cpd_certificate is None:
+            raise ValueError("standard CPD run requires threshold and certificate")
+        learner = RLS(
+            RLSConfig(
+                n_features=2,
+                ridge=1.0,
+                forgetting_factor=0.99,
+                lambda_min=0.8,
+                lambda_max=0.99,
+            )
+        )
+        detector = _cpd_factory(cpd_threshold)
     elif name == "certified-pl-rls":
-        if threshold is None or certificate is None:
+        if pl_threshold is None or pl_certificate is None:
             raise ValueError("certified PL run requires threshold and certificate")
         learner = RLS(
             RLSConfig(
@@ -161,7 +263,7 @@ def _run_one(
                 lambda_max=0.99,
             )
         )
-        detector = _detector_factory(threshold)
+        detector = _detector_factory(pl_threshold)
     else:
         raise ValueError(f"unknown system: {name}")
 
@@ -173,7 +275,13 @@ def _run_one(
         detector=detector,
         config=OnlineRunConfig(label_delay=1, transaction_cost_bps=0.0),
         shift_points=CHANGE_POINTS,
-        calibration=certificate if detector is not None else None,
+        calibration=(
+            cpd_certificate
+            if name == "standard-cpd-rls"
+            else pl_certificate
+            if name == "certified-pl-rls"
+            else None
+        ),
     )
     loss = (result.predictions - dataset.labels.values) ** 2
     holdout = loss[CHANGE_POINTS[-1] :]
@@ -196,11 +304,27 @@ def _run_one(
 
 def main() -> None:
     calibration = _calibrate_detector()
+    cpd_calibration = _calibrate_cpd()
     threshold = float(calibration.selected_threshold)
     certificate = calibration.to_certificate()
+    cpd_threshold = float(cpd_calibration.selected_threshold)
+    cpd_certificate = cpd_calibration.to_certificate()
     rows = [
-        _run_one(system, seed, threshold=threshold, certificate=certificate)
-        for system in ("static-rls", "exponential-rls", "certified-pl-rls")
+        _run_one(
+            system,
+            seed,
+            pl_threshold=threshold,
+            pl_certificate=certificate,
+            cpd_threshold=cpd_threshold,
+            cpd_certificate=cpd_certificate,
+        )
+        for system in (
+            "static-rls",
+            "rolling-rls",
+            "exponential-rls",
+            "standard-cpd-rls",
+            "certified-pl-rls",
+        )
         for seed in SEEDS
     ]
     summary: dict[str, Any] = {
@@ -213,6 +337,9 @@ def main() -> None:
         "calibration_identity": calibration.identity,
         "certificate_identity": certificate.identity,
         "selected_threshold": threshold,
+        "cpd_calibration_identity": cpd_calibration.identity,
+        "cpd_certificate_identity": cpd_certificate.identity,
+        "cpd_selected_threshold": cpd_threshold,
         "systems": rows,
     }
     print(json.dumps(summary, sort_keys=True))

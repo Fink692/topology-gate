@@ -5,18 +5,18 @@ Interpreter: CPython 3.12.10
 Scope: bounded research/control layer only; no live-data or execution claim
 
 Supported-interpreter matrix: CPython 3.10.11, 3.11.15, and 3.12.10 each
-passed the current 284-test suite; the 3.10 and 3.11 runs used isolated `uv`
+passed the current 288-test suite; the 3.10 and 3.11 runs used isolated `uv`
 environment. The CPython 3.12 release gate also passed Ruff, mypy, and
 compileall. Coverage is reported from CPython 3.12 only.
 
 ## Reproducible engineering checks
 
-- Full suite: **284 passed**.
-- Configured coverage run: **80.86%** total coverage.
+- Full suite: **288 passed**.
+- Configured coverage run: **80.93%** total coverage.
 - Coverage enforcement: configured floor **80%**; the current CPython 3.10,
-  3.11, and 3.12 runs each clear it at **80.86%** total.
-- Ruff: passed on `src` and `tests`.
-- Mypy: passed on all 25 source modules.
+  3.11, and 3.12 runs each clear it at **80.93%** total.
+- Ruff: passed on `src`, `tests`, and `examples`.
+- Mypy: passed on all 26 source modules.
 - Dependency-light root import: passed without NumPy site packages.
 - Wheel build and isolated target-directory smoke: passed; SHA-256
   `86DFD50C6A5677D6AA2B043213AC4912DC239EC3AD6E11011D3C2781FD5CB09A`;
@@ -83,6 +83,9 @@ compileall. Coverage is reported from CPython 3.12 only.
   boundaries, prefix-state selection, feature/label transport equations,
   bounded reliability weights, deterministic checkpoint round-trip, tamper
   rejection, and record/state resource limits.
+- Mean/covariance CUSUM tests: passed for block-score alarms, bounded
+  forgetting-factor mapping, reset/stream-state behavior, deterministic
+  checkpoint round-trip, tamper rejection, and resource limits.
 - Stationary block-bootstrap tests: passed for seeded reproducibility, source
   identity binding, feature-dimension rejection, and result-level factory
   identity recording.
@@ -178,11 +181,13 @@ therefore fail-closed.
   full record is in [`reports/selection-null-calibration.md`](selection-null-calibration.md).
 - The strict synthetic walk-forward suite used four seeds, three known shifts,
   one-step delayed labels, separate detector calibration data, and a sealed
-  final regime. Static RLS mean MSE was `0.0404266`, exponential RLS at
-  `lambda=0.97` was `0.0408137`, and certified PL-RLS was `0.0404269`; the
-  certified path accelerated 245 updates but did not materially improve this
-  fixture. The result is a control-layer negative diagnostic, not market
-  evidence; see [`reports/synthetic-walk-forward.md`](synthetic-walk-forward.md).
+  final regime. Static RLS mean MSE was `0.0404266`, rolling-window RLS was
+  `0.0420181`, exponential RLS at `lambda=0.97` was `0.0408137`, standard
+  mean/covariance CPD-RLS was `0.0404326`, and certified PL-RLS was `0.0404269`.
+  The standard CPD and certified PL paths accelerated 241 and 245 updates,
+  respectively, without materially improving this fixture. The result is a
+  control-layer negative diagnostic, not market evidence; see
+  [`reports/synthetic-walk-forward.md`](synthetic-walk-forward.md).
 - The causal transport-replay prototype was run on four delayed-label
   synthetic paths. It averaged final-regime MSE `0.0502417` versus `0.0436627`
   for raw causal RLS, so it was rejected as an improvement in this fixture.
