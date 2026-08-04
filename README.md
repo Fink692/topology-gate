@@ -22,6 +22,13 @@ its documented bounded conditional-mean score and predictable betting rule;
 the surrounding caller must enforce data availability, selection, and risk
 controls.
 
+For small research goldens, the optional `persistent` worker exposes a bounded
+Euclidean Vietoris–Rips filtration over `F2`, persistence intervals, and a
+nullspace-restricted persistent-Laplacian spectrum via
+`compute_persistent_laplacian`. It is a finite reference backend with explicit
+resource caps; it is not silently substituted into the rolling default and it
+does not calibrate the downstream CUSUM.
+
 ## Install
 
 The core package has no runtime dependencies:
@@ -106,13 +113,47 @@ pending labels instead of silently discarding them. Pass the returned
 `OnlineStreamState` as `initial_state` with `reset_state=False` to continue a
 chunked replay at its absolute stream position. `CheckpointEnvelope` and
 `checkpoint_from_components` provide canonical JSON state with configuration,
-backend, dependency, learner, detector, online, promotion, and RNG fields. Use
+backend, dependency, manifest, learner, detector, online, promotion, evidence,
+and RNG fields. Use
 an HMAC key from a secret manager; authenticated checkpoints are required by
 default and the key is never written into the checkpoint. Plain SHA-256 is
 available only with an explicit trusted-local opt-in.
 
+Set `require_realized_returns=True` in the worker backtest or online config for
+economic evaluation. The compatibility default still permits target outcomes
+to stand in for realized returns, but that path is diagnostic and must not be
+reported as a tradable return result.
+
 This is an offline control component. It has no broker, network, order, account,
 or live-data side effect.
+
+For point-in-time research identities, `RunSpec`/`RunManifest` freeze the input
+vintage, universe, configuration, backend, dependency, seed, and thread policy
+into canonical JSON and a SHA-256 digest. `PromotionEvidenceConfig` then binds a
+challenger evidence family to its score, eta, missing-label, allocation, and
+manifest identities. A ledger without those identities remains explicitly
+diagnostic.
+
+The dependency-light `AsOfBook` is the corresponding data-boundary contract:
+observations, labels, and universe memberships carry event time, availability,
+source revision, and deterministic ingest order. Its snapshots exclude future
+revisions and expose missing labels explicitly. It is a causal contract and
+test fixture, not a market-data vendor or a survivorship-bias guarantee.
+
+`CausalReplay` is the dependency-light transition boundary for a timestamped
+study. It materializes one `AsOfSnapshot`, settles only labels visible before
+the next prediction, rejects pre-available targets, and emits a hash-chained
+prediction/label ledger. A checkpointable model must expose a JSON-safe
+`state_dict`; callers that disable that requirement are explicitly using an
+untracked diagnostic replay.
+
+## Calibration evidence
+
+Use [`docs/calibration.md`](docs/calibration.md) and the bounded
+`calibrate_null`/`calibrate_shift` helpers before interpreting detector alarms,
+forgetting changes, or shift delays. They produce finite-horizon Wilson
+intervals and censored run-length evidence; they do not establish universal
+market or optional-stopping guarantees.
 
 ## Tests and typing
 

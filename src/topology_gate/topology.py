@@ -873,6 +873,10 @@ def _spectral_descriptors(eigenvalues: Sequence[float], requested: int,
             clean.append(value)
     if not clean:
         clean = [0.0]
+    if not normalized_spectrum and len(clean) < requested:
+        raise ValueError(
+            "persistent_laplacian_backend returned fewer eigenvalues than requested"
+        )
     padded = clean[:requested]
     if len(padded) < requested:
         padded.extend([2.0] * (requested - len(padded)))

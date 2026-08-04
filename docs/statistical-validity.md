@@ -46,6 +46,11 @@ expected-return series used for comparison was available at the declared
 decision boundary; otherwise the result is exploratory and potentially
 look-ahead contaminated.
 
+For economic metrics, the worker configs expose an explicit
+`require_realized_returns=True` mode that rejects the legacy compatibility
+behavior of substituting targets or zeros for a tradable return stream. A run
+that leaves this mode off is a control-path diagnostic, not a net-return claim.
+
 The online runner returns a typed terminal pending-label ledger and supports
 chunked continuation through `initial_state` with absolute positional
 availability. This proves only the package's fixed positional replay contract;
@@ -73,6 +78,13 @@ Laplacian. An exact persistent-Laplacian implementation may be supplied only
 through an explicitly identified backend; the default output must not be
 described as persistent topology.
 
+The package now includes an optional bounded finite reference backend in
+`topology_gate.persistent`. It constructs a Euclidean Vietoris–Rips complex,
+computes `F2` persistence intervals, and evaluates a declared
+nullspace-restricted real q-Laplacian for small clouds. Its finite-complex and
+float64 solver evidence is exact only for the declared construction and
+resource limits; it does not establish rolling-market calibration.
+
 The default reflected CUSUM-like score, topology alarm, score-to-forgetting
 map, and challenger promotion statistics are exploratory unless an independent
 calibration study establishes their assumptions and operating characteristics.
@@ -81,6 +93,36 @@ and an isolated e-process primitive does not certify arbitrary caller-supplied
 promotion streams. Calibration must specify the null, dependence structure,
 rolling re-estimation policy, missing-label policy, stopping rule, and model/
 feature/eta selection budget.
+
+`EvidenceLedger` provides the composed promotion boundary for one registered
+challenger: it freezes paired predictions and eta before labels, buffers label
+arrivals until their source-availability boundary, settles in prediction order,
+exposes burn-in and missing/expired records, and never accepts a settlement-time
+eta override. `PromotionEvidenceConfig` makes the run/family, score, null,
+missingness, allocation, dependency, backend, and manifest identities explicit;
+without a certified configuration the ledger reports a diagnostic claim only.
+This materially strengthens the audit contract, but the conditional null and
+the model/feature selection budget still require an independent pre-registered
+study.
+
+`RunSpec`/`RunManifest` and authenticated checkpoint envelopes provide the
+reproducibility identity layer. They do not manufacture point-in-time market
+data: the input-vintage and universe digests must still come from a source that
+records immutable availability and revision semantics.
+
+`AsOfBook` supplies a dependency-light contract and adversarial fixture for
+those semantics. It keeps event and availability times separate, selects only
+visible revisions, orders equal-availability events deterministically, tracks
+point-in-time universe membership, and rejects implicit missing labels. The
+existing row-indexed backtest remains an exploratory adapter until it consumes
+this event contract end to end.
+
+`CausalReplay` provides the corresponding transition contract for a small
+timestamped study: it materializes an as-of snapshot, settles prior pending
+targets before the next prediction, rejects labels already visible for the
+target being predicted, and records a hash chain. This closes the causal
+ordering boundary for its callbacks, but it does not make arbitrary callback
+code causal and it is not yet wired into the legacy NumPy row adapters.
 
 ## Minimum evidence before a stronger claim
 

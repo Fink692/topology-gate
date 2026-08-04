@@ -187,3 +187,13 @@ def test_chunked_delayed_replay_matches_one_shot_and_delay_is_integer() -> None:
 
     with pytest.raises(ValueError, match="integer"):
         OnlineRunConfig(label_delay=1.5)  # type: ignore[arg-type]
+
+
+def test_strict_economic_mode_rejects_implicit_target_returns() -> None:
+    with pytest.raises(ValueError, match="realized_returns are required"):
+        run_recursive_rls(
+            np.ones((3, 1)),
+            np.ones(3),
+            learner=RLS(RLSConfig(n_features=1)),
+            config=OnlineRunConfig(require_realized_returns=True),
+        )

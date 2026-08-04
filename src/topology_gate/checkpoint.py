@@ -111,6 +111,8 @@ class CheckpointEnvelope:
     promotion_state: Mapping[str, Any] | None = None
     rng_state: Mapping[str, Any] | None = None
     metadata: Mapping[str, Any] | None = None
+    evidence_state: Mapping[str, Any] | None = None
+    manifest_digest: str | None = None
     integrity_algorithm: str = "sha256"
     integrity: str = ""
     version: int = CHECKPOINT_VERSION
@@ -119,22 +121,28 @@ class CheckpointEnvelope:
     def payload_dict(self) -> dict[str, Any]:
         """Return the data covered by the integrity proof."""
 
-        return _canonical(
-            {
-                "version": self.version,
-                "schema": self.schema,
-                "package_version": self.package_version,
-                "config_fingerprint": self.config_fingerprint,
-                "backend_identity": self.backend_identity,
-                "dependency_fingerprint": self.dependency_fingerprint,
-                "learner_state": self.learner_state,
-                "detector_state": self.detector_state,
-                "online_state": self.online_state,
-                "promotion_state": self.promotion_state,
-                "rng_state": self.rng_state,
-                "metadata": self.metadata,
-            }
-        )
+        payload = {
+            "version": self.version,
+            "schema": self.schema,
+            "package_version": self.package_version,
+            "config_fingerprint": self.config_fingerprint,
+            "backend_identity": self.backend_identity,
+            "dependency_fingerprint": self.dependency_fingerprint,
+            "learner_state": self.learner_state,
+            "detector_state": self.detector_state,
+            "online_state": self.online_state,
+            "promotion_state": self.promotion_state,
+            "rng_state": self.rng_state,
+            "metadata": self.metadata,
+        }
+        # Keep the legacy canonical payload byte-for-byte compatible when no
+        # evidence ledger is present. This permits old envelopes to verify
+        # after the optional field was added.
+        if self.evidence_state is not None:
+            payload["evidence_state"] = self.evidence_state
+        if self.manifest_digest is not None:
+            payload["manifest_digest"] = self.manifest_digest
+        return _canonical(payload)
 
     def to_dict(self) -> dict[str, Any]:
         payload = self.payload_dict()
@@ -160,10 +168,12 @@ class CheckpointEnvelope:
         detector_state: Mapping[str, Any] | None = None,
         online_state: Mapping[str, Any] | None = None,
         promotion_state: Mapping[str, Any] | None = None,
+        evidence_state: Mapping[str, Any] | None = None,
         rng_state: Mapping[str, Any] | None = None,
         metadata: Mapping[str, Any] | None = None,
         hmac_key: bytes | None = None,
         allow_untrusted: bool = False,
+        manifest_digest: str | None = None,
     ) -> "CheckpointEnvelope":
         if hmac_key is None and not allow_untrusted:
             raise CheckpointIntegrityError(
@@ -174,6 +184,11 @@ class CheckpointEnvelope:
         config = _require_text(config_fingerprint, "config_fingerprint")
         backend = _require_text(backend_identity, "backend_identity")
         dependencies = _require_text(dependency_fingerprint, "dependency_fingerprint")
+        manifest = (
+            None
+            if manifest_digest is None
+            else _require_text(manifest_digest, "manifest_digest")
+        )
         candidate = cls(
             package_version=package,
             config_fingerprint=config,
@@ -183,6 +198,8 @@ class CheckpointEnvelope:
             detector_state=detector_state,
             online_state=online_state,
             promotion_state=promotion_state,
+            evidence_state=evidence_state,
+            manifest_digest=manifest,
             rng_state=rng_state,
             metadata=metadata,
         )
@@ -196,6 +213,8 @@ class CheckpointEnvelope:
             detector_state=candidate.detector_state,
             online_state=candidate.online_state,
             promotion_state=candidate.promotion_state,
+            evidence_state=candidate.evidence_state,
+            manifest_digest=candidate.manifest_digest,
             rng_state=candidate.rng_state,
             metadata=candidate.metadata,
             integrity_algorithm=algorithm,
@@ -212,6 +231,7 @@ class CheckpointEnvelope:
         expected_config_fingerprint: str | None = None,
         expected_backend_identity: str | None = None,
         expected_dependency_fingerprint: str | None = None,
+        expected_manifest_digest: str | None = None,
         allow_untrusted: bool = False,
     ) -> "CheckpointEnvelope":
         if not isinstance(value, Mapping):
@@ -234,6 +254,10 @@ class CheckpointEnvelope:
             "backend_identity", "dependency_fingerprint", "learner_state",
             "detector_state", "online_state", "promotion_state", "rng_state", "metadata",
         )}
+        if "evidence_state" in value:
+            payload["evidence_state"] = value.get("evidence_state")
+        if "manifest_digest" in value:
+            payload["manifest_digest"] = value.get("manifest_digest")
         expected_algorithm, expected_proof = _digest(payload, hmac_key if algorithm == "hmac-sha256" else None)
         if algorithm != expected_algorithm or not hmac.compare_digest(proof, expected_proof):
             raise CheckpointIntegrityError("checkpoint integrity verification failed")
@@ -241,11 +265,17 @@ class CheckpointEnvelope:
         config = _require_text(payload.get("config_fingerprint"), "config_fingerprint")
         backend = _require_text(payload.get("backend_identity"), "backend_identity")
         dependencies = _require_text(payload.get("dependency_fingerprint"), "dependency_fingerprint")
+        manifest = (
+            None
+            if payload.get("manifest_digest") is None
+            else _require_text(payload.get("manifest_digest"), "manifest_digest")
+        )
         for expected, actual, name in (
             (expected_package_version, package, "package_version"),
             (expected_config_fingerprint, config, "config_fingerprint"),
             (expected_backend_identity, backend, "backend_identity"),
             (expected_dependency_fingerprint, dependencies, "dependency_fingerprint"),
+            (expected_manifest_digest, manifest, "manifest_digest"),
         ):
             if expected is not None and expected != actual:
                 raise CheckpointCompatibilityError(f"checkpoint {name} does not match the active run")
@@ -258,6 +288,10 @@ class CheckpointEnvelope:
             detector_state=_canonical(payload.get("detector_state")),
             online_state=_canonical(payload.get("online_state")),
             promotion_state=_canonical(payload.get("promotion_state")),
+            evidence_state=_canonical(payload.get("evidence_state"))
+            if "evidence_state" in payload
+            else None,
+            manifest_digest=manifest,
             rng_state=_canonical(payload.get("rng_state")),
             metadata=_canonical(payload.get("metadata")),
             integrity_algorithm=algorithm,
@@ -290,8 +324,11 @@ def checkpoint_from_components(
     detector: Any | None = None,
     online_state: Mapping[str, Any] | Any | None = None,
     promotion: Any | None = None,
+    evidence: Any | None = None,
+    evidence_state: Mapping[str, Any] | Any | None = None,
     rng_state: Mapping[str, Any] | None = None,
     metadata: Mapping[str, Any] | None = None,
+    manifest_digest: str | None = None,
     hmac_key: bytes | None = None,
     allow_untrusted: bool = False,
 ) -> CheckpointEnvelope:
@@ -314,6 +351,15 @@ def checkpoint_from_components(
         if not callable(callback):
             raise CheckpointError("online_state must be a mapping or expose state_dict")
         online_state = callback()
+    if evidence is not None and evidence_state is not None:
+        raise CheckpointError("provide either evidence or evidence_state, not both")
+    if evidence_state is not None and not isinstance(evidence_state, Mapping):
+        callback = getattr(evidence_state, "state_dict", None)
+        if not callable(callback):
+            raise CheckpointError("evidence_state must be a mapping or expose state_dict")
+        evidence_state = callback()
+    if evidence is not None:
+        evidence_state = state_of(evidence, "state_dict", "get_state")
     return CheckpointEnvelope.create(
         package_version=package_version,
         config_fingerprint=config_fingerprint,
@@ -323,8 +369,10 @@ def checkpoint_from_components(
         detector_state=state_of(detector, "stream_state_dict", "state_dict"),
         online_state=online_state,
         promotion_state=state_of(promotion, "state_dict"),
+        evidence_state=evidence_state,
         rng_state=rng_state,
         metadata=metadata,
+        manifest_digest=manifest_digest,
         hmac_key=hmac_key,
         allow_untrusted=allow_untrusted,
     )
@@ -336,6 +384,9 @@ def restore_component_states(
     learner: Any | None = None,
     detector: Any | None = None,
     promotion: Any | None = None,
+    evidence: Any | None = None,
+    evidence_gate: Any | None = None,
+    evidence_eta_policy: Any | None = None,
     forgetting_factor: Any | None = None,
     eta: Any | None = None,
     hmac_key: bytes | None = None,
@@ -343,6 +394,7 @@ def restore_component_states(
     expected_config_fingerprint: str | None = None,
     expected_backend_identity: str | None = None,
     expected_dependency_fingerprint: str | None = None,
+    expected_manifest_digest: str | None = None,
     allow_untrusted: bool = False,
 ) -> dict[str, Any]:
     """Validate component restores before mutating any supplied object.
@@ -380,6 +432,7 @@ def restore_component_states(
             envelope.dependency_fingerprint,
             "dependency_fingerprint",
         ),
+        (expected_manifest_digest, envelope.manifest_digest, "manifest_digest"),
     ):
         if expected != actual:
             raise CheckpointCompatibilityError(
@@ -406,6 +459,41 @@ def restore_component_states(
         if not callable(factory):
             raise CheckpointError("promotion component does not support detached state restore")
         restored["promotion"] = factory(envelope.promotion_state, eta=eta)
+    if envelope.evidence_state is not None:
+        # Canonicalization deliberately happens only after authentication and
+        # compatibility checks, and returns fresh containers detached from the
+        # envelope's source mapping.
+        detached_evidence_state = _canonical(envelope.evidence_state)
+        restored["evidence_state"] = detached_evidence_state
+        if evidence is not None:
+            factory = getattr(type(evidence), "from_state_dict", None)
+            if not callable(factory):
+                raise CheckpointError(
+                    "evidence component does not support detached state restore"
+                )
+            gate_for_evidence = evidence_gate
+            if gate_for_evidence is None:
+                gate_for_evidence = restored.get("promotion")
+            if gate_for_evidence is None:
+                try:
+                    candidate = factory(detached_evidence_state)
+                except TypeError as exc:
+                    raise CheckpointError(
+                        "evidence restore requires a detached promotion gate"
+                    ) from exc
+            else:
+                # EvidenceLedger needs the separately restored promotion gate
+                # to verify its allocation and incumbent identity. This keeps
+                # the checkpoint envelope detached while allowing a caller to
+                # request a typed ledger candidate in one coordinated restore.
+                candidate = factory(
+                    detached_evidence_state,
+                    gate=gate_for_evidence,
+                    eta_policy=evidence_eta_policy,
+                )
+            if candidate is evidence:
+                raise CheckpointError("evidence detached restore returned the supplied object")
+            restored["evidence"] = candidate
     return restored
 
 

@@ -171,6 +171,7 @@ class OnlineRunConfig:
     annualization: float = 252.0
     reset_state: bool = True
     max_pending_labels: int = 8192
+    require_realized_returns: bool = False
 
     def __post_init__(self) -> None:
         if isinstance(self.label_delay, bool) or not isinstance(
@@ -188,6 +189,8 @@ class OnlineRunConfig:
             raise ValueError("position_scale must be finite and positive")
         if self.annualization <= 0 or not math.isfinite(self.annualization):
             raise ValueError("annualization must be finite and positive")
+        if not isinstance(self.require_realized_returns, bool):
+            raise ValueError("require_realized_returns must be boolean")
         max_pending = _state_int(self.max_pending_labels, "max_pending_labels", minimum=1)
         if max_pending > MAX_PENDING_LABELS:
             raise ValueError("max_pending_labels exceeds the configured resource limit")
@@ -293,9 +296,14 @@ def run_recursive_rls(
     if x.shape[0] > MAX_ONLINE_ROWS:
         raise ValueError(f"features exceed the online row limit ({MAX_ONLINE_ROWS})")
     y = _finite_vector(outcomes, "outcomes", x.shape[0])
-    realized = y if realized_returns is None else _finite_vector(
-        realized_returns, "realized_returns", x.shape[0]
-    )
+    if realized_returns is None:
+        if settings.require_realized_returns:
+            raise ValueError(
+                "realized_returns are required for this online configuration"
+            )
+        realized = y
+    else:
+        realized = _finite_vector(realized_returns, "realized_returns", x.shape[0])
     states = x if market_states is None else _finite_matrix(market_states, "market_states")
     if states.shape[0] != x.shape[0]:
         raise ValueError("market_states and features must have the same number of rows")

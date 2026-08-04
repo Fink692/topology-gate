@@ -6,7 +6,14 @@ Scope: Python research/production library; no order execution, broker integratio
 
 This document is the architecture contract for a topology-gated recursive quantitative model. The target model consumes an as-of event stream, constructs rolling market-state point clouds, detects structural change with persistent-Laplacian spectra, selects an adaptive RLS forgetting policy, and evaluates challenger models with an anytime-valid e-process before promotion.
 
-The requested production architecture is not implemented yet. The workspace already contains an alpha topology_gate scaffold with shared types, topology, RLS, promotion, synthetic-data, backtest, observability, and test modules. Those user-owned files are left untouched and are not assumed to satisfy this production contract. The package names and interfaces below define the target boundary; this document deliberately does not create or modify Python modules.
+The requested production architecture is not implemented end to end. The
+workspace contains an alpha topology_gate scaffold plus bounded reference
+contracts for exact finite persistence, as-of events, run manifests, evidence
+ledger composition, and authenticated state. These additions narrow and test
+important boundaries; they do not yet constitute a live market-data engine,
+shared online/offline transition function, cross-asset portfolio system, or
+statistical/economic certification. The package names and interfaces below
+define the target boundary.
 
 **Current implementation claim boundary:** the default detector in the alpha
 scaffold is a causal kNN normalized-Laplacian spectral approximation. It is not

@@ -105,6 +105,19 @@ def test_transaction_costs_and_metrics_are_path_based() -> None:
     assert direct.dynamic_regret == 0.4
 
 
+def test_strict_economic_mode_rejects_implicit_zero_returns() -> None:
+    features = TimeIndexedFeatures.from_array(np.zeros((3, 1)))
+    labels = TimeIndexedLabels.from_array(np.ones(3))
+    with pytest.raises(ValueError, match="realized_returns are required"):
+        WalkForwardBacktest(
+            WalkForwardConfig(
+                initial_train_size=0,
+                min_train_size=0,
+                require_realized_returns=True,
+            )
+        ).run(features, labels, predictor=lambda *_args: 1.0)
+
+
 def test_known_shift_detection_and_baseline_false_promotion() -> None:
     dataset = generate_synthetic_regimes(
         n_steps=12,

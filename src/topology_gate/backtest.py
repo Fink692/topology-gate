@@ -231,6 +231,7 @@ class WalkForwardConfig:
     horizon: Optional[int] = None
     refit_interval: Optional[int] = None
     record_predictions: bool = True
+    require_realized_returns: bool = False
 
     def __post_init__(self) -> None:
         if self.warmup is not None:
@@ -277,6 +278,8 @@ class WalkForwardConfig:
             raise ValueError("max_position must be positive")
         if self.periods_per_year == 0:
             raise ValueError("periods_per_year must be positive")
+        if not isinstance(self.require_realized_returns, bool):
+            raise TypeError("require_realized_returns must be boolean")
 
     @property
     def turnover_cost_rate(self) -> float:
@@ -578,8 +581,17 @@ def _coerce_labels(labels: Any, index: Sequence[Any]) -> Optional[TimeIndexedLab
     return TimeIndexedLabels.from_array(labels, index=index)
 
 
-def _coerce_returns(returns: Any, n: int) -> NDArray[Any]:
+def _coerce_returns(
+    returns: Any,
+    n: int,
+    *,
+    required: bool = False,
+) -> NDArray[Any]:
     if returns is None:
+        if required:
+            raise ValueError(
+                "realized_returns are required for this walk-forward configuration"
+            )
         return np.zeros(n, dtype=float)
     if isinstance(returns, TimeIndexedLabels):
         returns = returns.values
@@ -611,6 +623,7 @@ def _coerce_walk_forward_config(config: Any) -> WalkForwardConfig:
             "detection_persistence",
             "detection_position_threshold",
             "promotion_window",
+            "require_realized_returns",
         )
         values = {
             field_name: getattr(config, field_name)
@@ -1281,7 +1294,12 @@ class WalkForwardBacktest:
 
         n = feature_frame.n_samples
         label_frame = _coerce_labels(labels, feature_frame.index)
-        returns = _coerce_returns(realized_returns, n)
+        cfg = self.config if config is None else _coerce_walk_forward_config(config)
+        returns = _coerce_returns(
+            realized_returns,
+            n,
+            required=cfg.require_realized_returns,
+        )
         expected: Optional[NDArray[Any]]
         optimal: Optional[NDArray[Any]]
         if expected_returns is not None:
@@ -1303,7 +1321,6 @@ class WalkForwardBacktest:
         if not points:
             points = _infer_change_points_from_regimes(regimes)
 
-        cfg = self.config if config is None else _coerce_walk_forward_config(config)
         source_delay = getattr(source_dataset, "label_delay", None)
         if label_delay is None:
             delay = cfg.label_delay if source_delay is None else int(cast(int, source_delay))

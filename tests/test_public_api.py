@@ -18,6 +18,10 @@ def test_root_all_is_unique_and_resolves_every_public_name() -> None:
         "BacktestEngine",
         "OnlineRunConfig",
         "OnlineRunResult",
+        "PersistentLaplacianConfig",
+        "PersistentLaplacianResult",
+        "PersistentSpectrum",
+        "PersistentStatus",
         "SyntheticDataset",
         "SyntheticRegimeProcess",
         "TimeIndexedFeatures",
@@ -30,6 +34,8 @@ def test_root_all_is_unique_and_resolves_every_public_name() -> None:
         "generate_regime_switching",
         "generate_synthetic_regimes",
         "run_recursive_rls",
+        "compute_persistent_laplacian",
+        "persistent_laplacian_backend",
     }
 
     for name in topology_gate.__all__:
