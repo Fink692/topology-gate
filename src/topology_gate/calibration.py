@@ -26,6 +26,7 @@ except ModuleNotFoundError as exc:  # pragma: no cover - exercised by import bou
 MAX_CALIBRATION_TRIALS = 4_096
 MAX_CALIBRATION_HORIZON = 100_000
 MAX_CALIBRATION_FEATURES = 256
+MAX_CALIBRATION_SOURCE_ROWS = 100_000
 _WILSON_Z_95 = 1.959963984540054
 _WILSON_CONFIDENCE_95 = 0.95
 
@@ -49,6 +50,16 @@ def _finite_probability(name: str, value: Any) -> float:
         raise ValueError(f"{name} must be a finite probability") from exc
     if not math.isfinite(result) or not 0.0 < result < 1.0:
         raise ValueError(f"{name} must lie strictly between zero and one")
+    return result
+
+
+def _unit_probability(name: str, value: Any) -> float:
+    try:
+        result = float(value)
+    except (TypeError, ValueError, OverflowError) as exc:
+        raise ValueError(f"{name} must be a finite probability") from exc
+    if not math.isfinite(result) or not 0.0 < result <= 1.0:
+        raise ValueError(f"{name} must lie in (0, 1]")
     return result
 
 
@@ -110,6 +121,139 @@ def _identity(detector: Any) -> str:
     return value
 
 
+def _factory_identity(factory: Any) -> str:
+    if not callable(factory):
+        raise ValueError("observation_factory must be callable")
+    value = getattr(factory, "identity", None)
+    if callable(value):
+        value = value()
+    if value is None:
+        code = getattr(factory, "__code__", None)
+        location = ""
+        if code is not None:
+            location = f":{code.co_filename}:{code.co_firstlineno}"
+        value = (
+            f"{getattr(factory, '__module__', type(factory).__module__)}:"
+            f"{getattr(factory, '__qualname__', type(factory).__qualname__)}"
+            f"{location}"
+        )
+    if not isinstance(value, str) or not value:
+        raise ValueError("observation factory identity must be a non-empty string")
+    return value
+
+
+class StationaryBlockBootstrap:
+    """Seeded stationary block bootstrap observation factory.
+
+    The factory samples a circular source sequence and starts a new block
+    with probability ``restart_probability`` on each step.  It preserves
+    local serial dependence in the declared source but does not establish
+    exchangeability or a market-valid null by itself.
+    """
+
+    def __init__(
+        self,
+        source: Any,
+        *,
+        block_length: int = 16,
+        source_id: str = "source",
+        restart_probability: float | None = None,
+    ) -> None:
+        values = np.asarray(source, dtype=float)
+        if values.ndim == 1:
+            values = values.reshape(-1, 1)
+        if values.ndim != 2 or values.shape[0] < 2 or values.shape[1] < 1:
+            raise ValueError("bootstrap source must be a non-empty 2-D sequence")
+        if values.shape[0] > MAX_CALIBRATION_SOURCE_ROWS:
+            raise ValueError("bootstrap source exceeds its row limit")
+        if values.shape[1] > MAX_CALIBRATION_FEATURES:
+            raise ValueError("bootstrap source exceeds its feature limit")
+        if not np.all(np.isfinite(values)):
+            raise ValueError("bootstrap source contains non-finite values")
+        if not isinstance(source_id, str) or not source_id:
+            raise ValueError("source_id must be a non-empty string")
+        block = _bounded_int(
+            "block_length", block_length, 1, int(values.shape[0])
+        )
+        restart = (
+            1.0 / block
+            if restart_probability is None
+            else _unit_probability("restart_probability", restart_probability)
+        )
+        self._source = np.array(values, dtype=float, copy=True, order="C")
+        self._source.setflags(write=False)
+        self._source_id = source_id
+        self._block_length = block
+        self._restart_probability = restart
+        self._source_digest = hashlib.sha256(self._source.tobytes()).hexdigest()
+
+    @property
+    def source_id(self) -> str:
+        return self._source_id
+
+    @property
+    def source_shape(self) -> tuple[int, int]:
+        return (int(self._source.shape[0]), int(self._source.shape[1]))
+
+    @property
+    def block_length(self) -> int:
+        return self._block_length
+
+    @property
+    def restart_probability(self) -> float:
+        return self._restart_probability
+
+    @property
+    def identity(self) -> str:
+        payload = {
+            "schema": "topology_gate.stationary_block_bootstrap",
+            "version": 1,
+            "source_id": self._source_id,
+            "source_digest": self._source_digest,
+            "source_shape": list(self.source_shape),
+            "block_length": self._block_length,
+            "restart_probability": self._restart_probability,
+        }
+        return hashlib.sha256(
+            json.dumps(payload, sort_keys=True, separators=(",", ":")).encode()
+        ).hexdigest()
+
+    def __call__(
+        self, rng: np.random.Generator, horizon: int, n_features: int
+    ) -> np.ndarray[Any, Any]:
+        if not isinstance(rng, np.random.Generator):
+            raise ValueError("bootstrap requires a NumPy random generator")
+        length = _bounded_int("horizon", horizon, 1, MAX_CALIBRATION_HORIZON)
+        features = _bounded_int(
+            "n_features", n_features, 1, MAX_CALIBRATION_FEATURES
+        )
+        if features != self._source.shape[1]:
+            raise ValueError("bootstrap source feature dimension does not match calibration")
+        output = np.empty((length, features), dtype=float)
+        index = int(rng.integers(0, self._source.shape[0]))
+        for row in range(length):
+            output[row] = self._source[index]
+            if row + 1 == length:
+                break
+            if float(rng.random()) < self._restart_probability:
+                index = int(rng.integers(0, self._source.shape[0]))
+            else:
+                index = (index + 1) % self._source.shape[0]
+        return output
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "schema": "topology_gate.stationary_block_bootstrap",
+            "version": 1,
+            "source_id": self._source_id,
+            "source_digest": self._source_digest,
+            "source_shape": list(self.source_shape),
+            "block_length": self._block_length,
+            "restart_probability": self._restart_probability,
+            "identity": self.identity,
+        }
+
+
 def _observations(
     factory: ObservationFactory,
     rng: np.random.Generator,
@@ -160,12 +304,15 @@ class NullCalibrationResult:
     average_run_length: float
     censored_run_fraction: float
     first_alarm_steps: tuple[int, ...]
+    observation_identity: str = "unbound"
 
     def __post_init__(self) -> None:
         if len(self.first_alarm_steps) != self.trials:
             raise ValueError("first_alarm_steps must have one value per trial")
         if not 0 <= self.false_alarm_count <= self.trials:
             raise ValueError("false_alarm_count must be between zero and trials")
+        if not isinstance(self.observation_identity, str) or not self.observation_identity:
+            raise ValueError("observation_identity must be a non-empty string")
         fields = (
             self.false_alarm_rate,
             self.false_alarm_ci_low,
@@ -185,6 +332,7 @@ class NullCalibrationResult:
             "n_features": self.n_features,
             "alpha": self.alpha,
             "seed": self.seed,
+            "observation_identity": self.observation_identity,
         }
         return hashlib.sha256(
             json.dumps(payload, sort_keys=True, separators=(",", ":")).encode()
@@ -199,6 +347,7 @@ class NullCalibrationResult:
             "n_features": self.n_features,
             "alpha": self.alpha,
             "seed": self.seed,
+            "observation_identity": self.observation_identity,
             "false_alarm_count": self.false_alarm_count,
             "false_alarm_rate": self.false_alarm_rate,
             "false_alarm_ci_95": [self.false_alarm_ci_low, self.false_alarm_ci_high],
@@ -338,6 +487,7 @@ class ShiftCalibrationResult:
     mean_delay_with_censoring: float
     censored_fraction: float
     detection_delays: tuple[int, ...]
+    observation_identity: str = "unbound"
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -346,6 +496,7 @@ class ShiftCalibrationResult:
             "trials": self.trials,
             "horizon": self.horizon,
             "shift_index": self.shift_index,
+            "observation_identity": self.observation_identity,
             "detection_count": self.detection_count,
             "detection_rate": self.detection_rate,
             "detection_ci_95": [self.detection_ci_low, self.detection_ci_high],
@@ -368,6 +519,7 @@ def calibrate_null(
         raise ValueError("detector_factory must be callable")
     probe = detector_factory()
     identity = _identity(probe)
+    observation_identity = _factory_identity(observation_factory)
     first_alarm_steps: list[int] = []
     rng = np.random.default_rng(settings.seed)
     for _ in range(settings.trials):
@@ -399,6 +551,7 @@ def calibrate_null(
             / settings.trials
         ),
         first_alarm_steps=tuple(first_alarm_steps),
+        observation_identity=observation_identity,
     )
 
 
@@ -417,6 +570,7 @@ def calibrate_shift(
         raise ValueError("detector_factory must be callable")
     probe = detector_factory()
     identity = _identity(probe)
+    observation_identity = _factory_identity(observation_factory)
     delays: list[int] = []
     rng = np.random.default_rng(settings.seed)
     for _ in range(settings.trials):
@@ -445,6 +599,7 @@ def calibrate_shift(
             / settings.trials
         ),
         detection_delays=tuple(delays),
+        observation_identity=observation_identity,
     )
 
 
@@ -453,8 +608,10 @@ __all__ = [
     "CalibrationConfig",
     "MAX_CALIBRATION_FEATURES",
     "MAX_CALIBRATION_HORIZON",
+    "MAX_CALIBRATION_SOURCE_ROWS",
     "MAX_CALIBRATION_TRIALS",
     "NullCalibrationResult",
+    "StationaryBlockBootstrap",
     "ShiftCalibrationResult",
     "calibrate_null",
     "calibrate_shift",

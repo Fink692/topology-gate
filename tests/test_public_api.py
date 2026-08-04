@@ -35,6 +35,7 @@ def test_root_all_is_unique_and_resolves_every_public_name() -> None:
         "PersistentLaplacianResult",
         "PersistentSpectrum",
         "PersistentStatus",
+        "StationaryBlockBootstrap",
         "SyntheticDataset",
         "SyntheticRegimeProcess",
         "TimeIndexedFeatures",

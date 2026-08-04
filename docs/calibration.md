@@ -21,6 +21,13 @@ assumptions belong in the experiment manifest. A null result is evidence for
 the tested finite horizon and factory only, not a universal guarantee for
 market data.
 
+`StationaryBlockBootstrap` provides a circular stationary block factory for a
+finite source sequence. Its block length, restart probability, source digest,
+and source identifier are included in the observation-factory identity that
+the calibration result records. This preserves declared local serial
+dependence for a null experiment; it does not prove that the source is the
+right market null or remove selection effects.
+
 `NullCalibrationResult.to_certificate(max_false_alarm_rate=...)` creates an
 explicit finite-null certificate. The certificate is approved only when the
 95% Wilson upper bound is no larger than the declared budget, and it is bound

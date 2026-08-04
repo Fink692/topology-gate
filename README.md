@@ -172,7 +172,9 @@ intervals and censored run-length evidence; they do not establish universal
 market or optional-stopping guarantees. `NullCalibrationResult.to_certificate`
 is the explicit authorization boundary for the numerical adapter: without a
 matching approved finite-null certificate, topology-driven forgetting remains
-at its neutral maximum.
+at its neutral maximum. Use `StationaryBlockBootstrap` when the declared null
+must preserve local serial dependence; its source and bootstrap specification
+are included in the calibration identity.
 
 ## Tests and typing
 

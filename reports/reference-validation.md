@@ -6,8 +6,8 @@ Scope: bounded research/control layer only; no live-data or execution claim
 
 ## Reproducible engineering checks
 
-- Full suite: **172 passed**.
-- Configured coverage run: **79.92%** total coverage.
+- Full suite: **174 passed**.
+- Configured coverage run: **79.88%** total coverage.
 - Ruff: passed on `src` and `tests`.
 - Mypy: passed on all 20 source modules.
 - Dependency-light root import: passed without NumPy site packages.
@@ -22,6 +22,9 @@ Scope: bounded research/control layer only; no live-data or execution claim
   and neutral forgetting without an approved detector certificate.
 - Finite-null certificate tests: passed for conservative Wilson-bound approval,
   detector-identity binding, and explicit rejection of an unapproved budget.
+- Stationary block-bootstrap tests: passed for seeded reproducibility, source
+  identity binding, feature-dimension rejection, and result-level factory
+  identity recording.
 - Strict economic contract tests: passed for separate realized returns,
   component execution costs, turnover/flip accounting, explicit abstentions,
   identity mismatches, unavailable costs, and non-observed return rejection.

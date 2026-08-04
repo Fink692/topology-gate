@@ -10,6 +10,7 @@ import pytest
 from topology_gate.calibration import (
     CalibrationCertificate,
     CalibrationConfig,
+    StationaryBlockBootstrap,
     calibrate_null,
     calibrate_shift,
 )
@@ -115,3 +116,39 @@ def test_null_certificate_requires_its_conservative_bound_to_pass() -> None:
     assert not rejected.approved
     assert approved.identity != rejected.identity
     assert approved.to_dict()["approved"] is True
+
+
+def test_stationary_block_bootstrap_is_seeded_and_identity_bound() -> None:
+    source = np.arange(60.0).reshape(30, 2)
+    factory = StationaryBlockBootstrap(
+        source,
+        block_length=4,
+        source_id="ar1-reference:v1",
+    )
+    first = factory(np.random.default_rng(17), 24, 2)
+    second = factory(np.random.default_rng(17), 24, 2)
+
+    np.testing.assert_array_equal(first, second)
+    assert first.shape == (24, 2)
+    assert factory.to_dict()["identity"] == factory.identity
+    assert factory.identity
+    assert np.all(np.isin(first, source))
+
+    with pytest.raises(ValueError, match="feature dimension"):
+        factory(np.random.default_rng(17), 24, 1)
+
+
+def test_calibration_result_records_observation_factory_identity() -> None:
+    factory = StationaryBlockBootstrap(
+        np.arange(40.0),
+        block_length=3,
+        source_id="serial-null:v1",
+    )
+    result = calibrate_null(
+        _ThresholdDetector,
+        factory,
+        config=CalibrationConfig(trials=8, horizon=12, n_features=1, seed=4),
+    )
+
+    assert result.observation_identity == factory.identity
+    assert result.to_dict()["observation_identity"] == factory.identity
