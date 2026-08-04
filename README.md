@@ -142,6 +142,12 @@ accelerate forgetting. A missing, unapproved, or mismatched certificate keeps
 the detector diagnostic and applies the neutral learner maximum; the result
 exposes `acceleration_authorized` and the calibration identity.
 
+The experimental `CausalTransportReplay` adapter provides a prefix-only
+location and linear-parameter transport for delayed historical observations.
+It is explicitly not an adapted-Wasserstein solver; its availability rules,
+reliability weights, and state identity are documented in
+[`docs/causal-transport-replay.md`](docs/causal-transport-replay.md).
+
 Set `require_realized_returns=True` in the worker backtest or online config for
 economic evaluation. The compatibility default still permits target outcomes
 to stand in for realized returns, but that path is diagnostic and must not be

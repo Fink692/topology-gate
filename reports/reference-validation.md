@@ -5,18 +5,18 @@ Interpreter: CPython 3.12.10
 Scope: bounded research/control layer only; no live-data or execution claim
 
 Supported-interpreter matrix: CPython 3.10.11, 3.11.15, and 3.12.10 each
-passed the current 279-test suite; the 3.10 and 3.11 runs used isolated `uv`
+passed the current 284-test suite; the 3.10 and 3.11 runs used isolated `uv`
 environment. The CPython 3.12 release gate also passed Ruff, mypy, and
 compileall. Coverage is reported from CPython 3.12 only.
 
 ## Reproducible engineering checks
 
-- Full suite: **279 passed**.
-- Configured coverage run: **80.76%** total coverage.
+- Full suite: **284 passed**.
+- Configured coverage run: **80.86%** total coverage.
 - Coverage enforcement: configured floor **80%**; the current CPython 3.10,
-  3.11, and 3.12 runs each clear it at **80.76%** total.
+  3.11, and 3.12 runs each clear it at **80.86%** total.
 - Ruff: passed on `src` and `tests`.
-- Mypy: passed on all 24 source modules.
+- Mypy: passed on all 25 source modules.
 - Dependency-light root import: passed without NumPy site packages.
 - Wheel build and isolated target-directory smoke: passed; SHA-256
   `86DFD50C6A5677D6AA2B043213AC4912DC239EC3AD6E11011D3C2781FD5CB09A`;
@@ -79,6 +79,10 @@ compileall. Coverage is reported from CPython 3.12 only.
 - Selection-budget tests: passed for exact model/feature/eta Cartesian-family
   allocation, selected-cell binding, identity/tamper rejection, and finite
   family-level optional-stopping calibration.
+- Causal transport-replay tests: passed for strict source and availability
+  boundaries, prefix-state selection, feature/label transport equations,
+  bounded reliability weights, deterministic checkpoint round-trip, tamper
+  rejection, and record/state resource limits.
 - Stationary block-bootstrap tests: passed for seeded reproducibility, source
   identity binding, feature-dimension rejection, and result-level factory
   identity recording.
@@ -179,6 +183,11 @@ therefore fail-closed.
   certified path accelerated 245 updates but did not materially improve this
   fixture. The result is a control-layer negative diagnostic, not market
   evidence; see [`reports/synthetic-walk-forward.md`](synthetic-walk-forward.md).
+- The causal transport-replay prototype was run on four delayed-label
+  synthetic paths. It averaged final-regime MSE `0.0502417` versus `0.0436627`
+  for raw causal RLS, so it was rejected as an improvement in this fixture.
+  This is a prototype negative result, not adapted-Wasserstein or market
+  evidence; see [`reports/causal-transport-replay.md`](causal-transport-replay.md).
 
 ## Acceptance disposition
 
@@ -192,6 +201,7 @@ therefore fail-closed.
 | G5 economic validation | Contract pass; market evidence not evaluated | `economic.py` and `StudySourcePackage.audit_market` are fail-closed for separate returns/costs, explicit abstentions, required capacity evidence, and sealed holdout handling, but no point-in-time vendor data, capacity, delistings, or opened final holdout evidence are present. |
 
 The package remains research/alpha. The local protocol, selection controls,
-finite null calibration, and synthetic strict walk-forward are complete. The
+finite null calibration, synthetic strict walk-forward, and causal transport
+prototype are complete. The
 remaining upgrade path is external: a point-in-time cross-asset source bundle,
 an audited dependence-aware market calibration split, and a sealed final test.
