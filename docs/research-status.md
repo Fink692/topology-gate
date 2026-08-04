@@ -16,6 +16,13 @@ does not mean the method has been validated on point-in-time market data.
 | Adaptive rough-path memory | `signatures.py` | Causal signature-depth selector and synthetic diagnostic |
 | Martingale Schrödinger-bridge stress training | `bridge.py` | Finite discrete KL/martingale projection diagnostic; not continuous-time |
 
+The complete experiment matrix and requested metric bundle are materialized by
+[`integrated_synthetic_study.py`](../examples/integrated_synthetic_study.py)
+and its receipt
+[`integrated-synthetic-study.json`](../reports/integrated-synthetic-study.json).
+It is still synthetic evidence and does not satisfy the external market-data
+gate below.
+
 ## What still requires external data
 
 The repository cannot create the missing licensed source evidence. Before a
@@ -26,4 +33,3 @@ metadata, realized returns, execution costs, and capacity evidence. Then run
 the ordered calibration, tuning, validation, and sealed holdout workflow in
 [`study-runbook.md`](study-runbook.md). The intake and package audit fail closed
 when those artifacts are absent or incomplete.
-

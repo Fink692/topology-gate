@@ -132,6 +132,17 @@ compileall. Coverage is reported from CPython 3.10 only for this local run.
   `0.0822828785`; it is not a continuous-time bridge or pricing-measure claim.
   See [`docs/martingale-stress-bridge.md`](../docs/martingale-stress-bridge.md)
   and [`reports/martingale-stress-bridge-synthetic.json`](martingale-stress-bridge-synthetic.json).
+- The integrated synthetic study ran all five memory systems across four
+  seeds with one-step delayed labels and 5 bps transaction costs. Its receipt
+  contains post-shift one-sided utility regret, detection delay, recovery,
+  information coefficient, hit rate, net return, Sharpe, drawdown, turnover,
+  transaction cost, false alarms, accelerated updates, a paired promotion
+  diagnostic, and a two-challenger finite promotion null. The null crossed
+  zero times in 256 trials with a 95% upper bound of `0.014784`; the paired
+  synthetic PL challenger did not promote (`e=1.00999`, threshold `80`). This
+  is synthetic control-layer evidence only. See
+  [`docs/integrated-synthetic-study.md`](../docs/integrated-synthetic-study.md)
+  and [`reports/integrated-synthetic-study.json`](integrated-synthetic-study.json).
 - Stationary block-bootstrap tests: passed for seeded reproducibility, source
   identity binding, feature-dimension rejection, and result-level factory
   identity recording.
