@@ -8,6 +8,7 @@ import numpy as np
 import pytest
 
 from topology_gate.persistent import (
+    PersistentLaplacianBackend,
     PersistentLaplacianConfig,
     PersistentResourceError,
     PersistentStatus,
@@ -81,6 +82,27 @@ def test_permutation_digest_and_adapter_are_deterministic() -> None:
     second = compute_persistent_laplacian([points[2], points[0], points[3], points[1]], config=config)
     assert first.to_dict() == second.to_dict()
     assert persistent_laplacian_backend(points, 3) == first.spectrum.eigenvalues[:3]
+
+
+def test_configured_backend_returns_complete_evidence_with_stable_identity() -> None:
+    config = PersistentLaplacianConfig(
+        max_vertices=8,
+        max_simplices=500,
+        q=0,
+        n_eigenvalues=3,
+    )
+    backend = PersistentLaplacianBackend(config)
+    result = backend(
+        [[0.0], [0.4], [1.0], [1.8]],
+        n_eigenvalues=3,
+    )
+
+    assert result.status is PersistentStatus.VALID
+    assert result.config_identity == config.identity
+    assert len(result.spectrum.eigenvalues) == 3
+    assert backend.identity.startswith("topology_gate.persistent_backend:v1:")
+    with pytest.raises(ValueError, match="requires n_eigenvalues=3"):
+        backend([[0.0], [1.0], [2.0]], n_eigenvalues=2)
 
 
 def test_exact_backend_fails_closed_on_resource_caps() -> None:

@@ -6,11 +6,13 @@ Scope: bounded research/control layer only; no live-data or execution claim
 
 ## Reproducible engineering checks
 
-- Full suite: **174 passed**.
-- Configured coverage run: **79.88%** total coverage.
+- Full suite: **178 passed**.
+- Configured coverage run: **79.95%** total coverage.
 - Ruff: passed on `src` and `tests`.
 - Mypy: passed on all 20 source modules.
 - Dependency-light root import: passed without NumPy site packages.
+- Wheel build and isolated target-directory smoke: passed; SHA-256
+  `089f77fa00f471fb86b908a8aa1740b220214b9825e3838296aeb404e4e9e238`.
 - Authenticated checkpoint, manifest digest, promotion/evidence state, and
   detached restore tests: passed.
 - Causal replay prediction-before-label, future-prefix invariance, explicit
@@ -34,6 +36,10 @@ Scope: bounded research/control layer only; no live-data or execution claim
   rollback on failed updates.
 - Exact finite persistence algebra, PSD/eigen residual, permutation/duplicate,
   digest, and resource-cap invariants: passed.
+- Configured exact-backend tests: passed for complete evidence return, stable
+  filtration/solver identity, cloud/spectrum-width compatibility, causal
+  prefix equivalence, checkpoint replay, and transactional stream rollback on
+  backend failure.
 
 ## Exact reference backend timing
 

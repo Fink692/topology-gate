@@ -83,7 +83,11 @@ The package now includes an optional bounded finite reference backend in
 computes `F2` persistence intervals, and evaluates a declared
 nullspace-restricted real q-Laplacian for small clouds. Its finite-complex and
 float64 solver evidence is exact only for the declared construction and
-resource limits; it does not establish rolling-market calibration.
+resource limits; it does not establish rolling-market calibration. The
+`PersistentLaplacianBackend` adapter makes the configuration, spectrum width,
+and vertex budget part of the detector identity. `TopologyConfig` rejects a
+rolling cloud larger than that exact budget, and a runtime backend failure
+rolls back the stream step instead of emitting a shift signal.
 
 The default reflected CUSUM-like score, topology alarm, score-to-forgetting
 map, and challenger promotion statistics are exploratory unless an independent

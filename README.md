@@ -25,9 +25,14 @@ controls.
 For small research goldens, the optional `persistent` worker exposes a bounded
 Euclidean Vietoris–Rips filtration over `F2`, persistence intervals, and a
 nullspace-restricted persistent-Laplacian spectrum via
-`compute_persistent_laplacian`. It is a finite reference backend with explicit
-resource caps; it is not silently substituted into the rolling default and it
-does not calibrate the downstream CUSUM.
+`compute_persistent_laplacian`. `PersistentLaplacianBackend` is the configured
+callable adapter for using that exact finite construction in
+`RollingTopologyDetector`; its filtration/solver identity and vertex budget
+are included in the detector identity, and incompatible cloud/spectrum sizes
+are rejected before a stream starts. It is a finite reference backend with
+explicit resource caps; it is not silently substituted into the rolling
+default and it does not calibrate the downstream CUSUM. A backend or solver
+failure during streaming rolls back the rejected observation.
 
 ## Install
 

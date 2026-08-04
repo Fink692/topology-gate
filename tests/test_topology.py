@@ -8,6 +8,10 @@ import random
 import pytest
 
 import topology_gate.topology as topology
+from topology_gate.persistent import (
+    PersistentLaplacianBackend,
+    PersistentLaplacianConfig,
+)
 from topology_gate.topology import (
     RollingTopologyDetector,
     TopologyConfig,
@@ -226,6 +230,118 @@ def test_optional_persistent_backend_seam_is_visible_and_causal():
     assert result.method == "persistent_laplacian_backend"
     assert calls[-1][0] <= _config().cloud_window
     _assert_finite(result.features)
+
+
+def test_configured_exact_persistent_backend_is_causal_and_checkpointable():
+    backend = PersistentLaplacianBackend(
+        PersistentLaplacianConfig(
+            max_vertices=8,
+            max_simplices=500,
+            q=0,
+            n_eigenvalues=2,
+        )
+    )
+    config = _config(
+        embedding_dim=1,
+        cloud_window=8,
+        graph_neighbors=2,
+        n_eigenvalues=2,
+        min_points=4,
+        calibration_window=8,
+        calibration_min_periods=2,
+        persistent_laplacian_backend=backend,
+    )
+    values = _series(14, seed=31)
+    detector = RollingTopologyDetector(config)
+    short = detector.detect(values[:10])
+    long = detector.detect(values)
+
+    assert short.method == "persistent_laplacian_backend"
+    assert detector.backend_identity == backend.identity
+    assert _as_values(short.features) == _as_values(long.features)[:10]
+    assert _as_values(short.scores) == _as_values(long.scores)[:10]
+
+    streaming = RollingTopologyDetector(config)
+    for value in values[:7]:
+        streaming.observe([value])
+    snapshot = streaming.stream_state_dict()
+    expected = [streaming.observe([value]) for value in values[7:]]
+
+    restored = RollingTopologyDetector(config)
+    restored.load_stream_state_dict(snapshot)
+    actual = [restored.observe([value]) for value in values[7:]]
+    assert expected == actual
+
+
+def test_configured_exact_backend_rejects_incompatible_detector_budgets():
+    backend = PersistentLaplacianBackend(
+        PersistentLaplacianConfig(
+            max_vertices=4,
+            max_simplices=100,
+            q=0,
+            n_eigenvalues=2,
+        )
+    )
+    with pytest.raises(ValueError, match="cloud_window"):
+        RollingTopologyDetector(
+            _config(
+                cloud_window=8,
+                n_eigenvalues=2,
+                min_points=5,
+                persistent_laplacian_backend=backend,
+            )
+        )
+
+    wider_backend = PersistentLaplacianBackend(
+        PersistentLaplacianConfig(
+            max_vertices=8,
+            max_simplices=500,
+            q=0,
+            n_eigenvalues=3,
+        )
+    )
+    with pytest.raises(ValueError, match="n_eigenvalues"):
+        RollingTopologyDetector(
+            _config(
+                cloud_window=8,
+                n_eigenvalues=2,
+                min_points=5,
+                persistent_laplacian_backend=wider_backend,
+            )
+        )
+
+
+def test_exact_backend_failure_does_not_consume_stream_observation():
+    class FailingBackend:
+        max_vertices = 8
+        n_eigenvalues = 2
+        identity = "test.failing-persistent-backend:v1"
+
+        def __call__(self, cloud, n_eigenvalues):
+            if len(cloud) >= 4:
+                raise ValueError("declared exact resource failure")
+            return [0.0, 0.5]
+
+    config = _config(
+        embedding_dim=1,
+        cloud_window=4,
+        graph_neighbors=2,
+        n_eigenvalues=2,
+        min_points=3,
+        calibration_window=6,
+        calibration_min_periods=2,
+        persistent_laplacian_backend=FailingBackend(),
+    )
+    detector = RollingTopologyDetector(config)
+    detector.observe([0.0])
+    detector.observe([0.1])
+    detector.observe([0.2])
+    before = detector.stream_state_dict()
+
+    with pytest.raises(ValueError, match="declared exact resource failure"):
+        detector.observe([0.3])
+
+    assert detector.stream_state_dict() == before
 
 
 def test_dependency_light_fallback_runs_without_numpy(monkeypatch):

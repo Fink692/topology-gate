@@ -20,9 +20,13 @@ define the target boundary.
 **Current implementation claim boundary:** the default detector in the alpha
 scaffold is a causal kNN normalized-Laplacian spectral approximation. It is not
 a persistent Laplacian and does not compute persistence pairs or homology
-groups. Its CUSUM alarms and score-to-forgetting map, together with promotion
-statistics, are exploratory until independently calibrated; the target
-persistent-Laplacian/e-process architecture below remains a release gate.
+groups. The bounded exact worker is now available through an explicitly
+configured `PersistentLaplacianBackend` adapter, with finite filtration/solver
+identity, spectrum-width checks, and transactional stream failure behavior.
+Its CUSUM alarms and score-to-forgetting map, together with promotion
+statistics, are exploratory until independently calibrated; cross-asset
+point-in-time data and the full persistent-Laplacian/e-process architecture
+remain release gates.
 
 ## 1. Requirements, assumptions, and hard invariants
 

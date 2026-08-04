@@ -108,6 +108,39 @@ forgetting decisions, and promotion statistics are exploratory until a
 separate calibration study establishes their null behavior and selection
 budget.
 
+For a small exact reference run, configure the finite backend explicitly and
+match both budgets to the rolling detector:
+
+```python
+from topology_gate import (
+    PersistentLaplacianBackend,
+    PersistentLaplacianConfig,
+)
+
+exact_backend = PersistentLaplacianBackend(
+    PersistentLaplacianConfig(
+        max_vertices=16,
+        max_simplices=696,
+        q=0,
+        n_eigenvalues=2,
+    )
+)
+exact_detector = RollingTopologyDetector(
+    TopologyConfig(
+        embedding_dim=1,
+        cloud_window=16,
+        min_points=8,
+        n_eigenvalues=2,
+        graph_neighbors=4,
+        persistent_laplacian_backend=exact_backend,
+    )
+)
+```
+
+This is a bounded numerical reference path, not a market-calibrated detector.
+The backend identity is checkpointed; an incompatible cloud or failed exact
+calculation must be handled as an abstention/error by the surrounding replay.
+
 ## Release gates
 
 Before using a result outside research:

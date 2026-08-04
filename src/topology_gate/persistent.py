@@ -35,6 +35,7 @@ MAX_PERSISTENT_BOUNDARY_NONZEROS = 200_000
 MAX_PERSISTENT_EIGENVALUES = 64
 MAX_PERSISTENT_DIMENSION = 1
 _TOLERANCE_FLOOR = 1.0e-12
+PERSISTENT_BACKEND_SCHEMA = "topology_gate.persistent_backend"
 
 
 class PersistentStatus(str, Enum):
@@ -261,6 +262,12 @@ class PersistentLaplacianResult:
     status: PersistentStatus
 
     @property
+    def eigenvalues(self) -> tuple[float, ...]:
+        """Compatibility view used by the rolling spectral backend seam."""
+
+        return self.spectrum.eigenvalues
+
+    @property
     def filtration_digest(self) -> str:
         return self.filtration.digest
 
@@ -283,6 +290,74 @@ class PersistentLaplacianResult:
             "intervals": [value.to_dict() for value in self.intervals],
             "spectrum": self.spectrum.to_dict(),
         }
+
+
+@dataclass(frozen=True, slots=True)
+class PersistentLaplacianBackend:
+    """Configured callable adapter for the exact finite backend.
+
+    ``TopologyConfig`` accepts a callable for backwards compatibility, but a
+    bare function cannot identify its filtration, solver policy, or resource
+    budget.  This adapter makes those choices part of the backend identity and
+    returns the complete finite result to callers that need an evidence
+    artifact.  The rolling topology worker consumes only the selected spectrum
+    through its compatibility seam.
+
+    The requested spectrum width must equal the configured width.  This avoids
+    silently changing the numerical artifact while reusing a detector
+    configuration that was calibrated for a different feature schema.
+    """
+
+    config: PersistentLaplacianConfig = PersistentLaplacianConfig()
+
+    def __post_init__(self) -> None:
+        if not isinstance(self.config, PersistentLaplacianConfig):
+            raise ValueError("config must be PersistentLaplacianConfig")
+
+    @property
+    def identity(self) -> str:
+        """Stable backend identity including the complete numerical policy."""
+
+        return f"{PERSISTENT_BACKEND_SCHEMA}:v1:{self.config.identity}"
+
+    @property
+    def config_identity(self) -> str:
+        """Digest of the exact filtration and solver configuration."""
+
+        return self.config.identity
+
+    @property
+    def max_vertices(self) -> int:
+        return self.config.max_vertices
+
+    @property
+    def n_eigenvalues(self) -> int:
+        return self.config.n_eigenvalues
+
+    def __call__(
+        self,
+        point_cloud: Any,
+        n_eigenvalues: int = 8,
+    ) -> PersistentLaplacianResult:
+        if isinstance(n_eigenvalues, bool) or not isinstance(n_eigenvalues, Integral):
+            raise ValueError("n_eigenvalues must be an integer")
+        requested = int(n_eigenvalues)
+        if requested != self.config.n_eigenvalues:
+            raise ValueError(
+                "configured persistent backend requires n_eigenvalues="
+                f"{self.config.n_eigenvalues}"
+            )
+        result = compute_persistent_laplacian(point_cloud, config=self.config)
+        if result.status is not PersistentStatus.VALID:
+            raise PersistentResourceError(
+                "persistent backend cannot emit a valid streaming spectrum: "
+                f"{result.status.value}"
+            )
+        if len(result.spectrum.eigenvalues) < requested:
+            raise PersistentResourceError(
+                "persistent backend emitted fewer eigenvalues than requested"
+            )
+        return result
 
 
 def _points(value: Any, limit: int) -> tuple[tuple[float, ...], ...]:
@@ -660,12 +735,14 @@ __all__ = [
     "MAX_PERSISTENT_SIMPLICES",
     "MAX_PERSISTENT_VERTICES",
     "PersistentLaplacianConfig",
+    "PersistentLaplacianBackend",
     "PersistentLaplacianResult",
     "PersistentNumericalError",
     "PersistentResourceError",
     "PersistentSpectrum",
     "PersistentStatus",
     "PersistentTopologyError",
+    "PERSISTENT_BACKEND_SCHEMA",
     "PersistenceInterval",
     "Simplex",
     "build_filtration",

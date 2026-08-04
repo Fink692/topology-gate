@@ -10,10 +10,12 @@ This is an approximation to topology, not persistent homology.  In particular,
 the default ``knn_normalized_laplacian_approximation`` does *not* compute a
 persistent Laplacian, Betti numbers, or a persistence diagram.  Code that has an
 exact persistent-Laplacian implementation may be supplied through
-``persistent_laplacian_backend``.  The backend receives only the current,
-already robustly scaled point cloud and the requested number of eigenvalues, and
-must return a finite sequence of spectral values (or a ``SpectralSummary``).
-This seam makes the approximation explicit without making a heavy dependency a
+``persistent_laplacian_backend``.  The recommended
+``PersistentLaplacianBackend`` receives only the current, already robustly
+scaled point cloud and the requested number of eigenvalues, returns a complete
+finite evidence object, and carries its filtration/solver identity and vertex
+budget.  The rolling compatibility seam consumes the selected spectrum.  This
+keeps the approximation explicit without making a heavy dependency a
 requirement for the base package.
 
 All rolling operations are causal: the feature at index ``t`` uses observations
@@ -230,6 +232,31 @@ class TopologyConfig:
             raise ValueError("input_kind must be 'returns' or 'prices'")
 
         backend = _validate_backend(self.persistent_laplacian_backend)
+
+        # A configured exact backend exposes its finite vertex and spectrum
+        # budgets.  Reject incompatible rolling settings at construction time;
+        # otherwise the first large cloud would fail only after a stream had
+        # already started consuming observations.
+        backend_max_vertices = getattr(backend, "max_vertices", None)
+        if backend_max_vertices is not None:
+            if isinstance(backend_max_vertices, bool) or not isinstance(
+                backend_max_vertices, Integral
+            ):
+                raise ValueError("persistent backend max_vertices must be an integer")
+            if int(backend_max_vertices) < cloud_window:
+                raise ValueError(
+                    "cloud_window cannot exceed the persistent backend max_vertices"
+                )
+        backend_n_eigenvalues = getattr(backend, "n_eigenvalues", None)
+        if backend_n_eigenvalues is not None:
+            if isinstance(backend_n_eigenvalues, bool) or not isinstance(
+                backend_n_eigenvalues, Integral
+            ):
+                raise ValueError("persistent backend n_eigenvalues must be an integer")
+            if int(backend_n_eigenvalues) != n_eigenvalues:
+                raise ValueError(
+                    "persistent backend n_eigenvalues must match the topology configuration"
+                )
 
         object.__setattr__(self, "embedding_dim", embedding_dim)
         object.__setattr__(self, "cloud_window", cloud_window)
@@ -1318,6 +1345,11 @@ class RollingTopologyDetector:
         if backend is None:
             solver = "numpy-eigvalsh" if _np is not None else "python-jacobi"
             return f"{_METHOD}:{solver}"
+        identity = getattr(backend, "identity", None)
+        if callable(identity):
+            identity = identity()
+        if isinstance(identity, str) and identity:
+            return identity
         module = getattr(backend, "__module__", type(backend).__module__)
         name = getattr(backend, "__qualname__", type(backend).__qualname__)
         return f"{module}:{name}"
@@ -1492,7 +1524,8 @@ class RollingTopologyDetector:
         streaming path is exactly equivalent to the corresponding prefix of
         :meth:`detect`. This reference behavior is intentionally simple and
         deterministic; an accelerated backend can replace it later without
-        changing the returned contract.
+        changing the returned contract.  Backend/resource errors are
+        transactional: the rejected observation is not retained.
         """
 
         rows = _rows_from_observations([observation], name="observation")
@@ -1502,8 +1535,18 @@ class RollingTopologyDetector:
             raise ValueError("stream exceeds max_stream_observations")
         if self._stream_observations and len(rows[0]) != len(self._stream_observations[0]):
             raise ValueError("observation feature dimension does not match the stream")
-        self._stream_observations.append(list(rows[0]))
-        result = self.detect(self._stream_observations)
+        previous_observations = self._stream_observations
+        previous_result = self._last_result
+        self._stream_observations = previous_observations + [list(rows[0])]
+        try:
+            result = self.detect(self._stream_observations)
+        except Exception:
+            # Exact backends can reject a cloud on a resource or numerical
+            # boundary.  A failed step must not consume its observation or
+            # leave a partially updated detector reference behind.
+            self._stream_observations = previous_observations
+            self._last_result = previous_result
+            raise
         index = len(self._stream_observations) - 1
         raw = result.features[index]
         whitened = result.whitened_features[index]
