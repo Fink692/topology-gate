@@ -42,6 +42,9 @@ suggested forgetting factor. It implements the same `observe`/stream-state
 protocol as the causal numerical adapter, but its score is not calibrated by
 construction: accelerated forgetting still requires a matching approved
 finite-null certificate and a market study still requires point-in-time data.
+Its stateless `detect(...)` facade also plugs into the finite
+`calibrate_null`/`calibrate_shift` harness while leaving streaming checkpoint
+state available through `observe(...)`.
 
 ## Install
 

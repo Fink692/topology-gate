@@ -100,6 +100,9 @@ the rolling cloud, spectral reference history, backend identity, and evidence
 digests. This makes the proposed control experiment reproducible, but it does
 not supply a null distribution, dependence correction, or level-α guarantee.
 
+Its stateless batch facade is compatible with the finite null/shift calibration
+harness; the stateful `observe` path remains the one used for causal replay.
+
 The default reflected CUSUM-like score, topology alarm, score-to-forgetting
 map, and challenger promotion statistics are exploratory unless an independent
 calibration study establishes their assumptions and operating characteristics.

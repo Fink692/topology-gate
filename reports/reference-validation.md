@@ -5,18 +5,18 @@ Interpreter: CPython 3.12.10
 Scope: bounded research/control layer only; no live-data or execution claim
 
 Supported-interpreter matrix: CPython 3.10.11 and 3.11.15 also passed the full
-227-test suite, Ruff, mypy, and compileall in isolated environments. Coverage
+228-test suite, Ruff, mypy, and compileall in isolated environments. Coverage
 is reported from CPython 3.12 only.
 
 ## Reproducible engineering checks
 
-- Full suite: **227 passed**.
-- Configured coverage run: **80.59%** total coverage.
+- Full suite: **228 passed**.
+- Configured coverage run: **80.58%** total coverage.
 - Ruff: passed on `src` and `tests`.
 - Mypy: passed on all 21 source modules.
 - Dependency-light root import: passed without NumPy site packages.
 - Wheel build and isolated target-directory smoke: passed; SHA-256
-  `f4b94fad73a445fecabf22a747ef82c4892f203c0f3089ba0409b600542b10d4`;
+  `148f5cb445f57e42001418c4e74500228b7c28882adfb599749f245ea4652d01`;
   the smoke exercised strict online-state/checkpoint restore, strict
   `RunManifest`/`StudyManifest` restore, canonical `AsOfBook` source restore,
   digest-bound `EconomicEvidence` selection/evaluation with cutoff provenance,
@@ -81,8 +81,10 @@ is reported from CPython 3.12 only.
 - Exploratory persistent-spectrum CUSUM tests: passed for prior-only
   standardization, Betti/positive-spectrum extraction, persistent artifact
   provenance, checkpointed one-shot/resumed equivalence, strict state-schema
-  rejection, and transactional rollback on backend contract failure. This is
-  an engineering test of the controller, not calibration evidence.
+  rejection, transactional rollback on backend contract failure, and
+  integration with the finite null/shift calibration harness. This is an
+  engineering/calibration-harness integration test, not market calibration
+  evidence.
 - Configured exact-backend tests: passed for complete evidence return, stable
   filtration/solver identity, cloud/spectrum-width compatibility, causal
   prefix equivalence, checkpoint replay, transactional stream rollback on

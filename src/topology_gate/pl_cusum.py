@@ -355,6 +355,32 @@ class PersistentCUSUMObservation:
 
 
 @dataclass(frozen=True, slots=True)
+class PersistentCUSUMBatchResult:
+    """Stateless batch view used by the finite calibration harness."""
+
+    observations: tuple[PersistentCUSUMObservation, ...]
+    config_identity: str
+
+    @property
+    def alarms(self) -> tuple[bool, ...]:
+        return tuple(item.alarm for item in self.observations)
+
+    @property
+    def scores(self) -> tuple[float, ...]:
+        return tuple(item.score for item in self.observations)
+
+    @property
+    def ready(self) -> tuple[bool, ...]:
+        return tuple(item.ready for item in self.observations)
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "config_identity": self.config_identity,
+            "observations": [item.to_dict() for item in self.observations],
+        }
+
+
+@dataclass(frozen=True, slots=True)
 class _HistoryEntry:
     state: tuple[float, ...]
     evidence_digest: str
@@ -411,6 +437,26 @@ class PersistentLaplacianCUSUM:
     @property
     def history_length(self) -> int:
         return len(self._history)
+
+    def detect(self, observations: Any) -> PersistentCUSUMBatchResult:
+        """Run a fresh causal batch without mutating this stream controller."""
+
+        if isinstance(observations, (str, bytes, bytearray)):
+            raise PersistentCUSUMError("observations must be a sequence of rows")
+        try:
+            rows = tuple(observations)
+        except TypeError as exc:
+            raise PersistentCUSUMError(
+                "observations must be a sequence of rows"
+            ) from exc
+        if len(rows) > self.config.max_stream_observations:
+            raise PersistentCUSUMError("observations exceed the stream resource limit")
+        worker = PersistentLaplacianCUSUM(self.backend, self.config)
+        results = tuple(worker.observe(row) for row in rows)
+        return PersistentCUSUMBatchResult(
+            observations=results,
+            config_identity=self.config_identity,
+        )
 
     def _forgetting_factor(self, score: float, *, ready: bool) -> float:
         if not ready:
@@ -736,6 +782,7 @@ __all__ = [
     "PERSISTENT_CUSUM_SCHEMA",
     "PERSISTENT_CUSUM_VERSION",
     "PersistentCUSUMConfig",
+    "PersistentCUSUMBatchResult",
     "PersistentCUSUMError",
     "PersistentCUSUMObservation",
     "PersistentLaplacianCUSUM",

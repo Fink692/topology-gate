@@ -11,6 +11,9 @@ the study manifest. The controller's strict state and topology evidence
 digests belong in the run artifact, but a passing synthetic shift is still not
 authorization for market acceleration; the resulting null certificate must
 bind to the controller identity and the exact dependence-preserving factory.
+Its batch `detect(...)` facade can be passed directly to `calibrate_null` and
+`calibrate_shift`; use `observe(...)` for the stateful causal run whose stream
+state is checkpointed.
 
 Each result records:
 

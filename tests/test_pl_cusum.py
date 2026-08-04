@@ -4,8 +4,10 @@ from __future__ import annotations
 
 import copy
 
+import numpy as np
 import pytest
 
+from topology_gate.calibration import CalibrationConfig, calibrate_null, calibrate_shift
 from topology_gate.persistent import (
     PersistentLaplacianBackend,
     PersistentLaplacianConfig,
@@ -90,6 +92,31 @@ def test_persistent_cusum_chunked_restore_matches_one_shot() -> None:
 
     assert actual == expected
     assert resumed.stream_state_dict() == one_shot.stream_state_dict()
+
+
+def test_persistent_cusum_batch_facade_integrates_with_calibration_harness() -> None:
+    def factory() -> PersistentLaplacianCUSUM:
+        return PersistentLaplacianCUSUM(backend(), config(threshold=100.0))
+
+    def null_observations(rng: np.random.Generator, horizon: int, features: int) -> np.ndarray:
+        return rng.normal(size=(horizon, features))
+
+    calibration = CalibrationConfig(trials=4, horizon=8, n_features=2, seed=17)
+    null_result = calibrate_null(factory, null_observations, config=calibration)
+    shift_result = calibrate_shift(
+        factory,
+        null_observations,
+        shift_index=4,
+        config=calibration,
+    )
+
+    batch = factory().detect(null_observations(np.random.default_rng(3), 8, 2))
+    assert len(batch.alarms) == 8
+    assert len(batch.scores) == 8
+    assert null_result.detector_identity == factory().config_identity
+    assert shift_result.detector_identity == factory().config_identity
+    assert len(null_result.first_alarm_steps) == 4
+    assert len(shift_result.detection_delays) == 4
 
 
 def test_persistent_cusum_state_schema_is_strict_and_restore_is_atomic() -> None:
