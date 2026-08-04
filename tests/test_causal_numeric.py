@@ -323,7 +323,7 @@ def test_detector_forgetting_acceleration_requires_an_approved_certificate() -> 
         horizon=16,
         false_alarm_count=0,
         false_alarm_rate=0.0,
-        false_alarm_ci_high=0.01,
+        false_alarm_ci_high=0.03699349820698568,
         max_false_alarm_rate=0.05,
     )
     authorized = run_causal_rls_replay(
@@ -354,7 +354,7 @@ def test_detector_forgetting_acceleration_requires_an_approved_certificate() -> 
                 horizon=16,
                 false_alarm_count=0,
                 false_alarm_rate=0.0,
-                false_alarm_ci_high=0.01,
+                false_alarm_ci_high=0.03699349820698568,
                 max_false_alarm_rate=0.05,
             ),
             model_config=CausalRLSConfig(model_id="wrong"),

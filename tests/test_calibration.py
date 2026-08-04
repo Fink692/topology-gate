@@ -118,6 +118,31 @@ def test_null_certificate_requires_its_conservative_bound_to_pass() -> None:
     assert approved.to_dict()["approved"] is True
 
 
+def test_certificate_rejects_rates_or_intervals_inconsistent_with_trial_count() -> None:
+    with pytest.raises(ValueError, match="false_alarm_rate"):
+        CalibrationCertificate(
+            detector_identity="detector:v1",
+            null_config_identity="null:v1",
+            trials=100,
+            horizon=16,
+            false_alarm_count=0,
+            false_alarm_rate=0.01,
+            false_alarm_ci_high=0.03699349820698568,
+            max_false_alarm_rate=0.05,
+        )
+    with pytest.raises(ValueError, match="false_alarm_ci_high"):
+        CalibrationCertificate(
+            detector_identity="detector:v1",
+            null_config_identity="null:v1",
+            trials=100,
+            horizon=16,
+            false_alarm_count=0,
+            false_alarm_rate=0.0,
+            false_alarm_ci_high=0.01,
+            max_false_alarm_rate=0.05,
+        )
+
+
 def test_stationary_block_bootstrap_is_seeded_and_identity_bound() -> None:
     source = np.arange(60.0).reshape(30, 2)
     factory = StationaryBlockBootstrap(

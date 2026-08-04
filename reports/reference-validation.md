@@ -6,14 +6,14 @@ Scope: bounded research/control layer only; no live-data or execution claim
 
 ## Reproducible engineering checks
 
-- Full suite: **181 passed**.
-- Configured coverage run: **80.03%** total coverage.
+- Full suite: **182 passed**.
+- Configured coverage run: **80.04%** total coverage.
 - Ruff: passed on `src` and `tests`.
 - Mypy: passed on all 20 source modules.
 - Dependency-light root import: passed without NumPy site packages.
 - Wheel build and isolated target-directory smoke: passed; SHA-256
-  `adf2377da1fdbf3a21ea183d80a62ff7db96e488966ed3e50b7b8123b5c43dd9`;
-  the smoke also recovered an exact topology evidence digest from the wheel.
+  `a32cdf54a961ab0099e28988a7c6de55af11960af11be8816453c76ef96b5bce`;
+  the smoke also exercised calibration-certificate integrity from the wheel.
 - Authenticated checkpoint, manifest digest, promotion/evidence state, and
   detached restore tests: passed.
 - Causal replay prediction-before-label, future-prefix invariance, explicit
@@ -24,7 +24,8 @@ Scope: bounded research/control layer only; no live-data or execution claim
   one-shot versus resumed replay equivalence, missing-label context cleanup,
   and neutral forgetting without an approved detector certificate.
 - Finite-null certificate tests: passed for conservative Wilson-bound approval,
-  detector-identity binding, and explicit rejection of an unapproved budget.
+  detector-identity binding, explicit rejection of an unapproved budget, and
+  rejection of count/rate/interval inconsistencies.
 - Stationary block-bootstrap tests: passed for seeded reproducibility, source
   identity binding, feature-dimension rejection, and result-level factory
   identity recording.

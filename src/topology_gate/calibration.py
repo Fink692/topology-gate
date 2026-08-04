@@ -412,6 +412,16 @@ class CalibrationCertificate:
             raise ValueError("certificate alarm rates must be finite")
         if not 0.0 <= rate <= 1.0 or not 0.0 <= upper <= 1.0 or rate > upper:
             raise ValueError("certificate alarm rates are invalid")
+        expected_rate = false_count / trials
+        _, expected_upper = _wilson_interval(false_count, trials)
+        if not math.isclose(rate, expected_rate, rel_tol=0.0, abs_tol=1.0e-12):
+            raise ValueError(
+                "certificate false_alarm_rate is inconsistent with false_alarm_count"
+            )
+        if not math.isclose(upper, expected_upper, rel_tol=0.0, abs_tol=1.0e-12):
+            raise ValueError(
+                "certificate false_alarm_ci_high is inconsistent with false_alarm_count"
+            )
         max_rate = _finite_probability(
             "max_false_alarm_rate", self.max_false_alarm_rate
         )

@@ -34,8 +34,10 @@ explicit finite-null certificate. The certificate is approved only when the
 to the detector and null-experiment identities. The causal numerical adapter
 requires a matching approved certificate before it can use a detector factor
 below its neutral maximum; without one, topology remains diagnostic and
-forgetting stays neutral. A certificate from a synthetic or dependent null is
-not market calibration.
+forgetting stays neutral. The certificate's count, empirical rate, and Wilson
+upper bound must be mutually consistent; hand-editing one field cannot create
+an approved artifact. A certificate from a synthetic or dependent null is not
+market calibration.
 
 Minimum protocol for a research release:
 
