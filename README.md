@@ -254,7 +254,17 @@ their checkpointed state unchanged during `predict` and fingerprints the
 sealed gate family, alpha/score scales, eta rules, and epoch; an external gate
 reset or family mutation therefore fails closed. Set
 `require_pure_predictions=False` only for explicitly diagnostic, non-certified
-experiments.
+experiments. Certified runs also default to zero budgets for non-observed,
+unresolved, abstained, and invalid paired records. A breached budget is
+checkpointed as `CausalPromotionStatus.BLOCKED` and prevents later clean labels
+from advancing the same e-process; non-zero budgets are explicit diagnostic
+choices whose missingness assumptions still require separate validation. A
+threshold crossing is exposed as `promotion_activation`; its effective
+prediction boundary is resolved from the replay ledger and remains unset when
+the segment ends before a later decision.
+The checkpoint also binds each learner's stable class/config identity and the
+full mutable gate-evidence fingerprint; an outside learner reconfiguration or
+gate observation is rejected at the next boundary.
 
 The external data acceptance checklist is in
 [`docs/vendor-data-gate.md`](docs/vendor-data-gate.md). It explicitly requires

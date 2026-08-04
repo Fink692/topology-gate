@@ -29,9 +29,10 @@ import json
 import math
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
+from enum import Enum
 from typing import Any, cast
 
-from .asof import AsOfBook, AsOfSnapshot
+from .asof import AsOfBook, AsOfSnapshot, TimePoint
 from .causal_numeric import CausalFeaturePlan
 from .manifest import ManifestValidationError, StudyManifest
 from .promotion import GateStatus, PromotionGate, validate_eta
@@ -48,10 +49,12 @@ CAUSAL_PROMOTION_SCHEMA = "topology_gate.causal_promotion"
 # Pending comparisons now carry the canonical panel identity used to produce
 # their paired predictions.  Older promotion checkpoints must not resume
 # without that provenance.
-# The registration-seal requirement and pure-prediction/gate-binding checks
-# are part of the certified controller contract, so older checkpoints cannot
+# The registration-seal requirement, pure-prediction/gate-binding checks,
+# operational missingness budget, learner binding, and next-boundary
+# activation receipt are
+# part of the certified controller contract, so older checkpoints cannot
 # silently resume under the stronger interpretation.
-CAUSAL_PROMOTION_VERSION = 6
+CAUSAL_PROMOTION_VERSION = 9
 MAX_CAUSAL_PROMOTION_PENDING = 8_192
 
 
@@ -65,6 +68,10 @@ def _text(value: Any, name: str) -> str:
     return value
 
 
+def _optional_text(value: Any, name: str) -> str | None:
+    return None if value is None else _text(value, name)
+
+
 def _finite(value: Any, name: str) -> float:
     if isinstance(value, bool):
         raise CausalPromotionError(f"{name} must be finite")
@@ -75,6 +82,14 @@ def _finite(value: Any, name: str) -> float:
     if not math.isfinite(converted):
         raise CausalPromotionError(f"{name} must be finite")
     return converted
+
+
+def _nonnegative_limit(value: Any, name: str) -> int:
+    if isinstance(value, bool) or not isinstance(value, int) or value < 0:
+        raise CausalPromotionError(f"{name} must be a non-negative integer")
+    if value > MAX_CAUSAL_PROMOTION_PENDING:
+        raise CausalPromotionError(f"{name} exceeds the resource limit")
+    return value
 
 
 def _canonical(value: Any, name: str) -> str:
@@ -105,6 +120,34 @@ def _component_state(component: Any, name: str) -> dict[str, Any]:
     if not isinstance(state, Mapping):
         raise CausalPromotionError(f"{name} state must be a mapping")
     return cast(dict[str, Any], _clone_json(dict(state), f"{name} state"))
+
+
+def _component_binding_digest(component: Any, name: str) -> str:
+    """Bind stable learner identity without hashing mutable training state."""
+
+    state = _component_state(component, name)
+    declared = getattr(component, "config_identity", None)
+    if callable(declared):
+        declared = declared()
+    if declared is None:
+        declared = getattr(component, "identity", None)
+        if callable(declared):
+            declared = declared()
+    if declared is not None:
+        declared = _text(declared, f"{name} config identity")
+    component_type = type(component)
+    return _digest(
+        {
+            "module": component_type.__module__,
+            "qualname": component_type.__qualname__,
+            "declared_identity": declared,
+            "state_schema": state.get("schema"),
+            "state_version": state.get("version"),
+            "state_model_id": state.get("model_id"),
+            "state_config_identity": state.get("config_identity"),
+        },
+        f"{name} binding",
+    )
 
 
 def _restore_component(component: Any, state: Mapping[str, Any], name: str) -> None:
@@ -209,9 +252,30 @@ def _gate_binding_digest(gate_state: Mapping[str, Any]) -> str:
     return _digest(_gate_binding_state(gate_state), "promotion gate binding")
 
 
+def _gate_evidence_digest(gate_state: Mapping[str, Any]) -> str:
+    """Fingerprint mutable evidence so outside observations fail closed."""
+
+    return _digest(gate_state, "promotion gate evidence")
+
+
+class CausalPromotionStatus(str, Enum):
+    """Operational state of one paired promotion family."""
+
+    OPEN = "open"
+    BLOCKED = "blocked"
+    PROMOTED = "promoted"
+
+
 @dataclass(frozen=True, slots=True)
 class CausalPromotionConfig:
-    """Immutable control choices for one paired promotion family."""
+    """Immutable control choices for one paired promotion family.
+
+    The four ``max_*`` fields are predeclared missingness/quality budgets.
+    Their strict defaults are zero: a certified family stops supplying new
+    evidence after the first unusable prediction or label.  A non-zero budget
+    is an explicit diagnostic choice and does not by itself prove that the
+    corresponding missingness mechanism preserves the e-process null.
+    """
 
     promotion_id: str = "causal-promotion"
     challenger_id: str = "challenger"
@@ -220,6 +284,10 @@ class CausalPromotionConfig:
     utility_cap: float = 1.0
     minimum_labels: int = 1
     max_pending: int = MAX_CAUSAL_PROMOTION_PENDING
+    max_non_observed_labels: int = 0
+    max_unresolved_labels: int = 0
+    max_abstained_predictions: int = 0
+    max_invalid_predictions: int = 0
     require_sealed_registration: bool = True
     require_pure_predictions: bool = True
 
@@ -247,6 +315,15 @@ class CausalPromotionConfig:
             or not 1 <= self.max_pending <= MAX_CAUSAL_PROMOTION_PENDING
         ):
             raise CausalPromotionError("max_pending exceeds the resource limit")
+        for name in (
+            "max_non_observed_labels",
+            "max_unresolved_labels",
+            "max_abstained_predictions",
+            "max_invalid_predictions",
+        ):
+            object.__setattr__(
+                self, name, _nonnegative_limit(getattr(self, name), name)
+            )
         if not isinstance(self.require_sealed_registration, bool):
             raise CausalPromotionError("require_sealed_registration must be boolean")
         if not isinstance(self.require_pure_predictions, bool):
@@ -268,6 +345,10 @@ class CausalPromotionConfig:
             "utility_cap": self.utility_cap,
             "minimum_labels": self.minimum_labels,
             "max_pending": self.max_pending,
+            "max_non_observed_labels": self.max_non_observed_labels,
+            "max_unresolved_labels": self.max_unresolved_labels,
+            "max_abstained_predictions": self.max_abstained_predictions,
+            "max_invalid_predictions": self.max_invalid_predictions,
             "require_sealed_registration": self.require_sealed_registration,
             "require_pure_predictions": self.require_pure_predictions,
         }
@@ -288,6 +369,27 @@ class CausalPromotionStep:
 
 
 @dataclass(frozen=True, slots=True)
+class CausalPromotionActivation:
+    """Promotion crossing plus the first later replay decision boundary.
+
+    ``effective_*`` is ``None`` when the replay segment ends before another
+    prediction boundary.  This makes a threshold crossing distinguishable
+    from an actually scheduled activation in a finite or checkpointed run.
+    """
+
+    promotion_id: str
+    challenger_id: str
+    prediction_id: str
+    target_id: str
+    label_id: str
+    settlement_time: TimePoint
+    settlement_sequence: int
+    effective_prediction_id: str | None
+    effective_decision_time: TimePoint | None
+    effective_prediction_sequence: int | None
+
+
+@dataclass(frozen=True, slots=True)
 class _PendingComparison:
     prediction_id: str
     target_id: str
@@ -298,6 +400,20 @@ class _PendingComparison:
     feature_panel_digest: str | None
     challenger_state_digest: str
     incumbent_state_digest: str
+
+
+@dataclass(frozen=True, slots=True)
+class _ControlState:
+    observed_label_count: int
+    non_observed_label_count: int
+    unresolved_label_count: int
+    abstained_prediction_count: int
+    invalid_prediction_count: int
+    promotion_blocked: bool
+    promotion_block_reason: str | None
+    promotion_prediction_id: str | None
+    promotion_target_id: str | None
+    promotion_label_id: str | None
 
 
 class CausalPromotionModel:
@@ -337,11 +453,27 @@ class CausalPromotionModel:
         }
         if len(dimensions) > 1:
             raise CausalPromotionError("paired learners must use one feature dimension")
+        self._challenger_binding_identity = _component_binding_digest(
+            challenger, "challenger"
+        )
+        self._incumbent_binding_identity = _component_binding_digest(
+            incumbent, "incumbent"
+        )
         self._validate_gate(gate)
         self._gate_binding_identity = _gate_binding_digest(gate.state_dict())
+        self._gate_evidence_identity = _gate_evidence_digest(gate.state_dict())
         self._pending: dict[str, _PendingComparison] = {}
         self._prediction_count = 0
         self._observed_label_count = 0
+        self._non_observed_label_count = 0
+        self._unresolved_label_count = 0
+        self._abstained_prediction_count = 0
+        self._invalid_prediction_count = 0
+        self._promotion_blocked = False
+        self._promotion_block_reason: str | None = None
+        self._promotion_prediction_id: str | None = None
+        self._promotion_target_id: str | None = None
+        self._promotion_label_id: str | None = None
         self._steps: list[CausalPromotionStep] = []
 
     @staticmethod
@@ -360,6 +492,13 @@ class CausalPromotionModel:
             )
         if self.config.challenger_id not in gate.challenger_ids:
             raise CausalPromotionError("promotion challenger is not registered with gate")
+        if (
+            gate.status is GateStatus.PROMOTED
+            and gate.promoted_challenger_id != self.config.challenger_id
+        ):
+            raise CausalPromotionError(
+                "promotion gate was promoted by a different challenger"
+            )
         state = gate.state_dict()
         score_bound = _finite(state.get("score_bound"), "gate score bound")
         if not math.isclose(
@@ -435,6 +574,34 @@ class CausalPromotionModel:
                 "during the replay family"
             )
 
+    def _assert_gate_evidence(self) -> None:
+        current = _gate_evidence_digest(self.gate.state_dict())
+        if current != self._gate_evidence_identity:
+            raise CausalPromotionError(
+                "promotion gate evidence changed outside the replay family"
+            )
+
+    def _refresh_gate_evidence_binding(self) -> None:
+        self._gate_evidence_identity = _gate_evidence_digest(
+            self.gate.state_dict()
+        )
+
+    def _assert_learner_bindings(self) -> None:
+        if (
+            _component_binding_digest(self.challenger, "challenger")
+            != self._challenger_binding_identity
+            or _component_binding_digest(self.incumbent, "incumbent")
+            != self._incumbent_binding_identity
+        ):
+            raise CausalPromotionError(
+                "challenger or incumbent learner identity changed during the replay family"
+            )
+
+    def _assert_bindings(self) -> None:
+        self._assert_gate_binding()
+        self._assert_gate_evidence()
+        self._assert_learner_bindings()
+
     @property
     def steps(self) -> tuple[CausalPromotionStep, ...]:
         return tuple(self._steps)
@@ -448,6 +615,28 @@ class CausalPromotionModel:
         return self.gate.status is GateStatus.PROMOTED
 
     @property
+    def operational_status(self) -> CausalPromotionStatus:
+        if self.promoted:
+            return CausalPromotionStatus.PROMOTED
+        if self._promotion_blocked:
+            return CausalPromotionStatus.BLOCKED
+        return CausalPromotionStatus.OPEN
+
+    @property
+    def promotion_block_reason(self) -> str | None:
+        return self._promotion_block_reason
+
+    @property
+    def operational_counts(self) -> Mapping[str, int]:
+        return {
+            "observed_labels": self._observed_label_count,
+            "non_observed_labels": self._non_observed_label_count,
+            "unresolved_labels": self._unresolved_label_count,
+            "abstained_predictions": self._abstained_prediction_count,
+            "invalid_predictions": self._invalid_prediction_count,
+        }
+
+    @property
     def gate_state(self) -> Mapping[str, Any]:
         return self.gate.state_dict()
 
@@ -457,6 +646,80 @@ class CausalPromotionModel:
             return -self.config.utility_cap
         return -min(error, self.config.utility_cap)
 
+    def _capture_control_state(self) -> _ControlState:
+        return _ControlState(
+            observed_label_count=self._observed_label_count,
+            non_observed_label_count=self._non_observed_label_count,
+            unresolved_label_count=self._unresolved_label_count,
+            abstained_prediction_count=self._abstained_prediction_count,
+            invalid_prediction_count=self._invalid_prediction_count,
+            promotion_blocked=self._promotion_blocked,
+            promotion_block_reason=self._promotion_block_reason,
+            promotion_prediction_id=self._promotion_prediction_id,
+            promotion_target_id=self._promotion_target_id,
+            promotion_label_id=self._promotion_label_id,
+        )
+
+    def _restore_control_state(self, state: _ControlState) -> None:
+        self._observed_label_count = state.observed_label_count
+        self._non_observed_label_count = state.non_observed_label_count
+        self._unresolved_label_count = state.unresolved_label_count
+        self._abstained_prediction_count = state.abstained_prediction_count
+        self._invalid_prediction_count = state.invalid_prediction_count
+        self._promotion_blocked = state.promotion_blocked
+        self._promotion_block_reason = state.promotion_block_reason
+        self._promotion_prediction_id = state.promotion_prediction_id
+        self._promotion_target_id = state.promotion_target_id
+        self._promotion_label_id = state.promotion_label_id
+
+    def _block_if_over_budget(
+        self, *, kind: str, count: int, limit: int, target_id: str
+    ) -> None:
+        if self.gate.status is not GateStatus.OPEN or count <= limit:
+            return
+        if not self._promotion_blocked:
+            self._promotion_blocked = True
+            self._promotion_block_reason = (
+                f"{kind} budget exceeded for target {target_id!r}: "
+                f"observed {count}, allowed {limit}"
+            )
+
+    def _record_prediction_issue(self, *, invalid: bool, target_id: str) -> None:
+        if invalid:
+            self._invalid_prediction_count += 1
+            self._block_if_over_budget(
+                kind="invalid prediction",
+                count=self._invalid_prediction_count,
+                limit=self.config.max_invalid_predictions,
+                target_id=target_id,
+            )
+        else:
+            self._abstained_prediction_count += 1
+            self._block_if_over_budget(
+                kind="abstained prediction",
+                count=self._abstained_prediction_count,
+                limit=self.config.max_abstained_predictions,
+                target_id=target_id,
+            )
+
+    def _record_label_issue(self, *, status: ReplayStatus, target_id: str) -> None:
+        if status is ReplayStatus.UNRESOLVED:
+            self._unresolved_label_count += 1
+            self._block_if_over_budget(
+                kind="unresolved label",
+                count=self._unresolved_label_count,
+                limit=self.config.max_unresolved_labels,
+                target_id=target_id,
+            )
+        elif status is not ReplayStatus.OBSERVED:
+            self._non_observed_label_count += 1
+            self._block_if_over_budget(
+                kind="non-observed label",
+                count=self._non_observed_label_count,
+                limit=self.config.max_non_observed_labels,
+                target_id=target_id,
+            )
+
     def _rollback(
         self,
         challenger_state: Mapping[str, Any],
@@ -465,19 +728,20 @@ class CausalPromotionModel:
         pending: Mapping[str, _PendingComparison],
         prediction_count: int,
         steps: Sequence[CausalPromotionStep],
-        observed_label_count: int | None = None,
+        control_state: _ControlState | None = None,
     ) -> None:
         _restore_component(self.challenger, challenger_state, "challenger")
         _restore_component(self.incumbent, incumbent_state, "incumbent")
         self.gate.load_state_dict(gate_state, eta=self.config.eta)
+        self._refresh_gate_evidence_binding()
         self._pending = dict(pending)
         self._prediction_count = prediction_count
-        if observed_label_count is not None:
-            self._observed_label_count = observed_label_count
+        if control_state is not None:
+            self._restore_control_state(control_state)
         self._steps = list(steps)
 
     def predict(self, snapshot: AsOfSnapshot, target_id: str) -> float | None:
-        self._assert_gate_binding()
+        self._assert_bindings()
         target = _text(target_id, "target_id")
         if self.promoted:
             # Once the gate has promoted a challenger, no new comparison is
@@ -499,25 +763,32 @@ class CausalPromotionModel:
         pending_before = dict(self._pending)
         steps_before = tuple(self._steps)
         count_before = self._prediction_count
-        labels_before = self._observed_label_count
+        control_before = self._capture_control_state()
         try:
+            challenger_raw = self.challenger.predict(features)
             challenger_prediction = _scalar_prediction(
-                self.challenger.predict(features), "challenger prediction"
+                challenger_raw, "challenger prediction"
             )
             if self.config.require_pure_predictions:
                 if _component_state(self.challenger, "challenger") != challenger_before:
                     raise CausalPromotionError(
                         "challenger predict mutated checkpointed state"
                     )
-            incumbent_prediction = _scalar_prediction(
-                self.incumbent.predict(features), "incumbent prediction"
-            )
+            incumbent_raw = self.incumbent.predict(features)
+            incumbent_prediction = _scalar_prediction(incumbent_raw, "incumbent prediction")
             if self.config.require_pure_predictions:
                 if _component_state(self.incumbent, "incumbent") != incumbent_before:
                     raise CausalPromotionError(
                         "incumbent predict mutated checkpointed state"
                     )
-            self._assert_gate_binding()
+            self._assert_bindings()
+            invalid_prediction = (
+                challenger_prediction is not None
+                and not math.isfinite(challenger_prediction)
+            ) or (
+                incumbent_prediction is not None
+                and not math.isfinite(incumbent_prediction)
+            )
             if (
                 challenger_prediction is None
                 or incumbent_prediction is None
@@ -531,6 +802,11 @@ class CausalPromotionModel:
                     pending_before,
                     count_before,
                     steps_before,
+                    control_before,
+                )
+                self._record_prediction_issue(
+                    invalid=invalid_prediction,
+                    target_id=target,
                 )
                 return None
             feature_digest = _digest_features(features)
@@ -570,7 +846,7 @@ class CausalPromotionModel:
                 pending_before,
                 count_before,
                 steps_before,
-                labels_before,
+                control_before,
             )
             raise
 
@@ -578,7 +854,7 @@ class CausalPromotionModel:
         self, prediction: ReplayPrediction, label: Any, score: float | None
     ) -> None:
         del score
-        self._assert_gate_binding()
+        self._assert_bindings()
         if prediction.status is not ReplayStatus.PREDICTED:
             return
         if getattr(label, "status", None) != "observed":
@@ -600,7 +876,7 @@ class CausalPromotionModel:
         pending_before = dict(self._pending)
         steps_before = tuple(self._steps)
         count_before = self._prediction_count
-        labels_before = self._observed_label_count
+        control_before = self._capture_control_state()
         try:
             challenger_utility = self._utility(pending.challenger_prediction, target)
             incumbent_utility = self._utility(pending.incumbent_prediction, target)
@@ -609,15 +885,20 @@ class CausalPromotionModel:
             self._observed_label_count += 1
             if (
                 self.gate.status is GateStatus.OPEN
+                and not self._promotion_blocked
                 and self._observed_label_count >= self.config.minimum_labels
             ):
-                self.gate.observe_utilities(
+                decision = self.gate.observe_utilities(
                     self.config.challenger_id,
                     challenger_utility,
                     incumbent_utility,
                     eta=self.config.eta,
                     metadata={
                         "prediction_id": pending.prediction_id,
+                        "replay_prediction_id": prediction.prediction_id,
+                        "label_id": _text(
+                            getattr(label, "label_id", None), "label_id"
+                        ),
                         "target_id": pending.target_id,
                         "feature_digest": pending.feature_digest,
                         "feature_panel_digest": pending.feature_panel_digest,
@@ -626,7 +907,14 @@ class CausalPromotionModel:
                         "incumbent_state_digest": pending.incumbent_state_digest,
                     },
                 )
-            self._assert_gate_binding()
+                if decision.promoted:
+                    self._promotion_prediction_id = prediction.prediction_id
+                    self._promotion_target_id = pending.target_id
+                    self._promotion_label_id = _text(
+                        getattr(label, "label_id", None), "label_id"
+                    )
+                self._refresh_gate_evidence_binding()
+            self._assert_bindings()
         except Exception:
             self._rollback(
                 challenger_before,
@@ -635,14 +923,14 @@ class CausalPromotionModel:
                 pending_before,
                 count_before,
                 steps_before,
-                labels_before,
+                control_before,
             )
             raise
 
     def on_resolution(
         self, prediction: ReplayPrediction, label: Any | None, status: ReplayStatus
     ) -> None:
-        self._assert_gate_binding()
+        self._assert_bindings()
         if prediction.status is not ReplayStatus.PREDICTED:
             return
         pending = self._pending.get(prediction.target_id)
@@ -655,9 +943,12 @@ class CausalPromotionModel:
                 raise CausalPromotionError("observed promotion resolution is missing its label")
         elif label is not None and getattr(label, "target_id", pending.target_id) != pending.target_id:
             raise CausalPromotionError("promotion resolution label target does not match")
+        if status is not ReplayStatus.OBSERVED:
+            self._record_label_issue(status=status, target_id=pending.target_id)
         self._pending.pop(prediction.target_id, None)
 
     def state_dict(self) -> dict[str, Any]:
+        self._assert_bindings()
         return {
             "schema": CAUSAL_PROMOTION_SCHEMA,
             "version": CAUSAL_PROMOTION_VERSION,
@@ -666,6 +957,9 @@ class CausalPromotionModel:
             "plan_identity": self.plan.identity,
             "study_manifest_digest": self._study_manifest_digest,
             "gate_binding_identity": self._gate_binding_identity,
+            "gate_evidence_identity": self._gate_evidence_identity,
+            "challenger_binding_identity": self._challenger_binding_identity,
+            "incumbent_binding_identity": self._incumbent_binding_identity,
             "challenger": _component_state(self.challenger, "challenger"),
             "incumbent": _component_state(self.incumbent, "incumbent"),
             "gate": self.gate.state_dict(),
@@ -685,11 +979,21 @@ class CausalPromotionModel:
             },
             "prediction_count": self._prediction_count,
             "observed_label_count": self._observed_label_count,
+            "non_observed_label_count": self._non_observed_label_count,
+            "unresolved_label_count": self._unresolved_label_count,
+            "abstained_prediction_count": self._abstained_prediction_count,
+            "invalid_prediction_count": self._invalid_prediction_count,
+            "promotion_blocked": self._promotion_blocked,
+            "promotion_block_reason": self._promotion_block_reason,
+            "promotion_prediction_id": self._promotion_prediction_id,
+            "promotion_target_id": self._promotion_target_id,
+            "promotion_label_id": self._promotion_label_id,
         }
 
     def load_state_dict(self, state: Mapping[str, Any]) -> None:
         if not isinstance(state, Mapping):
             raise CausalPromotionError("causal promotion state must be a mapping")
+        self._assert_bindings()
         expected_state_fields = {
             "schema",
             "version",
@@ -698,12 +1002,24 @@ class CausalPromotionModel:
             "plan_identity",
             "study_manifest_digest",
             "gate_binding_identity",
+            "gate_evidence_identity",
+            "challenger_binding_identity",
+            "incumbent_binding_identity",
             "challenger",
             "incumbent",
             "gate",
             "pending",
             "prediction_count",
             "observed_label_count",
+            "non_observed_label_count",
+            "unresolved_label_count",
+            "abstained_prediction_count",
+            "invalid_prediction_count",
+            "promotion_blocked",
+            "promotion_block_reason",
+            "promotion_prediction_id",
+            "promotion_target_id",
+            "promotion_label_id",
         }
         if set(state) != expected_state_fields:
             raise CausalPromotionError("causal promotion state fields are invalid")
@@ -722,6 +1038,14 @@ class CausalPromotionModel:
             raise CausalPromotionError("causal promotion study manifest mismatch")
         if state.get("gate_binding_identity") != self._gate_binding_identity:
             raise CausalPromotionError("causal promotion gate binding mismatch")
+        if state.get("gate_evidence_identity") != _gate_evidence_digest(
+            cast(Mapping[str, Any], state.get("gate"))
+        ):
+            raise CausalPromotionError("causal promotion gate evidence mismatch")
+        if state.get("challenger_binding_identity") != self._challenger_binding_identity:
+            raise CausalPromotionError("causal promotion challenger binding mismatch")
+        if state.get("incumbent_binding_identity") != self._incumbent_binding_identity:
+            raise CausalPromotionError("causal promotion incumbent binding mismatch")
         challenger_state = state.get("challenger")
         incumbent_state = state.get("incumbent")
         gate_state = state.get("gate")
@@ -830,12 +1154,82 @@ class CausalPromotionModel:
             or observed_label_count < 0
         ):
             raise CausalPromotionError("observed_label_count is invalid")
+        non_observed_label_count = _nonnegative_limit(
+            state.get("non_observed_label_count"), "non_observed_label_count"
+        )
+        unresolved_label_count = _nonnegative_limit(
+            state.get("unresolved_label_count"), "unresolved_label_count"
+        )
+        abstained_prediction_count = _nonnegative_limit(
+            state.get("abstained_prediction_count"), "abstained_prediction_count"
+        )
+        invalid_prediction_count = _nonnegative_limit(
+            state.get("invalid_prediction_count"), "invalid_prediction_count"
+        )
+        promotion_blocked = state.get("promotion_blocked")
+        if not isinstance(promotion_blocked, bool):
+            raise CausalPromotionError("promotion_blocked must be boolean")
+        promotion_block_reason = _optional_text(
+            state.get("promotion_block_reason"), "promotion_block_reason"
+        )
+        if promotion_blocked != (promotion_block_reason is not None):
+            raise CausalPromotionError(
+                "promotion_blocked and promotion_block_reason disagree"
+            )
+        promotion_prediction_id = _optional_text(
+            state.get("promotion_prediction_id"), "promotion_prediction_id"
+        )
+        promotion_target_id = _optional_text(
+            state.get("promotion_target_id"), "promotion_target_id"
+        )
+        promotion_label_id = _optional_text(
+            state.get("promotion_label_id"), "promotion_label_id"
+        )
+        promotion_event_present = all(
+            value is not None
+            for value in (
+                promotion_prediction_id,
+                promotion_target_id,
+                promotion_label_id,
+            )
+        )
+        if any(
+            value is not None
+            for value in (
+                promotion_prediction_id,
+                promotion_target_id,
+                promotion_label_id,
+            )
+        ) and not promotion_event_present:
+            raise CausalPromotionError("promotion activation fields are incomplete")
         gate_observations = candidate_gate.challenger_state(
             self.config.challenger_id
         ).observations
         if observed_label_count < gate_observations:
             raise CausalPromotionError(
                 "observed_label_count cannot be below promotion observations"
+            )
+        if candidate_gate.status is GateStatus.PROMOTED and not promotion_event_present:
+            raise CausalPromotionError(
+                "promoted causal promotion state is missing its activation event"
+            )
+        if candidate_gate.status is not GateStatus.PROMOTED and promotion_event_present:
+            raise CausalPromotionError(
+                "open causal promotion state contains an activation event"
+            )
+        over_budget = (
+            non_observed_label_count > self.config.max_non_observed_labels
+            or unresolved_label_count > self.config.max_unresolved_labels
+            or abstained_prediction_count > self.config.max_abstained_predictions
+            or invalid_prediction_count > self.config.max_invalid_predictions
+        )
+        if candidate_gate.status is GateStatus.OPEN and promotion_blocked != over_budget:
+            raise CausalPromotionError(
+                "promotion operational budget state is inconsistent"
+            )
+        if candidate_gate.status is GateStatus.PROMOTED and promotion_blocked:
+            raise CausalPromotionError(
+                "promoted causal promotion state cannot be operationally blocked"
             )
         old_challenger = _component_state(self.challenger, "challenger")
         old_incumbent = _component_state(self.incumbent, "incumbent")
@@ -844,6 +1238,7 @@ class CausalPromotionModel:
             _restore_component(self.challenger, challenger_state, "challenger")
             _restore_component(self.incumbent, incumbent_state, "incumbent")
             self.gate.load_state_dict(gate_state, eta=self.config.eta)
+            self._refresh_gate_evidence_binding()
         except Exception:
             self._rollback(
                 old_challenger,
@@ -857,7 +1252,17 @@ class CausalPromotionModel:
         self._pending = pending
         self._prediction_count = prediction_count
         self._observed_label_count = observed_label_count
+        self._non_observed_label_count = non_observed_label_count
+        self._unresolved_label_count = unresolved_label_count
+        self._abstained_prediction_count = abstained_prediction_count
+        self._invalid_prediction_count = invalid_prediction_count
+        self._promotion_blocked = promotion_blocked
+        self._promotion_block_reason = promotion_block_reason
+        self._promotion_prediction_id = promotion_prediction_id
+        self._promotion_target_id = promotion_target_id
+        self._promotion_label_id = promotion_label_id
         self._steps = []
+        self._assert_bindings()
 
 
 @dataclass(frozen=True, slots=True)
@@ -890,6 +1295,112 @@ class CausalPromotionReplayResult:
         return isinstance(gate_state, Mapping) and gate_state.get(
             "promoted_challenger_id"
         ) is not None
+
+    @property
+    def operational_status(self) -> CausalPromotionStatus:
+        model_state = self.replay.state.model_state
+        if not isinstance(model_state, Mapping):
+            return CausalPromotionStatus.BLOCKED
+        gate_state = model_state.get("gate")
+        if isinstance(gate_state, Mapping) and gate_state.get(
+            "promoted_challenger_id"
+        ) is not None:
+            return CausalPromotionStatus.PROMOTED
+        if model_state.get("promotion_blocked") is True:
+            return CausalPromotionStatus.BLOCKED
+        return CausalPromotionStatus.OPEN
+
+    @property
+    def promotion_block_reason(self) -> str | None:
+        model_state = self.replay.state.model_state
+        if not isinstance(model_state, Mapping):
+            return "replay model state is not a mapping"
+        return _optional_text(
+            model_state.get("promotion_block_reason"), "promotion_block_reason"
+        )
+
+    @property
+    def operational_counts(self) -> Mapping[str, int]:
+        model_state = self.replay.state.model_state
+        if not isinstance(model_state, Mapping):
+            return {}
+        values = {
+            "observed_labels": model_state.get("observed_label_count"),
+            "non_observed_labels": model_state.get("non_observed_label_count"),
+            "unresolved_labels": model_state.get("unresolved_label_count"),
+            "abstained_predictions": model_state.get(
+                "abstained_prediction_count"
+            ),
+            "invalid_predictions": model_state.get("invalid_prediction_count"),
+        }
+        return {
+            key: value
+            for key, value in values.items()
+            if isinstance(value, int) and not isinstance(value, bool)
+        }
+
+    @property
+    def promotion_activation(self) -> CausalPromotionActivation | None:
+        """Return the crossing and its first later replay boundary, if any."""
+
+        model_state = self.replay.state.model_state
+        if not isinstance(model_state, Mapping):
+            return None
+        prediction_id = _optional_text(
+            model_state.get("promotion_prediction_id"), "promotion_prediction_id"
+        )
+        target_id = _optional_text(
+            model_state.get("promotion_target_id"), "promotion_target_id"
+        )
+        label_id = _optional_text(
+            model_state.get("promotion_label_id"), "promotion_label_id"
+        )
+        if prediction_id is None or target_id is None or label_id is None:
+            return None
+        resolution = next(
+            (
+                item
+                for item in self.replay.resolutions
+                if item.prediction_id == prediction_id
+                and item.status is ReplayStatus.OBSERVED
+            ),
+            None,
+        )
+        if resolution is None:
+            return None
+        if resolution.target_id != target_id or resolution.label_id != label_id:
+            raise CausalPromotionError("promotion activation does not match resolution")
+        effective = next(
+            (
+                item
+                for item in self.replay.predictions
+                if item.sequence > resolution.sequence
+            ),
+            None,
+        )
+        gate_state = model_state.get("gate")
+        if not isinstance(gate_state, Mapping):
+            raise CausalPromotionError("promotion activation is missing gate state")
+        challenger_id = _text(
+            gate_state.get("promoted_challenger_id"),
+            "promoted challenger id",
+        )
+        return CausalPromotionActivation(
+            promotion_id=_text(model_state.get("promotion_id"), "promotion_id"),
+            challenger_id=challenger_id,
+            prediction_id=prediction_id,
+            target_id=target_id,
+            label_id=label_id,
+            settlement_time=resolution.settlement_time,
+            settlement_sequence=resolution.sequence,
+            effective_prediction_id=None if effective is None else effective.prediction_id,
+            effective_decision_time=None
+            if effective is None
+            else effective.decision_time,
+            effective_prediction_sequence=None
+            if effective is None
+            else effective.sequence,
+        )
 
     @property
     def feature_panel_digests(self) -> tuple[str | None, ...]:
@@ -993,10 +1504,12 @@ def run_causal_promotion_replay(
 __all__ = [
     "CAUSAL_PROMOTION_SCHEMA",
     "CAUSAL_PROMOTION_VERSION",
+    "CausalPromotionActivation",
     "CausalPromotionConfig",
     "CausalPromotionError",
     "CausalPromotionModel",
     "CausalPromotionReplayResult",
+    "CausalPromotionStatus",
     "CausalPromotionStep",
     "MAX_CAUSAL_PROMOTION_PENDING",
     "run_causal_promotion_replay",

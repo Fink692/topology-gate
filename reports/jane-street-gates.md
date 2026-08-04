@@ -473,10 +473,19 @@ shared transition, and ledger equivalence are not.
   stopping, challenger selection, and epoch behavior;
 - promotion is scheduled for the next decision boundary, not the label event.
 
-**Current disposition:** FAIL for end-to-end anytime-valid promotion. The
-primitive's conditional algebra is coherent, but the current gate accepts
-arbitrary score/utility calls and lacks the required data, lifecycle, and
-operational binding.
+**Current disposition:** PARTIAL for the certified paired-controller path;
+FAIL for an end-to-end anytime-valid promotion claim. The
+`causal_promotion` adapter now freezes paired learner outputs, requires a
+sealed family/constant eta, binds utility scale and gate identity, enforces a
+checkpointed zero-default missingness/quality budget, blocks later evidence
+after a budget breach, and emits a replay-derived next-boundary activation
+receipt. The low-level gate still accepts free-form score/utility calls, and
+the adapter does not establish the conditional market null, model/feature
+selection budget, numerical/risk readiness checks, or the required
+optional-stopping and selection simulations. Learner class/config identity and
+mutable gate-evidence fingerprints are now also bound at each checkpoint and
+boundary. Those remaining inferential and production checks are release
+blockers.
 
 ### G6 — Economic evaluation and release evidence (P1)
 

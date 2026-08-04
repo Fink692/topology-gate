@@ -112,7 +112,21 @@ advance the gate; the count is checkpointed as part of the promotion identity.
 The certified adapter also requires learner `predict` calls to be state-pure,
 matches `utility_cap` to the gate score bound, and rejects any external gate
 reset, registration change, eta change, or epoch change during the replay.
-Keep `require_pure_predictions=False` confined to diagnostic runs.
+Keep `require_pure_predictions=False` confined to diagnostic runs. Its
+certified default has zero budgets for non-observed and unresolved labels and
+for abstained or invalid paired predictions. A breach is a checkpointed,
+fail-closed `BLOCKED` state; later clean labels cannot revive that evidence
+family. If a study declares a non-zero budget, bind it to the study manifest
+and separately justify the missingness/null assumptions.
+
+Do not treat a threshold crossing as immediate deployment. The paired result's
+`promotion_activation` records the crossing IDs and resolves the first replay
+prediction after the settlement record as the effective boundary. If the
+segment ends first, the effective boundary is `None` and the next segment must
+be continued from the checkpoint before activation can be claimed.
+The checkpoint binds stable learner class/config identities and the mutable
+gate-evidence fingerprint as well. External learner reconfiguration or an
+outside gate observation is rejected before the next prediction or settlement.
 
 Before a multi-challenger study, run `calibrate_promotion_null` with the exact
 bounded score factory, constant eta, challenger count, and global alpha used

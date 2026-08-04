@@ -28,8 +28,10 @@ from .causal_numeric import (
     run_causal_rls_replay,
 )
 from .causal_promotion import (
+    CausalPromotionActivation,
     CausalPromotionConfig,
     CausalPromotionReplayResult,
+    CausalPromotionStatus,
     run_causal_promotion_replay,
 )
 from .economic import EconomicDecision, EconomicEvidence
@@ -623,6 +625,22 @@ class StudyPromotionRunResult:
     @property
     def promoted(self) -> bool:
         return self.replay.promoted
+
+    @property
+    def operational_status(self) -> CausalPromotionStatus:
+        return self.replay.operational_status
+
+    @property
+    def promotion_activation(self) -> CausalPromotionActivation | None:
+        return self.replay.promotion_activation
+
+    @property
+    def operational_counts(self) -> Mapping[str, int]:
+        return self.replay.operational_counts
+
+    @property
+    def promotion_block_reason(self) -> str | None:
+        return self.replay.promotion_block_reason
 
 
 def run_causal_rls_study(

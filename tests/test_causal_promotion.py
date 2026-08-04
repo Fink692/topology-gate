@@ -17,6 +17,7 @@ from topology_gate.causal_promotion import (
     CausalPromotionConfig,
     CausalPromotionError,
     CausalPromotionModel,
+    CausalPromotionStatus,
     run_causal_promotion_replay,
 )
 from topology_gate.manifest import RunSpec, StudyManifest, StudySpec, StudyWindow
@@ -59,6 +60,24 @@ class MutatingPredictLearner(FixedLearner):
     def predict(self, features: tuple[float, ...]) -> float:
         self.updates += 1
         return super().predict(features)
+
+
+class AbstainingLearner(FixedLearner):
+    def predict(self, features: tuple[float, ...]) -> float | None:
+        assert len(features) == 1
+        return None
+
+
+class InvalidPredictLearner(FixedLearner):
+    def predict(self, features: tuple[float, ...]) -> float:
+        assert len(features) == 1
+        return float("nan")
+
+
+class ReconfigurableLearner(FixedLearner):
+    def __init__(self, prediction: float) -> None:
+        super().__init__(prediction)
+        self.config_identity = "test-learner:v1"
 
 
 def binding_plan() -> CausalFeaturePlan:
@@ -200,6 +219,12 @@ def test_paired_predictions_only_advance_the_gate_at_label_settlement() -> None:
     assert result.pending_target_ids == ()
     assert result.state.model_state["pending"] == {}
     assert result.state.model_state["gate"]["promoted_challenger_id"] == "challenger"
+    activation = result.promotion_activation
+    assert activation is not None
+    assert activation.settlement_sequence < activation.effective_prediction_sequence
+    assert activation.effective_prediction_id is not None
+    assert activation.effective_decision_time == 5
+    assert result.operational_status is CausalPromotionStatus.PROMOTED
 
 
 def test_minimum_labels_burn_in_updates_learners_without_advancing_evidence() -> None:
@@ -336,6 +361,114 @@ def test_missing_and_unresolved_labels_do_not_feed_promotion_or_leak_context() -
     ] == 0
 
 
+def test_default_missingness_budget_blocks_later_evidence() -> None:
+    result = run(
+        (1, 2, 3, 4),
+        ("t1", "t2", "t3", "t4"),
+        replay_config=replay_settings(finalize_unresolved=False),
+        missing=True,
+    )
+
+    assert not result.promoted
+    assert result.operational_status is CausalPromotionStatus.BLOCKED
+    assert result.operational_counts["non_observed_labels"] == 1
+    assert "non-observed label budget exceeded" in (result.promotion_block_reason or "")
+    assert result.state.model_state["gate"]["challengers"][0]["state"]["process"][
+        "observation_count"
+    ] == 0
+
+
+def test_blocked_quality_state_survives_restore_and_cannot_be_reopened() -> None:
+    settings = replay_settings(finalize_unresolved=False)
+    first = run(
+        (1, 2),
+        ("t1", "t2"),
+        replay_config=settings,
+        missing=True,
+    )
+    second = run(
+        (3, 4),
+        ("t3", "t4"),
+        replay_config=settings,
+        missing=True,
+        model_state=copy.deepcopy(first.state.model_state),
+        initial_state=first.state,
+    )
+
+    assert second.operational_status is CausalPromotionStatus.BLOCKED
+    assert second.operational_counts["non_observed_labels"] == 1
+    assert second.state.model_state["gate"]["challengers"][0]["state"]["process"][
+        "observation_count"
+    ] == 0
+
+    tampered = copy.deepcopy(first.state.model_state)
+    tampered["promotion_blocked"] = False
+    tampered["promotion_block_reason"] = None
+    with pytest.raises(CausalPromotionError, match="operational budget state"):
+        run(
+            (3,),
+            ("t3",),
+            replay_config=settings,
+            missing=True,
+            model_state=tampered,
+            initial_state=first.state,
+        )
+
+
+def test_explicit_missingness_budget_is_checkpointed_and_identity_bound() -> None:
+    promotion_config = CausalPromotionConfig(
+        promotion_id="paired",
+        challenger_id="challenger",
+        incumbent_id="incumbent",
+        eta=1.0,
+        utility_cap=1.0,
+        max_non_observed_labels=1,
+    )
+    gate = PromotionGate("incumbent", alpha=0.99, eta=1.0)
+    gate.register_challenger("challenger")
+    gate.seal_registration()
+    result = run(
+        (1, 2, 3, 4, 5),
+        ("t1", "t2", "t3", "t4", "t5"),
+        replay_config=replay_settings(finalize_unresolved=False),
+        missing=True,
+        promotion_config=promotion_config,
+        gate=gate,
+    )
+
+    assert result.promoted
+    assert result.operational_counts["non_observed_labels"] == 1
+
+    with pytest.raises(CausalPromotionError, match="configuration mismatch"):
+        run(
+            (4,),
+            ("t4",),
+            replay_config=replay_settings(finalize_unresolved=False),
+            model_state=result.state.model_state,
+            initial_state=result.state,
+        )
+
+
+@pytest.mark.parametrize("learner", [AbstainingLearner(0.0), InvalidPredictLearner(0.0)])
+def test_prediction_quality_budget_blocks_evidence(learner: FixedLearner) -> None:
+    result = run(
+        (1,),
+        ("t1",),
+        challenger=learner,
+        replay_config=replay_settings(finalize_unresolved=False),
+    )
+
+    assert not result.promoted
+    assert result.operational_status is CausalPromotionStatus.BLOCKED
+    assert result.state.model_state["gate"]["challengers"][0]["state"]["process"][
+        "observation_count"
+    ] == 0
+    if isinstance(learner, AbstainingLearner):
+        assert result.operational_counts["abstained_predictions"] == 1
+    else:
+        assert result.operational_counts["invalid_predictions"] == 1
+
+
 def test_paired_update_and_gate_transition_roll_back_together() -> None:
     challenger = FixedLearner(0.0)
     incumbent = FixedLearner(1.0, fail_update=True)
@@ -405,6 +538,36 @@ def test_paired_promotion_binds_utility_scale_and_gate_family() -> None:
     )
     gate.reset_epoch(reason="unexpected external reset")
     with pytest.raises(CausalPromotionError, match="gate registration"):
+        model.predict(observation_book().materialize(1), "t1")
+
+
+def test_paired_promotion_rejects_external_gate_evidence() -> None:
+    gate = make_gate()
+    model = CausalPromotionModel(
+        FixedLearner(0.0),
+        FixedLearner(1.0),
+        binding_plan(),
+        gate,
+        config=config(),
+    )
+    gate.observe_utilities("challenger", 0.0, -1.0, eta=0.5)
+
+    with pytest.raises(CausalPromotionError, match="gate evidence"):
+        model.predict(observation_book().materialize(1), "t1")
+
+
+def test_paired_promotion_binds_stable_learner_identity() -> None:
+    challenger = ReconfigurableLearner(0.0)
+    model = CausalPromotionModel(
+        challenger,
+        FixedLearner(1.0),
+        binding_plan(),
+        make_gate(),
+        config=config(),
+    )
+    challenger.config_identity = "test-learner:v2"
+
+    with pytest.raises(CausalPromotionError, match="learner identity"):
         model.predict(observation_book().materialize(1), "t1")
 
 

@@ -195,8 +195,24 @@ The certified paired path also requires successful prediction calls to be
 state-pure and binds the gate's registration order, alpha and score scales,
 eta rules, and epoch. A caller-side gate reset or family mutation is rejected
 at the next boundary, and the binding is carried in the checkpoint. This
-closes a state-integrity failure mode; it does not supply the missing
-operational readiness checks or a market-valid conditional-null argument.
+closes a state-integrity failure mode. It now also carries a declarative,
+identity-bound operational policy: zero-default budgets for non-observed and
+unresolved labels and for abstained or invalid paired predictions. Once a
+budget is exceeded while the gate is open, the family enters a checkpointed
+`BLOCKED` state and later observed labels update learners without advancing the
+e-process. A non-zero budget is an explicit diagnostic allowance, not a proof
+that the missingness mechanism preserves the conditional null.
+
+The paired result exposes a promotion activation receipt containing the frozen
+replay prediction/label IDs, settlement record, and first later prediction
+boundary. A threshold crossing without a later boundary is reported as
+scheduled-but-not-yet-effective; it is not an immediate deployment decision.
+The checkpoint additionally binds stable learner class/config identities and
+the mutable gate-evidence fingerprint, so external learner reconfiguration or
+an injected gate observation fails before the next transition.
+These controls close additional lifecycle/data-quality failure modes, but do
+not supply the missing operational readiness checks beyond this declarative
+policy or a market-valid conditional-null argument.
 
 `calibrate_eprocess_null` provides a finite optional-stopping simulation for
 that bounded score primitive. It uses a predeclared constant eta, stops each
