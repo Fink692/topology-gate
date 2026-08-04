@@ -4,21 +4,21 @@ Date: 2026-08-04
 Interpreter: CPython 3.12.10
 Scope: bounded research/control layer only; no live-data or execution claim
 
-Supported-interpreter matrix: CPython 3.10.11 and 3.11.15 each passed the
-current 254-test suite in isolated `uv` environments. The CPython 3.12 release
-gate also passed Ruff, mypy, and compileall. Coverage is reported from CPython
-3.12 only.
+Supported-interpreter matrix: CPython 3.10.11, 3.11.15, and 3.12.10 each
+passed the current 261-test suite; the 3.11 run used an isolated `uv`
+environment. The CPython 3.12 release gate also passed Ruff, mypy, and
+compileall. Coverage is reported from CPython 3.12 only.
 
 ## Reproducible engineering checks
 
-- Full suite: **254 passed**.
-- Configured coverage run: **80.52%** total coverage.
+- Full suite: **261 passed**.
+- Configured coverage run: **80.67%** total coverage.
 - Ruff: passed on `src` and `tests`.
 - Mypy: passed on all 23 source modules.
 - Dependency-light root import: passed without NumPy site packages.
 - Wheel build and isolated target-directory smoke: passed; SHA-256
-  `93b32f1d0995d012fcac6cfc26e5df0ad108a597a56e7d5d7e181b13fb026439`;
-  source commit `26b6faa` supplied `SOURCE_DATE_EPOCH=1785862260`; two
+  `FD2EEB03333FB37EC3A425932CCEC69CF0D20FBE2D4D857FDF1D5FC3F2B17A37`;
+  source commit `7774f5f` supplied `SOURCE_DATE_EPOCH=1785862260`; two
   consecutive builds under the same source date produced the same digest;
   the smoke exercised canonical `StudySourcePackage` serialization/restoration,
   exact raw source-artifact ID-set and byte/size verification, strict
@@ -92,7 +92,9 @@ gate also passed Ruff, mypy, and compileall. Coverage is reported from CPython
   minimum-label burn-in across chunked restore, sealed challenger-family and
   selected-eta enforcement, internal state consistency, and learner/gate
   rollback on failed updates, state-pure prediction enforcement, utility-scale
-  binding, and external gate-reset detection;
+  binding, external gate-reset/evidence injection detection, stable learner
+  identity binding, checkpointed missingness/quality budgets, fail-closed
+  blocked-state continuation, and next-boundary activation receipts;
   instrument-labelled promotion evidence carries the canonical panel digest.
 - Legacy online authorization tests: passed for neutral forgetting without a
   certificate, approved identity-matched acceleration, authorization telemetry,
