@@ -17,12 +17,13 @@ gate also passed Ruff, mypy, and compileall. Coverage is reported from CPython
 - Mypy: passed on all 23 source modules.
 - Dependency-light root import: passed without NumPy site packages.
 - Wheel build and isolated target-directory smoke: passed; SHA-256
-  `6277f019b96b2a4b9ad005a56909081e0687aa2b736cb803b95448b36617c393`;
-  source commit `1105250` supplied `SOURCE_DATE_EPOCH=1785860745`; two
+  `4c183b1b66efdb3b1fd5c4f2406f3cb42e12c6d0e515d492960b7e13d0fb5f66`;
+  source commit `6070291` supplied `SOURCE_DATE_EPOCH=1785861018`; two
   consecutive builds under the same source date produced the same digest;
   the smoke exercised canonical `StudySourcePackage` serialization/restoration,
   raw source-byte SHA-256 verification, strict `RunManifest`/`StudyManifest`
-  restore, and canonical `AsOfBook` source restore from the wheel.
+  restore, canonical `AsOfBook` source restore from the wheel, and the
+  license/release/adapter-revision provenance envelope.
 - Authenticated checkpoint, manifest digest, promotion/evidence state, and
   detached restore tests: passed; checkpoint and online-state top-level schema
   drift is rejected before state mutation.
