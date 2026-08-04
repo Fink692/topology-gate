@@ -87,11 +87,15 @@ The high-level flow is:
 At a decision time t, the sequence is strictly:
 
 1. Materialize the information set available at t.
-2. Build the feature row and point cloud using only that information set.
+2. Materialize any cross-asset feature/state panel with one visible record per
+   instrument, fixed field order, canonical instrument order, and an auditable
+   universe digest; then build the feature row and point cloud using only that
+   information set.
 3. Compare the current topology to a reference state made from prior committed observations.
 4. Convert the topology result into a gate decision and a bounded forgetting factor.
 5. Predict with each active model using its state before the target is known.
-6. Persist the prediction, topology evidence, gate decision, feature fingerprint, and update policy as pending evidence.
+6. Persist the prediction, topology evidence, gate decision, feature/panel
+   fingerprints, and update policy as pending evidence.
 
 When a label becomes available, the sequence is:
 
@@ -352,6 +356,17 @@ MarketObservation contains observation_id, instrument_id, event_time_ns, availab
 FeatureRow contains feature_schema_id, instrument_id or cross-sectional scope, state_time_ns, as_of_time_ns, a fixed-width vector x, an explicit missing/quality mask, and the fingerprints of every fitted transform used. A transform's fit boundary is recorded. A row is eligible only if each contributing input revision was available no later than as_of_time_ns.
 
 Feature scalers, imputers, winsorizers, and encoders are stateful artifacts. They are fitted on a past-only prefix and updated only after the row's decision boundary. A feature schema change creates a new schema ID; positional reinterpretation is forbidden.
+
+#### Point-in-time panel
+
+PointInTimePanel is the bounded cross-asset adapter used when a feature or
+state row is assembled from multiple instruments. It is selected from one
+AsOfSnapshot by explicit record IDs and a fixed field schema. It requires one
+record per instrument, sorts instruments by canonical identifier, and carries a
+content digest together with the snapshot's universe digest. A plan with mixed
+instrument-labelled and unlabelled bindings is invalid; a plan without
+instrument labels remains an explicit legacy row path. The panel contract does
+not claim vendor coverage, dynamic-universe completeness, or economic validity.
 
 #### Point-cloud window
 

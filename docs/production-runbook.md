@@ -141,6 +141,13 @@ This is a bounded numerical reference path, not a market-calibrated detector.
 The backend identity is checkpointed; an incompatible cloud or failed exact
 calculation must be handled as an abstention/error by the surrounding replay.
 
+For a cross-asset causal run, construct `PointInTimePanel` from explicit
+as-of-visible record IDs and one fixed field schema. The adapter sorts
+instrument rows and emits a panel digest plus the snapshot universe digest;
+record those identities with the numerical replay. This is a deterministic
+selection contract only: the run still needs a vendor manifest, delisting and
+membership policy, cost model, and sealed holdout before any market claim.
+
 ## Release gates
 
 Before using a result outside research:

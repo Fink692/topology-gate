@@ -14,6 +14,7 @@ from topology_gate.asof import (
     LabelObservation,
     MarketObservation,
     MissingLabelError,
+    PointInTimePanel,
     UnavailableEventError,
     UniverseMembership,
     canonical_event_order,
@@ -167,3 +168,111 @@ def test_future_records_are_excluded_but_explicitly_required_records_fail_closed
     assert book.materialize(9).observations == ()
     with pytest.raises(UnavailableEventError):
         book.materialize(9, required_record_ids=("future",))
+
+
+def _panel_market(
+    record_id: str,
+    instrument_id: str,
+    available: int,
+    value: float,
+    *,
+    revision: int = 0,
+) -> MarketObservation:
+    return MarketObservation(
+        record_id=record_id,
+        instrument_id=instrument_id,
+        event_time=available - 1,
+        available_time=available,
+        source_revision=revision,
+        ingest_sequence=0,
+        fields={"value": value, "other": value + 10.0},
+    )
+
+
+def _panel_book() -> AsOfBook:
+    return AsOfBook(
+        observations=(
+            _panel_market("m-b", "B", 2, 2.0),
+            _panel_market("m-a", "A", 2, 1.0),
+        ),
+        universe=(
+            UniverseMembership("A", 0, 10, 0, 1, 0),
+            UniverseMembership("B", 0, 10, 0, 1, 0),
+        ),
+    )
+
+
+def test_point_in_time_panel_canonicalizes_asset_order_and_binds_universe() -> None:
+    snapshot = _panel_book().materialize(3)
+    first = PointInTimePanel.from_snapshot(
+        snapshot,
+        ("m-b", "m-a"),
+        ("value",),
+    )
+    second = PointInTimePanel.from_snapshot(
+        snapshot,
+        ("m-a", "m-b"),
+        ("value",),
+    )
+
+    assert first == second
+    assert first.instrument_ids == ("A", "B")
+    assert first.record_ids == ("m-a", "m-b")
+    assert first.values == ((1.0,), (2.0,))
+    assert len(first.universe_digest) == 64
+    assert len(first.digest) == 64
+    assert first.to_dict()["digest"] == first.digest
+
+
+def test_point_in_time_panel_rejects_duplicate_assets_missing_membership_and_fields() -> None:
+    duplicate_asset_book = AsOfBook(
+        observations=(
+            _panel_market("m-a1", "A", 2, 1.0),
+            _panel_market("m-a2", "A", 2, 2.0),
+        ),
+        universe=(UniverseMembership("A", 0, 10, 0, 1, 0),),
+    )
+    with pytest.raises(AmbiguousEventError, match="multiple panel records"):
+        PointInTimePanel.from_snapshot(
+            duplicate_asset_book.materialize(3),
+            ("m-a1", "m-a2"),
+            ("value",),
+        )
+
+    nonmember = AsOfBook(observations=(_panel_market("m-c", "C", 2, 3.0),))
+    with pytest.raises(UnavailableEventError, match="not in the point-in-time universe"):
+        PointInTimePanel.from_snapshot(
+            nonmember.materialize(3),
+            ("m-c",),
+            ("value",),
+        )
+
+    with pytest.raises(UnavailableEventError, match="missing field"):
+        PointInTimePanel.from_snapshot(
+            _panel_book().materialize(3),
+            ("m-a",),
+            ("missing",),
+        )
+
+
+def test_future_panel_events_and_membership_revisions_cannot_change_prefix_panel() -> None:
+    book = _panel_book()
+    prefix = PointInTimePanel.from_snapshot(
+        book.materialize(3),
+        ("m-a",),
+        ("value",),
+    )
+    extended = book.with_observation(_panel_market("m-c", "C", 8, 3.0)).with_universe(
+        UniverseMembership("C", 7, 12, 7, 8, 0)
+    )
+    assert prefix == PointInTimePanel.from_snapshot(
+        extended.materialize(3),
+        ("m-a",),
+        ("value",),
+    )
+    with pytest.raises(UnavailableEventError):
+        PointInTimePanel.from_snapshot(
+            extended.materialize(3),
+            ("m-c",),
+            ("value",),
+        )

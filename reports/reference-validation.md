@@ -6,8 +6,8 @@ Scope: bounded research/control layer only; no live-data or execution claim
 
 ## Reproducible engineering checks
 
-- Full suite: **182 passed**.
-- Configured coverage run: **80.04%** total coverage.
+- Full suite: **188 passed**.
+- Configured coverage run: **79.94%** total coverage.
 - Ruff: passed on `src` and `tests`.
 - Mypy: passed on all 20 source modules.
 - Dependency-light root import: passed without NumPy site packages.
@@ -22,7 +22,9 @@ Scope: bounded research/control layer only; no live-data or execution claim
 - Timestamped detector/RLS migration tests: passed for feature-ID extraction,
   strict point-in-time universe membership, prediction-time factor freezing,
   one-shot versus resumed replay equivalence, missing-label context cleanup,
-  and neutral forgetting without an approved detector certificate.
+  neutral forgetting without an approved detector certificate, canonical
+  cross-asset panel ordering, panel/universe digest telemetry, and panel
+  identity equivalence under reversed binding input.
 - Finite-null certificate tests: passed for conservative Wilson-bound approval,
   detector-identity binding, explicit rejection of an unapproved budget, and
   rejection of count/rate/interval inconsistencies.
@@ -35,7 +37,8 @@ Scope: bounded research/control layer only; no live-data or execution claim
 - Paired causal-promotion tests: passed for prediction-time freezing,
   settlement-only gate advancement, missing/unresolved cleanup, one-shot versus
   resumed state equivalence, constant-eta enforcement, and learner/gate
-  rollback on failed updates.
+  rollback on failed updates; instrument-labelled promotion evidence carries the
+  canonical panel digest.
 - Exact finite persistence algebra, PSD/eigen residual, permutation/duplicate,
   digest, and resource-cap invariants: passed.
 - Configured exact-backend tests: passed for complete evidence return, stable
@@ -81,7 +84,7 @@ therefore fail-closed.
 | G1 exact persistent MVP | Pass for bounded reference scope | `persistent.py` plus hand-built and algebraic invariants; only the declared finite VR/F2/q/pair construction is covered. |
 | G2 calibrated forgetting | Fail for a calibrated claim | Harness exists and caught a false-alarm failure; no independent market/dependence calibration artifact authorizes accelerated forgetting. |
 | G3 recursive transactional state | Partial/pass for the migrated path | `CausalReplay` drives numerical detector/RLS plus paired challenger/`PromotionGate` state with prediction-time factor/utility capture, model-state rollback, and detached restore; legacy workers and the generic evidence-ledger path are not all one transaction. |
-| G4 causal replay/recovery | Partial/pass for the migrated path | `AsOfBook`, `CausalReplay`, `CausalRLSModel`, paired promotion, delayed-label ledger, chunk state, HMAC restore, prefix invariance, future append acceptance, consumed-prefix revision rejection, and terminal pending cleanup are tested; legacy row adapters remain compatibility paths. |
+| G4 causal replay/recovery | Partial/pass for the migrated path | `AsOfBook`, `PointInTimePanel`, `CausalReplay`, `CausalRLSModel`, paired promotion, delayed-label ledger, chunk state, HMAC restore, prefix invariance, future append acceptance, consumed-prefix revision rejection, canonical panel identity, and terminal pending cleanup are tested; legacy row adapters remain compatibility paths. |
 | G5 economic validation | Contract pass; market evidence not evaluated | `economic.py` is fail-closed for separate returns/costs and explicit abstention accounting, but no point-in-time vendor data, capacity, delistings, or sealed final holdout are present. |
 
 The package remains research/alpha. The evidence needed to upgrade the two

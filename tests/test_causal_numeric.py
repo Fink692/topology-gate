@@ -48,6 +48,18 @@ def observation(
     )
 
 
+def panel_observation(record_id: str, instrument_id: str, value: float) -> MarketObservation:
+    return MarketObservation(
+        record_id=record_id,
+        instrument_id=instrument_id,
+        event_time=1,
+        available_time=1,
+        source_revision=0,
+        ingest_sequence=0,
+        fields={"x": value, "state": value + 10.0},
+    )
+
+
 def label(target: str, available: int, value: float | None, status: str = "observed") -> LabelObservation:
     return LabelObservation(
         label_id=f"label-{target}",
@@ -167,6 +179,10 @@ def make_learner() -> RLS:
     return RLS(RLSConfig(n_features=1, lambda_min=0.8, lambda_max=1.0))
 
 
+def make_panel_learner() -> RLS:
+    return RLS(RLSConfig(n_features=2, lambda_min=0.8, lambda_max=1.0))
+
+
 class NonFiniteLearner:
     lambda_min = 0.5
     lambda_max = 1.0
@@ -268,6 +284,14 @@ def test_chunked_timestamped_replay_matches_one_shot_after_state_restore() -> No
         np.r_[first.forgetting_factors, second.forgetting_factors],
         one_shot.forgetting_factors,
     )
+    assert (
+        first.feature_panel_digests + second.feature_panel_digests
+        == one_shot.feature_panel_digests
+    )
+    assert (
+        first.state_panel_digests + second.state_panel_digests
+        == one_shot.state_panel_digests
+    )
     assert second.prediction_start == 2
     assert second.all_predictions == one_shot.all_predictions
     assert second.state.model_state == one_shot.state.model_state
@@ -300,6 +324,139 @@ def test_strict_feature_plan_rejects_future_event_and_missing_membership() -> No
             plan=plan(),
             learner=make_learner(),
             model_config=CausalRLSConfig(model_id="membership"),
+        )
+
+
+def test_instrument_labelled_plan_canonicalizes_cross_asset_order_and_records_panels() -> None:
+    book = AsOfBook(
+        observations=(
+            panel_observation("b1", "B", 2.0),
+            panel_observation("a1", "A", 1.0),
+        ),
+        universe=(
+            UniverseMembership("A", 0, 100, 0, 0, 0),
+            UniverseMembership("B", 0, 100, 0, 0, 1),
+        ),
+        labels=(label("t1", 3, 4.0),),
+    )
+
+    def make_plan(order: tuple[tuple[str, str], ...]) -> CausalFeaturePlan:
+        return CausalFeaturePlan(
+            {
+                "t1": tuple(FeatureBinding(record, ("x",), instrument) for record, instrument in order)
+            },
+            state_bindings_by_target={
+                "t1": tuple(
+                    FeatureBinding(record, ("state",), instrument)
+                    for record, instrument in order
+                )
+            },
+            require_membership=True,
+        )
+
+    forward = run_causal_rls_replay(
+        book,
+        (1,),
+        ("t1",),
+        plan=make_plan((("a1", "A"), ("b1", "B"))),
+        learner=make_panel_learner(),
+        model_config=CausalRLSConfig(model_id="panel-order"),
+    )
+    reversed_order = run_causal_rls_replay(
+        book,
+        (1,),
+        ("t1",),
+        plan=make_plan((("b1", "B"), ("a1", "A"))),
+        learner=make_panel_learner(),
+        model_config=CausalRLSConfig(model_id="panel-order"),
+    )
+
+    np.testing.assert_allclose(forward.predictions, reversed_order.predictions)
+    assert forward.steps[0].feature_panel_digest == reversed_order.steps[0].feature_panel_digest
+    assert make_plan((("a1", "A"), ("b1", "B"))).identity == make_plan(
+        (("b1", "B"), ("a1", "A"))
+    ).identity
+    assert forward.feature_panel_digests == reversed_order.feature_panel_digests
+    assert forward.state_panel_digests == reversed_order.state_panel_digests
+    assert forward.steps[0].feature_panel_digest is not None
+    assert forward.steps[0].state_panel_digest is not None
+    assert forward.steps[0].feature_digest == reversed_order.steps[0].feature_digest
+
+
+def test_panel_plan_rejects_mixed_instrument_labels_and_unavailable_membership() -> None:
+    mixed_plan = CausalFeaturePlan(
+        {
+            "t1": (
+                FeatureBinding("a1", ("x",), "A"),
+                FeatureBinding("b1", ("x",)),
+            )
+        },
+        require_membership=False,
+    )
+    with pytest.raises(CausalNumericError, match="instrument_id on every binding"):
+        run_causal_rls_replay(
+            AsOfBook(
+                observations=(
+                    panel_observation("a1", "A", 1.0),
+                    panel_observation("b1", "B", 2.0),
+                )
+            ),
+            (1,),
+            ("t1",),
+            plan=mixed_plan,
+            learner=make_panel_learner(),
+            model_config=CausalRLSConfig(model_id="mixed-panel"),
+        )
+
+    missing_membership = CausalFeaturePlan(
+        {
+            "t1": (
+                FeatureBinding("a1", ("x",), "A"),
+                FeatureBinding("b1", ("x",), "B"),
+            )
+        },
+        require_membership=True,
+    )
+    with pytest.raises(CausalNumericError, match="point-in-time universe"):
+        run_causal_rls_replay(
+            AsOfBook(
+                observations=(
+                    panel_observation("a1", "A", 1.0),
+                    panel_observation("b1", "B", 2.0),
+                ),
+                universe=(UniverseMembership("A", 0, 100, 0, 0, 0),),
+            ),
+            (1,),
+            ("t1",),
+            plan=missing_membership,
+            learner=make_panel_learner(),
+            model_config=CausalRLSConfig(model_id="missing-panel-membership"),
+        )
+
+
+def test_panel_plan_requires_one_fixed_field_schema() -> None:
+    plan_with_mismatched_fields = CausalFeaturePlan(
+        {
+            "t1": (
+                FeatureBinding("a1", ("x",), "A"),
+                FeatureBinding("b1", ("state",), "B"),
+            )
+        },
+        require_membership=False,
+    )
+    with pytest.raises(CausalNumericError, match="fixed field schema"):
+        run_causal_rls_replay(
+            AsOfBook(
+                observations=(
+                    panel_observation("a1", "A", 1.0),
+                    panel_observation("b1", "B", 2.0),
+                )
+            ),
+            (1,),
+            ("t1",),
+            plan=plan_with_mismatched_fields,
+            learner=make_panel_learner(),
+            model_config=CausalRLSConfig(model_id="mismatched-panel-fields"),
         )
 
 

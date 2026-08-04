@@ -136,21 +136,25 @@ code causal and it is not yet wired into the legacy NumPy row adapters.
 
 The `causal_numeric` adapter now runs the existing detector/RLS workers through
 that transition using immutable record/field bindings and point-in-time
-universe checks. Its one-shot and checkpoint-resumed paths are tested for
-equivalence. It still does not establish a cross-asset market study. The
-separate `economic` contract requires timestamped realized returns and
-execution-cost components, rejects target/zero substitution and unavailable
-costs, and reports abstentions explicitly; it is an evaluation boundary, not
-market evidence.
+universe checks. Instrument-labelled plans pass through `PointInTimePanel`,
+which fixes field order, sorts instruments canonically, and records a content
+digest plus the as-of universe digest; the causal step carries those identities
+and resumed paths are tested for equivalence. This establishes a deterministic
+cross-asset data contract, not a cross-asset market study. The separate
+`economic` contract requires timestamped realized returns and execution-cost
+components, rejects target/zero substitution and unavailable costs, and reports
+abstentions explicitly; it is an evaluation boundary, not market evidence.
 
 The `causal_promotion` adapter extends the same state boundary to paired
 challenger/incumbent learners and a registered `PromotionGate`. It freezes both
 predictions before labels arrive, advances bounded paired utility only at
 observed settlement, and rolls back both learners and gate state on a failed
-transition. Missing or terminally unresolved labels never advance the
-e-process. This is a tested composition boundary, not a calibrated market
-promotion result; the utility scale, eta policy, source manifest, and holdout
-evidence still require a pre-registered study.
+transition. Its instrument-labelled plans use the same canonical panel
+selection and carry the panel identity into pending promotion evidence. Missing
+or terminally unresolved labels never advance the e-process. This is a tested
+composition boundary, not a calibrated market promotion result; the utility
+scale, eta policy, source manifest, and holdout evidence still require a
+pre-registered study.
 
 ## Minimum evidence before a stronger claim
 

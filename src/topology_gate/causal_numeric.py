@@ -18,7 +18,7 @@ from typing import Any, cast
 
 import numpy as np
 
-from .asof import AsOfBook, AsOfSnapshot
+from .asof import AsOfBook, AsOfSnapshot, PointInTimePanel
 from .replay import (
     CausalReplayResult,
     ReplayConfig,
@@ -29,7 +29,10 @@ from .replay import (
 )
 
 CAUSAL_NUMERIC_SCHEMA = "topology_gate.causal_numeric"
-CAUSAL_NUMERIC_VERSION = 1
+# Version 2 makes instrument-labelled plans use the canonical panel ordering
+# and membership digest described by ``CausalFeaturePlan.extract_with_panel``.
+# Existing checkpoints must not silently resume under those changed semantics.
+CAUSAL_NUMERIC_VERSION = 2
 MAX_CAUSAL_FEATURE_BINDINGS = 256
 MAX_CAUSAL_PENDING_CONTEXTS = 8_192
 
@@ -148,16 +151,30 @@ class CausalFeaturePlan:
 
     @property
     def identity(self) -> str:
+        def identity_bindings(
+            raw_entries: Sequence[FeatureBinding],
+        ) -> list[dict[str, Any]]:
+            entries = tuple(raw_entries)
+            labelled = all(entry.instrument_id is not None for entry in entries)
+            unique = len({entry.instrument_id for entry in entries}) == len(entries)
+            fixed_schema = len({entry.fields for entry in entries}) == 1
+            ordered = (
+                tuple(sorted(entries, key=lambda entry: cast(str, entry.instrument_id)))
+                if labelled and unique and fixed_schema
+                else entries
+            )
+            return [binding.to_dict() for binding in ordered]
+
         payload = {
             "schema": CAUSAL_NUMERIC_SCHEMA,
             "version": CAUSAL_NUMERIC_VERSION,
             "require_membership": self.require_membership,
             "bindings": {
-                target: [binding.to_dict() for binding in bindings]
+                target: identity_bindings(bindings)
                 for target, bindings in sorted(self.bindings_by_target.items())
             },
             "state_bindings": {
-                target: [binding.to_dict() for binding in bindings]
+                target: identity_bindings(bindings)
                 for target, bindings in sorted(
                     cast(Mapping[str, tuple[FeatureBinding, ...]], self.state_bindings_by_target).items()
                 )
@@ -227,6 +244,66 @@ class CausalFeaturePlan:
             raise CausalNumericError("extracted feature row must not be empty")
         return tuple(values)
 
+    def extract_with_panel(
+        self, snapshot: AsOfSnapshot, target_id: str, *, state: bool = False
+    ) -> tuple[tuple[float, ...], PointInTimePanel | None]:
+        """Extract a row and, when possible, its canonical point-in-time panel.
+
+        Instrument-labelled bindings are selected through ``PointInTimePanel``
+        so the learner and detector receive the same deterministic instrument
+        order regardless of configuration order.  Unlabelled legacy plans
+        retain their explicit binding order and return no panel artifact.  A
+        partially labelled plan is rejected instead of creating an ambiguous
+        hybrid ordering.
+        """
+
+        bindings = self._bindings(target_id, state=state)
+        labels = tuple(binding.instrument_id is not None for binding in bindings)
+        if not any(labels):
+            return self.extract(snapshot, target_id, state=state), None
+        if not all(labels):
+            raise CausalNumericError(
+                "panel-capable bindings must specify instrument_id on every binding"
+            )
+        instruments = tuple(
+            cast(str, binding.instrument_id) for binding in bindings
+        )
+        if len(set(instruments)) != len(instruments):
+            raise CausalNumericError(
+                "panel-capable bindings must contain one binding per instrument"
+            )
+        field_names = bindings[0].fields
+        if any(binding.fields != field_names for binding in bindings[1:]):
+            raise CausalNumericError(
+                "panel-capable bindings must use one fixed field schema"
+            )
+        for binding in bindings:
+            observation = snapshot.observation(binding.record_id)
+            if observation.instrument_id != binding.instrument_id:
+                raise CausalNumericError(
+                    f"observation {binding.record_id!r} has the wrong instrument"
+                )
+        try:
+            panel = PointInTimePanel.from_snapshot(
+                snapshot,
+                tuple(binding.record_id for binding in bindings),
+                field_names,
+                require_membership=self.require_membership,
+            )
+        except (TypeError, ValueError) as exc:
+            raise CausalNumericError(
+                f"point-in-time panel extraction failed: {exc}"
+            ) from exc
+        expected_instruments = tuple(sorted(instruments))
+        if panel.instrument_ids != expected_instruments:
+            raise CausalNumericError(
+                "point-in-time panel instrument membership does not match the plan"
+            )
+        values = tuple(value for row in panel.values for value in row)
+        if not values:
+            raise CausalNumericError("extracted panel row must not be empty")
+        return values, panel
+
 
 @dataclass(frozen=True, slots=True)
 class CausalRLSConfig:
@@ -285,6 +362,8 @@ class CausalStep:
     position: float
     method: str
     topology_evidence_digest: str | None = None
+    feature_panel_digest: str | None = None
+    state_panel_digest: str | None = None
 
 
 def _digest_row(values: Sequence[float]) -> str:
@@ -408,8 +487,18 @@ class CausalRLSModel:
         return factor
 
     def predict(self, snapshot: AsOfSnapshot, target_id: str) -> float:
-        features = self.plan.extract(snapshot, target_id)
-        state_features = self.plan.extract(snapshot, target_id, state=True)
+        features, feature_panel = self.plan.extract_with_panel(snapshot, target_id)
+        state_features, state_panel = self.plan.extract_with_panel(
+            snapshot, target_id, state=True
+        )
+        feature_panel_digest = _optional_digest(
+            None if feature_panel is None else feature_panel.digest,
+            "feature panel digest",
+        )
+        state_panel_digest = _optional_digest(
+            None if state_panel is None else state_panel.digest,
+            "state panel digest",
+        )
         learner_before = self.learner.state_dict()
         detector_before = (
             None
@@ -417,7 +506,14 @@ class CausalRLSModel:
             else self.detector.stream_state_dict()
         )
         try:
-            return self._predict_transaction(snapshot, target_id, features, state_features)
+            return self._predict_transaction(
+                snapshot,
+                target_id,
+                features,
+                state_features,
+                feature_panel_digest,
+                state_panel_digest,
+            )
         except Exception:
             # The numerical workers expose validated loaders. Restore both
             # components if an adapter-side failure occurs after one of them
@@ -434,6 +530,8 @@ class CausalRLSModel:
         target_id: str,
         features: tuple[float, ...],
         state_features: tuple[float, ...],
+        feature_panel_digest: str | None,
+        state_panel_digest: str | None,
     ) -> float:
         score = 0.0
         alarm = False
@@ -497,6 +595,8 @@ class CausalRLSModel:
                 position=position,
                 method=method,
                 topology_evidence_digest=topology_evidence_digest,
+                feature_panel_digest=feature_panel_digest,
+                state_panel_digest=state_panel_digest,
             )
         )
         if math.isfinite(prediction):
@@ -670,6 +770,18 @@ class CausalRLSReplayResult:
         """Return the exact-backend artifact digest captured per step."""
 
         return tuple(item.topology_evidence_digest for item in self.steps)
+
+    @property
+    def feature_panel_digests(self) -> tuple[str | None, ...]:
+        """Return canonical feature-panel identities captured per step."""
+
+        return tuple(item.feature_panel_digest for item in self.steps)
+
+    @property
+    def state_panel_digests(self) -> tuple[str | None, ...]:
+        """Return canonical detector-state-panel identities captured per step."""
+
+        return tuple(item.state_panel_digest for item in self.steps)
 
     @property
     def pending_target_ids(self) -> tuple[str, ...]:

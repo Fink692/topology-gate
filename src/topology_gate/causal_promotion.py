@@ -33,7 +33,10 @@ from .replay import (
 )
 
 CAUSAL_PROMOTION_SCHEMA = "topology_gate.causal_promotion"
-CAUSAL_PROMOTION_VERSION = 1
+# Pending comparisons now carry the canonical panel identity used to produce
+# their paired predictions.  Older promotion checkpoints must not resume
+# without that provenance.
+CAUSAL_PROMOTION_VERSION = 2
 MAX_CAUSAL_PROMOTION_PENDING = 8_192
 
 
@@ -123,6 +126,19 @@ def _digest_features(features: Sequence[float]) -> str:
     return _digest(list(features), "feature row")
 
 
+def _optional_panel_digest(value: Any, name: str) -> str | None:
+    if value is None:
+        return None
+    digest = _text(value, name)
+    if len(digest) != 64 or any(
+        item not in "0123456789abcdefABCDEF" for item in digest
+    ):
+        raise CausalPromotionError(
+            f"{name} must be a 64-character hexadecimal digest"
+        )
+    return digest.lower()
+
+
 @dataclass(frozen=True, slots=True)
 class CausalPromotionConfig:
     """Immutable control choices for one paired promotion family."""
@@ -178,6 +194,7 @@ class CausalPromotionStep:
     incumbent_prediction: float
     feature_digest: str
     gate_status: str
+    feature_panel_digest: str | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -188,6 +205,7 @@ class _PendingComparison:
     challenger_prediction: float
     incumbent_prediction: float
     feature_digest: str
+    feature_panel_digest: str | None
     challenger_state_digest: str
     incumbent_state_digest: str
 
@@ -296,7 +314,11 @@ class CausalPromotionModel:
             # silently fed to the old evidence family.  The replay records an
             # explicit abstention until the caller starts a new gate epoch.
             return None
-        features = self.plan.extract(snapshot, target)
+        features, feature_panel = self.plan.extract_with_panel(snapshot, target)
+        feature_panel_digest = _optional_panel_digest(
+            None if feature_panel is None else feature_panel.digest,
+            "feature panel digest",
+        )
         if target in self._pending:
             raise CausalPromotionError(f"target {target!r} already has pending evidence")
         if len(self._pending) >= self.config.max_pending:
@@ -340,6 +362,7 @@ class CausalPromotionModel:
                 challenger_prediction=challenger_prediction,
                 incumbent_prediction=incumbent_prediction,
                 feature_digest=feature_digest,
+                feature_panel_digest=feature_panel_digest,
                 challenger_state_digest=_digest(challenger_before, "challenger state"),
                 incumbent_state_digest=_digest(incumbent_before, "incumbent state"),
             )
@@ -352,6 +375,7 @@ class CausalPromotionModel:
                     incumbent_prediction=incumbent_prediction,
                     feature_digest=feature_digest,
                     gate_status=self.gate.status.value,
+                    feature_panel_digest=feature_panel_digest,
                 )
             )
             self._prediction_count += 1
@@ -402,6 +426,7 @@ class CausalPromotionModel:
                         "prediction_id": pending.prediction_id,
                         "target_id": pending.target_id,
                         "feature_digest": pending.feature_digest,
+                        "feature_panel_digest": pending.feature_panel_digest,
                         "utility_spec_id": "bounded_absolute_error.v1",
                         "challenger_state_digest": pending.challenger_state_digest,
                         "incumbent_state_digest": pending.incumbent_state_digest,
@@ -442,6 +467,7 @@ class CausalPromotionModel:
                     "challenger_prediction": value.challenger_prediction,
                     "incumbent_prediction": value.incumbent_prediction,
                     "feature_digest": value.feature_digest,
+                    "feature_panel_digest": value.feature_panel_digest,
                     "challenger_state_digest": value.challenger_state_digest,
                     "incumbent_state_digest": value.incumbent_state_digest,
                 }
@@ -524,6 +550,9 @@ class CausalPromotionModel:
             feature_digest = _text(raw.get("feature_digest"), "pending feature digest")
             if feature_digest != _digest_features(features):
                 raise CausalPromotionError("pending feature digest does not match features")
+            feature_panel_digest = _optional_panel_digest(
+                raw.get("feature_panel_digest"), "pending feature panel digest"
+            )
             challenger_digest = _text(
                 raw.get("challenger_state_digest"), "pending challenger state digest"
             )
@@ -537,6 +566,7 @@ class CausalPromotionModel:
                 challenger_prediction=challenger_prediction,
                 incumbent_prediction=incumbent_prediction,
                 feature_digest=feature_digest,
+                feature_panel_digest=feature_panel_digest,
                 challenger_state_digest=challenger_digest,
                 incumbent_state_digest=incumbent_digest,
             )
@@ -598,6 +628,12 @@ class CausalPromotionReplayResult:
         return isinstance(gate_state, Mapping) and gate_state.get(
             "promoted_challenger_id"
         ) is not None
+
+    @property
+    def feature_panel_digests(self) -> tuple[str | None, ...]:
+        """Return canonical feature-panel identities captured per step."""
+
+        return tuple(item.feature_panel_digest for item in self.steps)
 
     @property
     def state(self) -> ReplayState:

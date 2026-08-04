@@ -376,6 +376,18 @@ class AsOfSnapshot:
         ).hexdigest()
 
     @property
+    def universe_digest(self) -> str:
+        """Digest only the membership view used at this decision boundary."""
+
+        payload = {
+            "decision_time": _time_json(self.decision_time),
+            "universe": [value.to_dict() for value in self.universe],
+        }
+        return hashlib.sha256(
+            json.dumps(payload, sort_keys=True, separators=(",", ":")).encode()
+        ).hexdigest()
+
+    @property
     def memberships(self) -> tuple[UniverseMembership, ...]:
         return self.universe
 
@@ -401,6 +413,147 @@ class AsOfSnapshot:
             membership.instrument_id == instrument_id and membership.contains(point)
             for membership in self.universe
         )
+
+
+@dataclass(frozen=True, slots=True)
+class PointInTimePanel:
+    """Canonical cross-asset rows selected from one as-of snapshot.
+
+    A panel is intentionally constructed from explicit record IDs.  The
+    snapshot has already applied availability and source-revision rules; this
+    layer adds deterministic instrument ordering, one record per instrument,
+    fixed field ordering, and a membership digest.  It is a data-boundary
+    artifact, not a vendor adapter or a claim that the selected universe is
+    economically complete.
+    """
+
+    decision_time: TimePoint
+    instrument_ids: tuple[str, ...]
+    record_ids: tuple[str, ...]
+    field_names: tuple[str, ...]
+    values: tuple[tuple[float, ...], ...]
+    universe_digest: str
+
+    def __post_init__(self) -> None:
+        decision = _time(self.decision_time, "decision_time")
+        instruments = tuple(_text(value, "instrument_id") for value in self.instrument_ids)
+        records = tuple(_text(value, "record_id") for value in self.record_ids)
+        fields = tuple(_text(value, "field name") for value in self.field_names)
+        if not instruments or len(set(instruments)) != len(instruments):
+            raise ValueError("instrument_ids must be non-empty and unique")
+        if tuple(sorted(instruments)) != instruments:
+            raise ValueError("instrument_ids must be in canonical sorted order")
+        if len(records) != len(instruments) or len(set(records)) != len(records):
+            raise ValueError("record_ids must align one-to-one with instruments")
+        if not fields or len(set(fields)) != len(fields):
+            raise ValueError("field_names must be non-empty and unique")
+        raw_rows = tuple(tuple(_finite(item, "panel value") for item in row) for row in self.values)
+        if len(raw_rows) != len(instruments) or any(len(row) != len(fields) for row in raw_rows):
+            raise ValueError("panel values do not match instrument and field dimensions")
+        universe_digest = _text(self.universe_digest, "universe_digest")
+        if len(universe_digest) != 64 or any(
+            item not in "0123456789abcdefABCDEF" for item in universe_digest
+        ):
+            raise ValueError("universe_digest must be a 64-character hexadecimal digest")
+        object.__setattr__(self, "decision_time", decision)
+        object.__setattr__(self, "instrument_ids", instruments)
+        object.__setattr__(self, "record_ids", records)
+        object.__setattr__(self, "field_names", fields)
+        object.__setattr__(self, "values", raw_rows)
+        object.__setattr__(self, "universe_digest", universe_digest.lower())
+
+    @classmethod
+    def from_snapshot(
+        cls,
+        snapshot: AsOfSnapshot,
+        record_ids: Sequence[str],
+        field_names: Sequence[str],
+        *,
+        require_membership: bool = True,
+    ) -> "PointInTimePanel":
+        """Select and canonicalize one row per instrument from a snapshot."""
+
+        if not isinstance(snapshot, AsOfSnapshot):
+            raise TypeError("snapshot must be an AsOfSnapshot")
+        if isinstance(record_ids, (str, bytes, bytearray)):
+            raise TypeError("record_ids must be a sequence of record IDs")
+        selected_ids = tuple(_text(value, "record_id") for value in record_ids)
+        if not selected_ids or len(set(selected_ids)) != len(selected_ids):
+            raise ValueError("record_ids must be non-empty and unique")
+        if isinstance(field_names, (str, bytes, bytearray)):
+            raise TypeError("field_names must be a sequence of field names")
+        fields = tuple(_text(value, "field name") for value in field_names)
+        if not fields or len(set(fields)) != len(fields):
+            raise ValueError("field_names must be non-empty and unique")
+        if not isinstance(require_membership, bool):
+            raise TypeError("require_membership must be boolean")
+
+        rows: list[tuple[str, str, tuple[float, ...]]] = []
+        seen_instruments: set[str] = set()
+        for record_id in selected_ids:
+            observation = snapshot.observation(record_id)
+            if not _le(observation.event_time, snapshot.decision_time, "event/decision time"):
+                raise UnavailableEventError(
+                    f"observation {record_id!r} has a future event time"
+                )
+            if require_membership and not snapshot.is_member(
+                observation.instrument_id, at=observation.event_time
+            ):
+                raise UnavailableEventError(
+                    f"instrument {observation.instrument_id!r} is not in the point-in-time universe"
+                )
+            if observation.instrument_id in seen_instruments:
+                raise AmbiguousEventError(
+                    f"multiple panel records selected for instrument {observation.instrument_id!r}"
+                )
+            seen_instruments.add(observation.instrument_id)
+            values: list[float] = []
+            for field in fields:
+                try:
+                    values.append(_finite(observation.fields[field], f"field {field!r}"))
+                except KeyError as exc:
+                    raise UnavailableEventError(
+                        f"observation {record_id!r} is missing field {field!r}"
+                    ) from exc
+            rows.append((observation.instrument_id, record_id, tuple(values)))
+
+        rows.sort(key=lambda item: item[0])
+        return cls(
+            decision_time=snapshot.decision_time,
+            instrument_ids=tuple(item[0] for item in rows),
+            record_ids=tuple(item[1] for item in rows),
+            field_names=fields,
+            values=tuple(item[2] for item in rows),
+            universe_digest=snapshot.universe_digest,
+        )
+
+    @property
+    def digest(self) -> str:
+        """Content identity of the canonical panel artifact."""
+
+        payload = {
+            "decision_time": _time_json(self.decision_time),
+            "instrument_ids": list(self.instrument_ids),
+            "record_ids": list(self.record_ids),
+            "field_names": list(self.field_names),
+            "values": [list(row) for row in self.values],
+            "universe_digest": self.universe_digest,
+        }
+        return hashlib.sha256(
+            json.dumps(payload, sort_keys=True, separators=(",", ":")).encode()
+        ).hexdigest()
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "kind": "point_in_time_panel",
+            "decision_time": _time_json(self.decision_time),
+            "instrument_ids": list(self.instrument_ids),
+            "record_ids": list(self.record_ids),
+            "field_names": list(self.field_names),
+            "values": [list(row) for row in self.values],
+            "universe_digest": self.universe_digest,
+            "digest": self.digest,
+        }
 
 
 def _latest_by(
@@ -584,6 +737,7 @@ __all__ = [
     "MissingLabelError",
     "LabelObservation",
     "MarketObservation",
+    "PointInTimePanel",
     "UNIVERSE_PRECEDENCE",
     "UnavailableEventError",
     "UniverseMembership",

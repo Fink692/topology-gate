@@ -145,6 +145,14 @@ source revision, and deterministic ingest order. Its snapshots exclude future
 revisions and expose missing labels explicitly. It is a causal contract and
 test fixture, not a market-data vendor or a survivorship-bias guarantee.
 
+`PointInTimePanel` is the explicit cross-asset selection contract layered on an
+as-of snapshot. It requires one visible record per instrument, a fixed field
+schema, deterministic instrument ordering, and carries both a panel digest and
+the snapshot's universe digest. Instrument-labelled `causal_numeric` and
+`causal_promotion` plans use that canonical ordering; unlabelled plans remain
+explicit legacy row adapters. This does not supply a vendor universe, dynamic
+membership history, or evidence of market completeness.
+
 `CausalReplay` is the dependency-light transition boundary for a timestamped
 study. It materializes one `AsOfSnapshot`, settles only labels visible before
 the next prediction, rejects pre-available targets, and emits a hash-chained
@@ -160,7 +168,8 @@ design. Use `evaluate_economic_path` only with separately sourced
 `RealizedReturn` and `ExecutionCost` records; missing returns and costs fail
 closed, and abstentions remain visible. When the configured topology backend
 produces an exact finite artifact, its 64-character content digest is carried
-into the per-step causal telemetry; malformed digests fail closed.
+into the per-step causal telemetry; canonical feature/state panel digests are
+carried alongside it; malformed digests fail closed.
 
 `run_causal_promotion_replay` composes the same transition with paired
 challenger/incumbent learners and the existing alpha-spending promotion gate.
