@@ -248,6 +248,13 @@ class StudyInputBundle:
             raise StudyInputError("run_manifest must be a RunManifest")
         if not isinstance(self.study_manifest, StudyManifest):
             raise StudyInputError("study_manifest must be a StudyManifest")
+        if (
+            self.study_manifest.spec.run_spec.digest
+            != self.run_manifest.spec.digest
+        ):
+            raise StudyInputError(
+                "study manifest run specification does not match run manifest"
+            )
         if not isinstance(self.timeline, StudyTimeline):
             raise StudyInputError("timeline must be a StudyTimeline")
         if not isinstance(self.as_of_book, AsOfBook):

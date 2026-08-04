@@ -17,6 +17,10 @@ every decision snapshot before model execution. It rejects a visible target
 label, a mismatched expected universe, a sealed holdout read, or incomplete
 economic evidence.
 
+The bundle also rejects a `StudyManifest` whose embedded `RunSpec` does not
+match the supplied `RunManifest`; source, split, and execution identities must
+refer to the same registered run.
+
 ```python
 from topology_gate import (
     StudyInputBundle,

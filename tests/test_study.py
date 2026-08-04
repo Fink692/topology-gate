@@ -203,6 +203,29 @@ def test_timeline_rejects_ambiguous_or_misaligned_order(kwargs: dict[str, object
         StudyTimeline(**kwargs)
 
 
+def test_bundle_rejects_a_study_manifest_from_a_different_run() -> None:
+    mismatched = RunManifest(
+        RunSpec(
+            run_id="different-study-run",
+            input_vintage_id="vendor-vintage:v1",
+            universe_id="universe:v1",
+            config_id="config:v1",
+            backend_id="backend:v1",
+            dependency_id="deps:v1",
+            seed_id="seed:v1",
+            thread_id="thread:v1",
+        )
+    )
+
+    with pytest.raises(StudyInputError, match="run specification"):
+        StudyInputBundle(
+            run_manifest=mismatched,
+            study_manifest=_study_manifest(),
+            timeline=StudyTimeline((1,), ("t1",), (0,), (("ES",),)),
+            as_of_book=_book(),
+        )
+
+
 def test_bundle_audit_requires_complete_universe_and_economic_records() -> None:
     timeline = StudyTimeline(
         decision_times=(1, 2),
