@@ -143,6 +143,12 @@ compileall. Coverage is reported from CPython 3.10 only for this local run.
   is synthetic control-layer evidence only. See
   [`docs/integrated-synthetic-study.md`](../docs/integrated-synthetic-study.md)
   and [`reports/integrated-synthetic-study.json`](integrated-synthetic-study.json).
+- The vendor handoff template was generated and JSON-validated. It records all
+  six required market roles as `missing`, keeps `market_claim_authorized` and
+  `holdout_opened` false, and provides the exact post-handoff intake command.
+  This is an operational blocker receipt, not market evidence; see
+  [`docs/vendor-handoff-template.md`](../docs/vendor-handoff-template.md) and
+  [`reports/vendor-handoff-status.json`](vendor-handoff-status.json).
 - Stationary block-bootstrap tests: passed for seeded reproducibility, source
   identity binding, feature-dimension rejection, and result-level factory
   identity recording.

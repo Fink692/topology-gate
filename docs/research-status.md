@@ -33,3 +33,8 @@ metadata, realized returns, execution costs, and capacity evidence. Then run
 the ordered calibration, tuning, validation, and sealed holdout workflow in
 [`study-runbook.md`](study-runbook.md). The intake and package audit fail closed
 when those artifacts are absent or incomplete.
+
+The exact machine-readable request can be regenerated with
+[`vendor_handoff_template.py`](../examples/vendor_handoff_template.py); the
+current workspace status is recorded in
+[`vendor-handoff-status.json`](../reports/vendor-handoff-status.json).

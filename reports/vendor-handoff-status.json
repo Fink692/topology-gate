@@ -1,0 +1,126 @@
+{
+  "holdout_opened": false,
+  "kind": "topology_gate_vendor_handoff_template",
+  "limitations": [
+    "This template contains no observations and cannot authorize a study.",
+    "A final adjusted-price history cannot satisfy the point-in-time gate.",
+    "Holdout remains sealed until validation audit and explicit release."
+  ],
+  "market_claim_authorized": false,
+  "next_command_after_handoff": "python examples/market_source_intake.py --package handoff/study-source-package.json --raw-dir handoff/raw --all-pre-holdout --receipt-dir handoff/source-audits",
+  "protocol": "pl-ridge-certified-promotion:v1",
+  "required_artifacts": [
+    {
+      "filename": "delistings.jsonl",
+      "notes": "Retain failed instruments through the final visible interval; explain missing returns.",
+      "required_fields": [
+        "instrument_id_or_target_id",
+        "event_time",
+        "available_time",
+        "source_revision",
+        "ingest_sequence",
+        "delisting_time",
+        "delisting_return",
+        "delisting_reason"
+      ],
+      "role": "delistings",
+      "status": "missing"
+    },
+    {
+      "filename": "execution-costs.jsonl",
+      "notes": "Costs and capacity must be sourced per decision/target when economic claims are made.",
+      "required_fields": [
+        "instrument_id_or_target_id",
+        "event_time",
+        "available_time",
+        "source_revision",
+        "ingest_sequence",
+        "target_id",
+        "cost_rate",
+        "turnover",
+        "capacity_limit"
+      ],
+      "role": "execution-costs",
+      "status": "missing"
+    },
+    {
+      "filename": "labels.jsonl",
+      "notes": "Label availability must be later than the decision event and must not use future revisions.",
+      "required_fields": [
+        "instrument_id_or_target_id",
+        "event_time",
+        "available_time",
+        "source_revision",
+        "ingest_sequence",
+        "target_id",
+        "label_value",
+        "label_available_time"
+      ],
+      "role": "labels",
+      "status": "missing"
+    },
+    {
+      "filename": "market-observations.jsonl",
+      "notes": "Use permanent instrument IDs and preserve raw vendor prices plus corporate-action fields.",
+      "required_fields": [
+        "instrument_id_or_target_id",
+        "event_time",
+        "available_time",
+        "source_revision",
+        "ingest_sequence",
+        "open",
+        "high",
+        "low",
+        "close",
+        "volume"
+      ],
+      "role": "market-observations",
+      "status": "missing"
+    },
+    {
+      "filename": "realized-returns.jsonl",
+      "notes": "Keep realized returns separate from labels and retain observed/censored status.",
+      "required_fields": [
+        "instrument_id_or_target_id",
+        "event_time",
+        "available_time",
+        "source_revision",
+        "ingest_sequence",
+        "target_id",
+        "return_value",
+        "return_available_time"
+      ],
+      "role": "realized-returns",
+      "status": "missing"
+    },
+    {
+      "filename": "universe-membership.jsonl",
+      "notes": "Membership must be point-in-time visible at each decision boundary.",
+      "required_fields": [
+        "instrument_id_or_target_id",
+        "event_time",
+        "available_time",
+        "source_revision",
+        "ingest_sequence",
+        "membership_start",
+        "membership_end",
+        "is_member"
+      ],
+      "role": "universe-membership",
+      "status": "missing"
+    }
+  ],
+  "required_provenance": {
+    "adapter_revision": "pinned repository adapter revision",
+    "dataset_id": "vendor-provided",
+    "license_id": "vendor-provided",
+    "provider_id": "vendor-provided",
+    "raw_sha256_and_byte_size": "required for every artifact",
+    "release_id": "vendor-provided",
+    "retrieved_at": "vendor retrieval timestamp",
+    "vintage_id": "must match the run manifest"
+  },
+  "source_vintage_id": "point-in-time-source:required",
+  "status": "awaiting_vendor_handoff",
+  "version": 1
+}
