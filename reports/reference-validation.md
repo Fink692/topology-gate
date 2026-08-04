@@ -12,8 +12,8 @@ Scope: bounded research/control layer only; no live-data or execution claim
 - Mypy: passed on all 20 source modules.
 - Dependency-light root import: passed without NumPy site packages.
 - Wheel build and isolated target-directory smoke: passed; SHA-256
-  `433881c82b73eadaa66484f0de15fc9d8a6ae1f02f54e9a162406e20dfcad81f`;
-  the smoke also exercised the public point-in-time panel contract from the
+  `07855d8fec8151764377588018187833af2634012453db71e08a2ccd40150fe4`;
+  the smoke also exercised the public e-process calibration API from the
   wheel.
 - Authenticated checkpoint, manifest digest, promotion/evidence state, and
   detached restore tests: passed.
