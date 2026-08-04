@@ -88,6 +88,23 @@ source_audit = restored.audit_market(
 )
 ```
 
+For a filesystem handoff, the checked-in intake command performs the same
+operation while requiring one safe filename for every declared artifact:
+
+```powershell
+$env:PYTHONPATH = 'src'
+py -3.12 examples\market_source_intake.py `
+  --package handoff\study-source-package.json `
+  --raw-dir handoff\raw `
+  --phase validation `
+  --receipt handoff\validation-source-audit.json
+```
+
+It verifies the package digest, exact raw bytes, required market roles,
+complete point-in-time universe, observed economic records, and capacity
+evidence. Missing, extra, unsafe, or tampered artifacts fail before a study
+run starts. The command is an intake verifier, not a vendor-native parser.
+
 The ordinary `audit(...)` path remains appropriate for synthetic or partial
 engineering runs. It does not authorize a market-performance claim.
 
