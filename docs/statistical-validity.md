@@ -92,6 +92,14 @@ artifacts also emit a content digest through `StreamingTopologyResult` and
 `CausalStep`, so a prediction can be linked to the finite topology evidence
 without treating the derived feature vector as the artifact itself.
 
+`PersistentLaplacianCUSUM` is an explicit exploratory controller built on that
+backend. It extracts configured Betti counts and positive spectrum values,
+uses only earlier valid artifacts for robust marginal standardization, and
+applies a bounded non-negative CUSUM update. Its strict stream state includes
+the rolling cloud, spectral reference history, backend identity, and evidence
+digests. This makes the proposed control experiment reproducible, but it does
+not supply a null distribution, dependence correction, or level-α guarantee.
+
 The default reflected CUSUM-like score, topology alarm, score-to-forgetting
 map, and challenger promotion statistics are exploratory unless an independent
 calibration study establishes their assumptions and operating characteristics.

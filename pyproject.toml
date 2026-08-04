@@ -83,8 +83,8 @@ select = ["E", "F", "I"]
 ignore = ["E501"]
 
 [tool.topology_gate.release]
-# This is the currently exercised release-gate interpreter. A future release
-# may add a supported-version matrix; the package metadata remains >=3.10.
-tested_python = "3.12"
+# The CI/release gate exercises every supported interpreter in the package
+# metadata; the direct dependency pins remain captured in the 3.12 baseline.
+tested_python = "3.10,3.11,3.12"
 direct_dev_test_dependencies = "exact pins in project.optional-dependencies"
 transitive_dependency_policy = "resolver-managed; not hash-locked"

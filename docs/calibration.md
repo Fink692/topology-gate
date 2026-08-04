@@ -5,6 +5,13 @@ calibrated false-alarm level. Before using it to accelerate forgetting, run a
 declared null experiment with `topology_gate.calibration.calibrate_null` and a
 declared synthetic-shift experiment with `calibrate_shift`.
 
+For `PersistentLaplacianCUSUM`, freeze the backend identity, cloud and spectrum
+widths, Betti dimensions, prior-only calibration window, and forgetting map in
+the study manifest. The controller's strict state and topology evidence
+digests belong in the run artifact, but a passing synthetic shift is still not
+authorization for market acceleration; the resulting null certificate must
+bind to the controller identity and the exact dependence-preserving factory.
+
 Each result records:
 
 - detector identity and experiment configuration hash;

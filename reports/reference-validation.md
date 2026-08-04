@@ -5,18 +5,18 @@ Interpreter: CPython 3.12.10
 Scope: bounded research/control layer only; no live-data or execution claim
 
 Supported-interpreter matrix: CPython 3.10.11 and 3.11.15 also passed the full
-222-test suite, Ruff, mypy, and compileall in isolated environments. Coverage
+227-test suite, Ruff, mypy, and compileall in isolated environments. Coverage
 is reported from CPython 3.12 only.
 
 ## Reproducible engineering checks
 
-- Full suite: **222 passed**.
-- Configured coverage run: **80.46%** total coverage.
+- Full suite: **227 passed**.
+- Configured coverage run: **80.59%** total coverage.
 - Ruff: passed on `src` and `tests`.
-- Mypy: passed on all 20 source modules.
+- Mypy: passed on all 21 source modules.
 - Dependency-light root import: passed without NumPy site packages.
 - Wheel build and isolated target-directory smoke: passed; SHA-256
-  `770fac13ecedc05baeaf38448e7c3b9e692a8471d1c6a9ff9d2576fe55911205`;
+  `f4b94fad73a445fecabf22a747ef82c4892f203c0f3089ba0409b600542b10d4`;
   the smoke exercised strict online-state/checkpoint restore, strict
   `RunManifest`/`StudyManifest` restore, canonical `AsOfBook` source restore,
   digest-bound `EconomicEvidence` selection/evaluation with cutoff provenance,
@@ -78,6 +78,11 @@ is reported from CPython 3.12 only.
   and detector-certificate mismatch rejection.
 - Exact finite persistence algebra, PSD/eigen residual, permutation/duplicate,
   digest, and resource-cap invariants: passed.
+- Exploratory persistent-spectrum CUSUM tests: passed for prior-only
+  standardization, Betti/positive-spectrum extraction, persistent artifact
+  provenance, checkpointed one-shot/resumed equivalence, strict state-schema
+  rejection, and transactional rollback on backend contract failure. This is
+  an engineering test of the controller, not calibration evidence.
 - Configured exact-backend tests: passed for complete evidence return, stable
   filtration/solver identity, cloud/spectrum-width compatibility, causal
   prefix equivalence, checkpoint replay, transactional stream rollback on
@@ -127,8 +132,8 @@ therefore fail-closed.
 | Gate | Disposition | Evidence |
 |---|---|---|
 | G0 identity/claim freeze | Partial/pass for the declared protocol | `RunSpec`, `RunManifest`, `StudySpec`, sealed/opened `StudyManifest`, evidence config, as-of records, and authenticated checkpoint identities exist; no full vendor input manifest or shared event engine yet. |
-| G1 exact persistent MVP | Pass for bounded reference scope | `persistent.py` plus hand-built and algebraic invariants; only the declared finite VR/F2/q/pair construction is covered. |
-| G2 calibrated forgetting | Fail for a calibrated claim | Harness exists and caught a false-alarm failure; no independent market/dependence calibration artifact authorizes accelerated forgetting. |
+| G1 exact persistent MVP | Pass for bounded reference scope | `persistent.py` plus hand-built and algebraic invariants, and the exploratory `PersistentLaplacianCUSUM` controller; only the declared finite VR/F2/q/pair construction is covered. |
+| G2 calibrated forgetting | Fail for a calibrated claim | The persistent-spectrum controller and calibration harness are exercised, and the harness caught a false-alarm failure; no independent market/dependence calibration artifact authorizes accelerated forgetting. |
 | G3 recursive transactional state | Partial/pass for the migrated path | `CausalReplay` drives numerical detector/RLS plus paired challenger/`PromotionGate` state with prediction-time factor/utility capture, model-state rollback, and detached restore; legacy workers and the generic evidence-ledger path are not all one transaction. |
 | G4 causal replay/recovery | Partial/pass for the migrated path | `AsOfBook`, `PointInTimePanel`, `StudyManifest` phase checks, `CausalReplay`, `CausalRLSModel`, paired promotion, delayed-label ledger, chunk state, HMAC restore, prefix invariance, future append acceptance, consumed-prefix revision rejection, canonical panel identity, and terminal pending cleanup are tested; legacy row adapters remain compatibility paths. |
 | G5 economic validation | Contract pass; market evidence not evaluated | `economic.py` is fail-closed for separate returns/costs and explicit abstention accounting, and `StudyManifest` records a sealed holdout boundary, but no point-in-time vendor data, capacity, delistings, or opened final holdout evidence are present. |

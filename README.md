@@ -34,6 +34,15 @@ explicit resource caps; it is not silently substituted into the rolling
 default and it does not calibrate the downstream CUSUM. A backend or solver
 failure during streaming rolls back the rejected observation.
 
+`PersistentLaplacianCUSUM` is the exploratory control-layer prototype for the
+research proposal. It keeps a bounded rolling point cloud, extracts declared
+Betti counts and positive persistent-Laplacian eigenvalues, standardizes the
+current state only against earlier valid states, and emits a CUSUM score plus a
+suggested forgetting factor. It implements the same `observe`/stream-state
+protocol as the causal numerical adapter, but its score is not calibrated by
+construction: accelerated forgetting still requires a matching approved
+finite-null certificate and a market study still requires point-in-time data.
+
 ## Install
 
 The core package has no runtime dependencies:

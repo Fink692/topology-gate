@@ -165,6 +165,16 @@ This is a bounded numerical reference path, not a market-calibrated detector.
 The backend identity is checkpointed; an incompatible cloud or failed exact
 calculation must be handled as an abstention/error by the surrounding replay.
 
+For the proposed persistent-spectrum control experiment, use
+`PersistentLaplacianCUSUM` with a `PersistentLaplacianBackend`. Its
+`backend_eigenvalues` must match the backend's configured spectrum width. The
+controller records Betti counts, positive eigenvalues, a prior-only robust
+reference, the CUSUM score, and the persistent artifact digest. It is an
+exploratory detector protocol: its suggested forgetting factor remains at the
+neutral maximum in causal RLS until an independently calibrated certificate
+authorizes acceleration. Persist `stream_state_dict()` in the same
+authenticated checkpoint as the learner and restore it before continuing.
+
 For a cross-asset causal run, construct `PointInTimePanel` from explicit
 as-of-visible record IDs and one fixed field schema. The adapter sorts
 instrument rows and emits a panel digest plus the snapshot universe digest;
