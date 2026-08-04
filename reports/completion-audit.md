@@ -17,7 +17,7 @@
 | Adaptive rough-path memory | `src/topology_gate/signatures.py`, `tests/test_signatures.py`, documentation, and synthetic receipt | Complete for causal signature-depth fixture |
 | Martingale stress training | `src/topology_gate/bridge.py`, `tests/test_bridge.py`, documentation, and finite stress receipt | Complete for finite discrete projection, not continuous-time pricing |
 | Integrated experiment matrix | `examples/integrated_synthetic_study.py` and `reports/integrated-synthetic-study.json` | Complete as synthetic evidence |
-| Free public-data path | `examples/public_market_diagnostic.py`, sensitivity and score-normalization scripts, and three public receipts | Complete as final-history diagnostics |
+| Free public-data path | `examples/public_market_diagnostic.py`, sensitivity and score-normalization scripts, three public receipts, and the Quantiacs private-track/source audit | Complete as private/final-history diagnostics; not market evidence |
 | Canonical six-role source boundary | `examples/normalize_vendor_handoff.py`, tests, synthetic handoff, and fail-closed audits | Complete as an intake protocol |
 | Point-in-time market evidence | `reports/vendor-handoff-status.json` | Not complete: all six required artifacts are missing |
 

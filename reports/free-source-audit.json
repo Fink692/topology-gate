@@ -1,0 +1,56 @@
+{
+  "schema": "topology_gate.free_source_audit",
+  "as_of": "2026-08-04",
+  "source": "Quantiacs NASDAQ-100 historical data",
+  "source_urls": [
+    "https://quantiacs.com/documentation/en/reference/data_load_functions.html",
+    "https://quantiacs.com/documentation/en/user_guide/data.html",
+    "https://quantiacs.com/faq",
+    "https://quantiacs.com/termsofuse"
+  ],
+  "cost_status": "free_for_private_strategy_development_and_data_access_per_source_faq",
+  "claim_status": "private-final-history diagnostic only",
+  "market_gate": "closed",
+  "redistribution_status": "not-permitted-by-current-source-terms",
+  "roles": {
+    "market-observations": {
+      "status": "partial",
+      "evidence": ["daily OHLCV and dividend fields are documented"],
+      "missing": ["required available_time/source_revision/ingest_sequence contract"]
+    },
+    "universe-membership": {
+      "status": "partial",
+      "evidence": ["documented is_liquid field and historical NASDAQ-100 universe"],
+      "missing": ["canonical interval ledger with membership availability timestamps"]
+    },
+    "delistings": {
+      "status": "partial",
+      "evidence": ["documentation states that delisted names are retained"],
+      "missing": ["delisting event type/reason and explicit delisting return ledger"]
+    },
+    "labels": {
+      "status": "not-provided",
+      "missing": ["versioned target-label artifact with availability metadata"]
+    },
+    "realized-returns": {
+      "status": "not-separated",
+      "missing": ["independent realized-return artifact and availability metadata"]
+    },
+    "execution-costs": {
+      "status": "not-provided",
+      "missing": ["fees, spread, slippage, impact, and capacity records"]
+    }
+  },
+  "allowed_use": [
+    "private local control-layer diagnostics",
+    "synthetic-to-public engineering comparison",
+    "detector and forgetting sensitivity checks"
+  ],
+  "prohibited_in_this_repository": [
+    "raw Quantiacs data",
+    "Quantiacs-specific derived tables",
+    "public performance synopsis",
+    "market-evidence claim"
+  ],
+  "next_unlock": "licensed point-in-time six-role source handoff"
+}

@@ -58,6 +58,13 @@ For a zero-cost path, run the public ETF diagnostic described in
 [`free-public-track.md`](free-public-track.md). It answers the control-layer
 hypothesis but deliberately does not upgrade the market-data gate.
 
+For a broader private no-cost diagnostic, the optional
+[`quantiacs-private-track.md`](quantiacs-private-track.md) documents a
+Quantiacs route with historical NASDAQ-100 membership/liquidity and retained
+delisted names. Its documented interface and terms still do not satisfy the
+six-role point-in-time market gate. The machine-readable decision is
+[`free-source-audit.json`](../reports/free-source-audit.json).
+
 The follow-up public sensitivity receipt is documented in
 [`public-market-sensitivity.md`](public-market-sensitivity.md). It found that
 the default public filtration produced a constant persistent state, while a
