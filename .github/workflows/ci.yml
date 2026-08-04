@@ -31,4 +31,6 @@ jobs:
       - name: Compile
         run: python -m compileall -q src tests
       - name: Build wheel
-        run: python -m pip wheel . --no-deps --wheel-dir "$RUNNER_TEMP/topology-gate-wheel"
+        run: |
+          export SOURCE_DATE_EPOCH="$(git log -1 --format=%ct)"
+          python -m pip wheel . --no-deps --wheel-dir "$RUNNER_TEMP/topology-gate-wheel"
