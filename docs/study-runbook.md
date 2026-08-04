@@ -4,6 +4,10 @@
 causal model. It does not parse vendor-native files and it does not claim that
 an input source is survivorship-free. The adapter must first produce:
 
+See [`docs/vendor-data-gate.md`](vendor-data-gate.md) for the required source,
+license, delisting, vintage, capacity, and holdout evidence before calling a
+run economic.
+
 - an `AsOfBook` containing event time, availability time, source revision, and
   point-in-time universe membership;
 - an `EconomicEvidence` bundle containing separately sourced realized returns
@@ -35,6 +39,9 @@ package = StudySourcePackage(
         provider_id="vendor-adapter:v1",
         dataset_id="cross-asset:v1",
         vintage_id=run_manifest.spec.input_vintage_id,
+        license_id=license_id,
+        release_id=source_release_id,
+        adapter_revision=adapter_revision,
         as_of_rule="available_time <= decision_time",
         revision_rule="latest visible source_revision at cutoff",
         universe_rule="visible membership interval at decision time",

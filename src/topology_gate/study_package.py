@@ -205,6 +205,9 @@ class StudySourceProvenance:
     provider_id: str
     dataset_id: str
     vintage_id: str
+    license_id: str
+    release_id: str
+    adapter_revision: str
     as_of_rule: str
     revision_rule: str
     universe_rule: str
@@ -219,6 +222,9 @@ class StudySourceProvenance:
             "provider_id",
             "dataset_id",
             "vintage_id",
+            "license_id",
+            "release_id",
+            "adapter_revision",
             "as_of_rule",
             "revision_rule",
             "universe_rule",
@@ -257,6 +263,9 @@ class StudySourceProvenance:
             "provider_id": self.provider_id,
             "dataset_id": self.dataset_id,
             "vintage_id": self.vintage_id,
+            "license_id": self.license_id,
+            "release_id": self.release_id,
+            "adapter_revision": self.adapter_revision,
             "as_of_rule": self.as_of_rule,
             "revision_rule": self.revision_rule,
             "universe_rule": self.universe_rule,
@@ -284,6 +293,9 @@ class StudySourceProvenance:
             "provider_id",
             "dataset_id",
             "vintage_id",
+            "license_id",
+            "release_id",
+            "adapter_revision",
             "as_of_rule",
             "revision_rule",
             "universe_rule",
@@ -301,6 +313,9 @@ class StudySourceProvenance:
                 provider_id=state["provider_id"],
                 dataset_id=state["dataset_id"],
                 vintage_id=state["vintage_id"],
+                license_id=state["license_id"],
+                release_id=state["release_id"],
+                adapter_revision=state["adapter_revision"],
                 as_of_rule=state["as_of_rule"],
                 revision_rule=state["revision_rule"],
                 universe_rule=state["universe_rule"],

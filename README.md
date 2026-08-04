@@ -246,6 +246,11 @@ checkpointed `minimum_labels` policy can burn in learner updates without
 advancing the e-process; it does not turn a synthetic or unbound run into a
 certified promotion claim.
 
+The external data acceptance checklist is in
+[`docs/vendor-data-gate.md`](docs/vendor-data-gate.md). It explicitly requires
+permanent identifiers, delisting/universe history, dated source cuts, separate
+cost/capacity evidence, and a sealed holdout.
+
 ## Calibration evidence
 
 Use [`docs/calibration.md`](docs/calibration.md) and the bounded
