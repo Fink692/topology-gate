@@ -158,17 +158,20 @@ closed, and the coverage assertion is included in the panel digest; omitting
 that argument remains an explicit partial-panel choice.
 
 The `causal_promotion` adapter extends the same state boundary to paired
-challenger/incumbent learners and a registered `PromotionGate`. It freezes both
-predictions before labels arrive, advances bounded paired utility only at
-observed settlement, and rolls back both learners and gate state on a failed
-transition. Its instrument-labelled plans use the same canonical panel
-selection and carry the panel identity into pending promotion evidence. Missing
-or terminally unresolved labels never advance the e-process. This is a tested
-composition boundary, not a calibrated market promotion result; the utility
-scale, eta policy, minimum-label burn-in, source manifest, and holdout evidence
-still require a pre-registered study. When configured, burn-in labels update
-the learners but remain outside the e-process until the declared count is met;
-that count is checkpointed and identity-bound.
+challenger/incumbent learners and a registered `PromotionGate`. Certified use
+requires registering the complete challenger family and calling
+`seal_registration()` before the first observation; the gate records the seal,
+rejects later registration, and restores the frozen family from checkpoints.
+It freezes both predictions before labels arrive, advances bounded paired
+utility only at observed settlement, and rolls back both learners and gate state
+on a failed transition. Its instrument-labelled plans use the same canonical
+panel selection and carry the panel identity into pending promotion evidence.
+Missing or terminally unresolved labels never advance the e-process. This is a
+tested composition boundary, not a calibrated market promotion result; the
+utility scale, eta policy, minimum-label burn-in, source manifest, and holdout
+evidence still require a pre-registered study. When configured, burn-in labels
+update the learners but remain outside the e-process until the declared count
+is met; that count is checkpointed and identity-bound.
 
 `calibrate_eprocess_null` provides a finite optional-stopping simulation for
 that bounded score primitive. It uses a predeclared constant eta, stops each
@@ -178,12 +181,12 @@ check; it does not verify the conditional-mean assumption for paired market
 utility or pay for data-dependent model selection.
 
 `calibrate_promotion_null` extends that check through the complete
-multi-challenger `PromotionGate`: challenger slots are registered before the
-stream is observed, geometric alpha allocations are recorded, and each path
-stops at its first selected promotion. This makes the selection boundary
-testable in a finite simulation. It remains empirical evidence for the
-declared score factory and predeclared epoch schedule, not a conditional-mean
-theorem or market-calibrated promotion certificate.
+multi-challenger `PromotionGate`: challenger slots are registered and sealed
+before the stream is observed, geometric alpha allocations are recorded, and
+each path stops at its first selected promotion. This makes the selection
+boundary testable in a finite simulation. It remains empirical evidence for
+the declared score factory and predeclared epoch schedule, not a
+conditional-mean theorem or market-calibrated promotion certificate.
 
 When a `StudyManifest` is supplied, both causal replay adapters validate the
 phase and timeline index before prediction and carry the manifest digest in

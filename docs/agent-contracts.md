@@ -222,6 +222,7 @@ Each agent below owns an outcome, a protocol boundary, and a proof obligation. T
 - the e-factor is non-negative, versioned, and predictable from pre-label information;
 - a comparison has an immutable start boundary and may not be reset after monitoring begins;
 - many concurrent challengers require pre-allocated alpha or an approved multiple-comparison policy;
+- the complete challenger family is registered and sealed before the first observation;
 - invalid/missing/contaminated scores remain visible and cannot silently improve a denominator;
 - promotion is single-shot, operationally gated, and effective at the next decision boundary.
 

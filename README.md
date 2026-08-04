@@ -202,7 +202,10 @@ challenger/incumbent learners and the existing alpha-spending promotion gate.
 Predictions are frozen at decision time; only an observed settled label can
 advance the gate. Missing, invalid, censored, or terminally unresolved labels
 clear pending context without creating evidence. The adapter requires a
-predeclared constant eta and bounded absolute-error utility scale. Its
+predeclared and sealed challenger family, a constant eta, and bounded
+absolute-error utility scale. Register every candidate and call
+`PromotionGate.seal_registration()` before the first observation; a later
+registration is rejected and the seal is checkpointed. Its
 checkpointed `minimum_labels` policy can burn in learner updates without
 advancing the e-process; it does not turn a synthetic or unbound run into a
 certified promotion claim.
@@ -228,7 +231,8 @@ conditional-mean assumption or a market-selection audit.
 
 Use `calibrate_promotion_null` when several challengers can compete. It runs
 the complete `PromotionGate`, records the geometric per-slot alpha allocation,
-and stops each path at the first selected promotion. It can also exercise a
+seals the pre-registered challenger family before scores are observed, and
+stops each path at the first selected promotion. It can also exercise a
 predeclared sequence of gate epochs, including the alpha spent after resets.
 This makes the finite selection boundary observable; it remains a
 declared-score simulation rather than a market-calibrated promotion

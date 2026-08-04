@@ -42,7 +42,10 @@ CAUSAL_PROMOTION_SCHEMA = "topology_gate.causal_promotion"
 # Pending comparisons now carry the canonical panel identity used to produce
 # their paired predictions.  Older promotion checkpoints must not resume
 # without that provenance.
-CAUSAL_PROMOTION_VERSION = 4
+# The registration-seal requirement is part of the certified controller
+# contract, so older checkpoints cannot silently resume under the stronger
+# pre-registration interpretation.
+CAUSAL_PROMOTION_VERSION = 5
 MAX_CAUSAL_PROMOTION_PENDING = 8_192
 
 
@@ -156,6 +159,7 @@ class CausalPromotionConfig:
     utility_cap: float = 1.0
     minimum_labels: int = 1
     max_pending: int = MAX_CAUSAL_PROMOTION_PENDING
+    require_sealed_registration: bool = True
 
     def __post_init__(self) -> None:
         for name in ("promotion_id", "challenger_id", "incumbent_id"):
@@ -181,6 +185,8 @@ class CausalPromotionConfig:
             or not 1 <= self.max_pending <= MAX_CAUSAL_PROMOTION_PENDING
         ):
             raise CausalPromotionError("max_pending exceeds the resource limit")
+        if not isinstance(self.require_sealed_registration, bool):
+            raise CausalPromotionError("require_sealed_registration must be boolean")
 
     @property
     def identity(self) -> str:
@@ -194,6 +200,7 @@ class CausalPromotionConfig:
             "utility_cap": self.utility_cap,
             "minimum_labels": self.minimum_labels,
             "max_pending": self.max_pending,
+            "require_sealed_registration": self.require_sealed_registration,
         }
         return _digest(payload, "promotion configuration")
 
@@ -276,6 +283,11 @@ class CausalPromotionModel:
     def _validate_gate(self, gate: PromotionGate) -> None:
         if gate.incumbent_id != self.config.incumbent_id:
             raise CausalPromotionError("promotion gate incumbent does not match config")
+        if self.config.require_sealed_registration and not gate.registration_sealed:
+            raise CausalPromotionError(
+                "certified causal promotion requires a pre-registered, sealed "
+                "challenger family"
+            )
         if self.config.challenger_id not in gate.challenger_ids:
             raise CausalPromotionError("promotion challenger is not registered with gate")
         state = gate.state_dict()
@@ -287,6 +299,39 @@ class CausalPromotionModel:
         gate_eta = _finite(eta_state.get("value"), "gate eta")
         if not math.isclose(gate_eta, self.config.eta, rel_tol=0.0, abs_tol=1.0e-15):
             raise CausalPromotionError("promotion config eta does not match gate eta")
+        selected_process: Mapping[str, Any] | None = None
+        for entry in state.get("challengers", ()):
+            if not isinstance(entry, Mapping):
+                continue
+            machine_state = entry.get("state")
+            if not isinstance(machine_state, Mapping):
+                continue
+            if machine_state.get("challenger_id") != self.config.challenger_id:
+                continue
+            process_state = machine_state.get("process")
+            if isinstance(process_state, Mapping):
+                selected_process = process_state
+            break
+        if selected_process is None:
+            raise CausalPromotionError("promotion challenger state is missing")
+        selected_eta_state = selected_process.get("eta")
+        if (
+            not isinstance(selected_eta_state, Mapping)
+            or selected_eta_state.get("kind") != "constant"
+        ):
+            raise CausalPromotionError(
+                "causal promotion requires a constant eta for the selected challenger"
+            )
+        selected_eta = _finite(selected_eta_state.get("value"), "challenger eta")
+        if not math.isclose(
+            selected_eta,
+            self.config.eta,
+            rel_tol=0.0,
+            abs_tol=1.0e-15,
+        ):
+            raise CausalPromotionError(
+                "promotion config eta does not match selected challenger eta"
+            )
 
     @property
     def steps(self) -> tuple[CausalPromotionStep, ...]:

@@ -1166,6 +1166,10 @@ def calibrate_promotion_null(
                 abs_tol=1.0e-15,
             ):
                 raise ValueError("promotion gate alpha allocation is inconsistent")
+        # The challenger family is fixed before any simulated score is
+        # observed.  This is the same registration boundary required by the
+        # certified causal adapter.
+        gate.seal_registration()
 
         first_epoch = settings.epochs
         first_step = settings.horizon

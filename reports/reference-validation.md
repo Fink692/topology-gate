@@ -6,16 +6,17 @@ Scope: bounded research/control layer only; no live-data or execution claim
 
 ## Reproducible engineering checks
 
-- Full suite: **207 passed**.
-- Configured coverage run: **80.24%** total coverage.
+- Full suite: **211 passed**.
+- Configured coverage run: **80.22%** total coverage.
 - Ruff: passed on `src` and `tests`.
 - Mypy: passed on all 20 source modules.
 - Dependency-light root import: passed without NumPy site packages.
 - Wheel build and isolated target-directory smoke: passed; SHA-256
-  `763940f6151c70e8224acce66ddd35170eb751b9f75c38522a461f1b0bd53900`;
+  `8692700803e6210e6bc6ec5c58727b50a5cfbabb8778f7beb523972cc5d05e1e`;
   the smoke exercised public complete-universe panel identity, certified
-  online authorization, promotion-calibration epochs, and checkpointed
-  minimum-label configuration from the wheel.
+  online authorization, promotion-calibration epochs, checkpointed
+  minimum-label configuration, and sealed challenger-registration restore
+  from the wheel.
 - Authenticated checkpoint, manifest digest, promotion/evidence state, and
   detached restore tests: passed.
 - Study-manifest tests: passed for canonical split identity, ordered
@@ -41,9 +42,10 @@ Scope: bounded research/control layer only; no live-data or execution claim
   bounds, malformed factory output, and identity recording.
 - Complete promotion-gate null harness tests: passed for pre-registered
   multi-challenger streams, geometric per-slot alpha allocation, fixed
-  registration-order tie handling, first-promotion stopping, repeated-epoch
-  alpha spending, reproducibility, negative-null closure, and malformed score
-  dimensions.
+  registration-order tie handling, sealed registration, checkpointed seal
+  restore, post-seal registration rejection, selected-eta consistency,
+  first-promotion stopping, repeated-epoch alpha spending, reproducibility,
+  negative-null closure, and malformed score dimensions.
 - Stationary block-bootstrap tests: passed for seeded reproducibility, source
   identity binding, feature-dimension rejection, and result-level factory
   identity recording.
@@ -53,8 +55,9 @@ Scope: bounded research/control layer only; no live-data or execution claim
 - Paired causal-promotion tests: passed for prediction-time freezing,
   settlement-only gate advancement, missing/unresolved cleanup, one-shot versus
   resumed state equivalence, constant-eta enforcement, checkpointed
-  minimum-label burn-in across chunked restore, internal state consistency,
-  and learner/gate rollback on failed updates;
+  minimum-label burn-in across chunked restore, sealed challenger-family and
+  selected-eta enforcement, internal state consistency, and learner/gate
+  rollback on failed updates;
   instrument-labelled promotion evidence carries the canonical panel digest.
 - Legacy online authorization tests: passed for neutral forgetting without a
   certificate, approved identity-matched acceleration, authorization telemetry,

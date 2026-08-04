@@ -17,6 +17,7 @@ from topology_gate.promotion import (  # noqa: E402
     GateStatus,
     InvalidEtaError,
     PromotionClosedError,
+    PromotionError,
     PromotionGate,
     PromotionState,
     PromotionStateMachine,
@@ -186,6 +187,34 @@ def test_multiple_challengers_use_explicit_geometric_alpha_control() -> None:
 
     with pytest.raises(PromotionClosedError):
         gate.observe_score("second", 1.0)
+
+
+def test_registration_seal_freezes_family_and_survives_checkpoint_restore() -> None:
+    gate = PromotionGate("incumbent", alpha=0.2, eta=0.5)
+    gate.register_challenger("first")
+    gate.register_challenger("second")
+
+    record = gate.seal_registration()
+
+    assert gate.registration_sealed is True
+    assert record.event == "registration_sealed"
+    assert gate.audit_records[-1] is record
+    with pytest.raises(PromotionError, match="registration is sealed"):
+        gate.register_challenger("late")
+
+    gate.observe_score("first", 0.0)
+    restored = PromotionGate.from_state_dict(gate.state_dict())
+    assert restored.registration_sealed is True
+    assert restored.state_dict() == gate.state_dict()
+
+
+def test_registration_cannot_be_sealed_after_observation() -> None:
+    gate = PromotionGate("incumbent", alpha=0.2, eta=0.5)
+    gate.register_challenger("first")
+    gate.observe_score("first", 0.0)
+
+    with pytest.raises(PromotionError, match="before observations"):
+        gate.seal_registration()
 
 
 def test_gate_reset_funds_a_new_epoch_without_reusing_old_alpha() -> None:

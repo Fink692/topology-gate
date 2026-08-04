@@ -52,11 +52,12 @@ audit.
 `calibrate_promotion_null` runs the same finite experiment through the full
 `PromotionGate`. Its score factory receives `(rng, horizon, challengers)` and
 returns one bounded stream per registered challenger. Candidates are
-pre-registered before observations, their geometric alpha allocations are
-recorded, and each path stops at the first gate promotion in registration
-order. A run may also declare repeated gate epochs; paths without a promotion
-reset the gate and spend the next preallocated geometric alpha slice. This
-makes multi-challenger selection and repeated-testing spending visible in the
+pre-registered and the gate registration is explicitly sealed before
+observations, their geometric alpha allocations are recorded, and each path
+stops at the first gate promotion in registration order. A run may also
+declare repeated gate epochs; paths without a promotion reset the gate and
+spend the next preallocated geometric alpha slice. This makes
+multi-challenger selection and repeated-testing spending visible in the
 evidence. It still only tests the supplied finite score factory; it cannot
 prove the conditional-mean null or market validity.
 

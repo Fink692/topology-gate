@@ -95,7 +95,10 @@ caller opts into `allow_untrusted=True`.
 
 Use `PromotionGate` on aligned, cost-adjusted challenger and incumbent utility
 streams. The gate clips the utility difference, uses a predictable e-factor,
-and requires an explicit alpha allocation for each challenger. Do not reset an
+and requires an explicit alpha allocation for each challenger. Register the
+complete challenger family and call `seal_registration()` before the first
+score in a certified run; the gate rejects post-seal candidates and persists
+the boundary in its checkpoint. Do not reset an
 active e-process after looking at an unfavorable segment. A promotion becomes
 an operational decision only after the caller's schema, data-quality, risk, and
 deployment checks pass.

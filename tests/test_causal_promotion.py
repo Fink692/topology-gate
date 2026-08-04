@@ -96,6 +96,7 @@ def observation_book(*, missing: bool = False) -> AsOfBook:
 def make_gate() -> PromotionGate:
     gate = PromotionGate("incumbent", alpha=0.9, eta=0.5)
     gate.register_challenger("challenger")
+    gate.seal_registration()
     return gate
 
 
@@ -195,6 +196,7 @@ def test_paired_predictions_only_advance_the_gate_at_label_settlement() -> None:
 def test_minimum_labels_burn_in_updates_learners_without_advancing_evidence() -> None:
     gate = PromotionGate("incumbent", alpha=0.99, eta=0.5)
     gate.register_challenger("challenger")
+    gate.seal_registration()
     promotion_config = config(minimum_labels=3)
     result = run(
         (1, 2, 3, 4, 5),
@@ -321,10 +323,38 @@ def test_state_identity_and_constant_eta_contract_are_fail_closed() -> None:
     with pytest.raises(CausalPromotionError, match="constant"):
         dynamic_gate = PromotionGate("incumbent", alpha=0.9, eta=lambda history: 0.5)
         dynamic_gate.register_challenger("challenger")
+        dynamic_gate.seal_registration()
         run(
             (1,),
             ("t1",),
             gate=dynamic_gate,
+            replay_config=replay_settings(finalize_unresolved=False),
+        )
+
+
+def test_certified_causal_promotion_requires_a_sealed_challenger_family() -> None:
+    gate = PromotionGate("incumbent", alpha=0.9, eta=0.5)
+    gate.register_challenger("challenger")
+
+    with pytest.raises(CausalPromotionError, match="sealed"):
+        run(
+            (1,),
+            ("t1",),
+            gate=gate,
+            replay_config=replay_settings(finalize_unresolved=False),
+        )
+
+
+def test_certified_causal_promotion_rejects_a_selected_challenger_eta_override() -> None:
+    gate = PromotionGate("incumbent", alpha=0.9, eta=0.5)
+    gate.register_challenger("challenger", eta=lambda history: 0.5)
+    gate.seal_registration()
+
+    with pytest.raises(CausalPromotionError, match="selected challenger"):
+        run(
+            (1,),
+            ("t1",),
+            gate=gate,
             replay_config=replay_settings(finalize_unresolved=False),
         )
 

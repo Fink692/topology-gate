@@ -48,6 +48,8 @@ DEFAULT_SCORE_BOUND = 1.0
 DEFAULT_ALPHA = 0.05
 DEFAULT_ETA = 0.5
 NULL_HYPOTHESIS = "E[bounded_score_t | F_(t-1)] <= 0"
+PROMOTION_GATE_SCHEMA = "topology_gate.promotion.gate"
+PROMOTION_GATE_VERSION = 2
 MAX_PROMOTION_HISTORY = 100_000
 MAX_PROMOTION_AUDIT_RECORDS = 200_000
 _SECRET_METADATA_KEY = re.compile(
@@ -1435,7 +1437,10 @@ class PromotionGate:
     epoch receives a geometric share of that slot.  The sum of all possible
     allocations across all challengers and epochs is at most the gate's
     ``global_alpha``.  A gate promotes the first challenger whose own
-    nonnegative e-process crosses its allocated threshold.
+    nonnegative e-process crosses its allocated threshold.  Call
+    :meth:`seal_registration` before collecting observations when the
+    challenger family is part of a certified study; a sealed gate rejects
+    further challenger registration and checkpoints that fact.
     """
 
     def __init__(
@@ -1463,6 +1468,7 @@ class PromotionGate:
         self._promoted_challenger_id: Optional[str] = None
         self._challengers: dict[str, _RegisteredChallenger] = {}
         self._allocated_alpha = 0.0
+        self._registration_sealed = False
         self._audit: list[AuditRecord] = []
 
     @property
@@ -1510,6 +1516,60 @@ class PromotionGate:
     @property
     def challenger_ids(self) -> Tuple[str, ...]:
         return tuple(self._challengers)
+
+    @property
+    def registration_sealed(self) -> bool:
+        """Whether the challenger registry is frozen for this gate."""
+
+        return self._registration_sealed
+
+    def seal_registration(self) -> AuditRecord:
+        """Freeze the challenger family before any evidence is collected.
+
+        The low-level gate remains usable without sealing for exploratory
+        workflows, but certified adapters can require this explicit boundary.
+        Sealing after an observation or epoch reset is rejected because the
+        candidate family would then have been selected using observed data.
+        """
+
+        if self._registration_sealed:
+            raise PromotionError("promotion gate challenger registration is already sealed")
+        if not self._challengers:
+            raise PromotionError("cannot seal promotion gate without a challenger")
+        if any(record.event != "register" for record in self._audit):
+            raise PromotionError(
+                "promotion gate registration must be sealed before observations or resets"
+            )
+        if any(
+            registered.machine.observations != 0
+            for registered in self._challengers.values()
+        ):
+            raise PromotionError(
+                "promotion gate registration must be sealed before observations"
+            )
+        record = self._gate_audit(
+            event="registration_sealed",
+            challenger_id=None,
+            wealth_before=self._initial_wealth,
+            wealth_after=self._initial_wealth,
+            alpha=self._global_alpha,
+            threshold=optional_stopping_threshold(
+                self._global_alpha,
+                initial_wealth=self._initial_wealth,
+            ),
+            state_before=self._status,
+            state_after=self._status,
+            reason=(
+                f"sealed {len(self._challengers)} pre-registered challenger slots; "
+                "future registration is disabled"
+            ),
+            append=False,
+        )
+        if len(self._audit) >= MAX_PROMOTION_AUDIT_RECORDS:
+            raise PromotionError("promotion gate audit history exceeds its resource limit")
+        self._registration_sealed = True
+        self._audit.append(record)
+        return record
 
     def _allocation(self, index: int, epoch: Optional[int] = None) -> float:
         return geometric_alpha_allocation(
@@ -1567,6 +1627,11 @@ class PromotionGate:
     ) -> ChallengerState:
         """Register a challenger and reserve its alpha slot permanently."""
 
+        if self._registration_sealed:
+            raise PromotionError(
+                "promotion gate challenger registration is sealed; "
+                "create a new pre-registered gate"
+            )
         if not isinstance(challenger_id, str) or not challenger_id:
             raise ValueError("challenger_id must be a non-empty string")
         if challenger_id in self._challengers:
@@ -1847,8 +1912,8 @@ class PromotionGate:
         if len(self._audit) > MAX_PROMOTION_AUDIT_RECORDS:
             raise PromotionError("promotion gate audit history exceeds its resource limit")
         return {
-            "version": 1,
-            "schema": "topology_gate.promotion.gate",
+            "version": PROMOTION_GATE_VERSION,
+            "schema": PROMOTION_GATE_SCHEMA,
             "incumbent_id": self._incumbent_id,
             "global_alpha": self._global_alpha,
             "score_bound": self._score_bound,
@@ -1857,6 +1922,7 @@ class PromotionGate:
             "status": self._status.value,
             "promoted_challenger_id": self._promoted_challenger_id,
             "allocated_alpha": self._allocated_alpha,
+            "registration_sealed": self._registration_sealed,
             "eta": _eta_state(self._default_eta),
             "challengers": [
                 {
@@ -1875,9 +1941,10 @@ class PromotionGate:
         *,
         eta: Optional[EtaRule] = None,
     ) -> "PromotionGate":
-        if not isinstance(state, Mapping) or state.get("version") != 1:
+        version = state.get("version") if isinstance(state, Mapping) else None
+        if type(version) is not int or version not in {1, PROMOTION_GATE_VERSION}:
             raise PromotionError("unsupported promotion gate state version")
-        if state.get("schema") != "topology_gate.promotion.gate":
+        if state.get("schema") != PROMOTION_GATE_SCHEMA:
             raise PromotionError("unsupported promotion gate state schema")
         gate_eta = _eta_from_state(state.get("eta", {}), eta)
         candidate = cls(
@@ -1901,12 +1968,19 @@ class PromotionGate:
             raise PromotionError("promotion challenger state exceeds its resource limit")
         restored: dict[str, _RegisteredChallenger] = {}
         seen_indices: set[int] = set()
-        for entry in challenger_raw:
+        for expected_index, entry in enumerate(challenger_raw, start=1):
             if not isinstance(entry, Mapping):
                 raise PromotionError("promotion challenger entry must be a mapping")
             index = entry.get("index")
-            if not isinstance(index, int) or isinstance(index, bool) or index < 1 or index in seen_indices:
-                raise PromotionError("promotion challenger indices must be unique positive integers")
+            if (
+                not isinstance(index, int)
+                or isinstance(index, bool)
+                or index != expected_index
+                or index in seen_indices
+            ):
+                raise PromotionError(
+                    "promotion challenger indices must be contiguous positive integers"
+                )
             machine_state = entry.get("state")
             if not isinstance(machine_state, Mapping):
                 raise PromotionError("promotion challenger is missing state")
@@ -1947,11 +2021,31 @@ class PromotionGate:
                 raise PromotionError("promotion gate status disagrees with challenger state")
         elif promoted_machines:
             raise PromotionError("open promotion gate contains a promoted challenger")
+        sealed_raw = state.get("registration_sealed", False)
+        if version == PROMOTION_GATE_VERSION and not isinstance(sealed_raw, bool):
+            raise PromotionError("promotion gate registration_sealed must be boolean")
+        registration_sealed = bool(sealed_raw) if version == PROMOTION_GATE_VERSION else False
+        seal_positions = [
+            position
+            for position, record in enumerate(audit)
+            if record.event == "registration_sealed"
+        ]
+        if registration_sealed:
+            if not restored or len(seal_positions) != 1:
+                raise PromotionError("sealed promotion gate has invalid registration audit")
+            seal_position = seal_positions[0]
+            if any(record.event != "register" for record in audit[:seal_position]):
+                raise PromotionError("sealed promotion gate has pre-registration evidence")
+            if any(record.event == "register" for record in audit[seal_position + 1 :]):
+                raise PromotionError("sealed promotion gate contains a post-seal registration")
+        elif seal_positions:
+            raise PromotionError("promotion gate has a seal audit without a sealed registry")
         candidate._epoch = epoch
         candidate._status = status
         candidate._promoted_challenger_id = None if promoted_id is None else str(promoted_id)
         candidate._challengers = restored
         candidate._allocated_alpha = allocated
+        candidate._registration_sealed = registration_sealed
         candidate._audit = audit
         return candidate
 
