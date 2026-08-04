@@ -26,6 +26,10 @@ from topology_gate.persistent import (
     PersistentLaplacianBackend,
     PersistentLaplacianConfig,
 )
+from topology_gate.pl_cusum import (
+    PersistentCUSUMConfig,
+    PersistentLaplacianCUSUM,
+)
 from topology_gate.replay import ReplayStatus
 from topology_gate.rls import RLS, RLSConfig
 from topology_gate.topology import RollingTopologyDetector, TopologyConfig
@@ -267,6 +271,107 @@ def test_exact_topology_artifact_digest_reaches_causal_step_telemetry() -> None:
     assert result.topology_evidence_digests[2] is not None
     assert len(result.topology_evidence_digests[2]) == 64
     assert result.steps[-1].topology_evidence_digest == result.topology_evidence_digests[2]
+
+
+def test_persistent_cusum_runs_inside_causal_rls_without_uncertified_acceleration() -> None:
+    observations = tuple(
+        observation(f"m{index}", index, float(value))
+        for index, value in enumerate((0.0, 1.0, 3.0, 2.0, 5.0, 8.0, 13.0, 21.0), 1)
+    )
+    labels = tuple(
+        label(f"t{index}", index + 1, float(index) / 10.0)
+        for index in range(1, len(observations) + 1)
+    )
+    book = AsOfBook(
+        observations=observations,
+        universe=(UniverseMembership("ES", 0, 100, 0, 0, 0),),
+        labels=labels,
+    )
+    bindings = {
+        f"t{index}": (FeatureBinding(f"m{index}", ("x",), "ES"),)
+        for index in range(1, len(observations) + 1)
+    }
+    state_bindings = {
+        f"t{index}": (FeatureBinding(f"m{index}", ("state",), "ES"),)
+        for index in range(1, len(observations) + 1)
+    }
+    feature_plan = CausalFeaturePlan(
+        bindings,
+        state_bindings_by_target=state_bindings,
+        require_membership=True,
+    )
+    backend = PersistentLaplacianBackend(
+        PersistentLaplacianConfig(
+            max_vertices=4,
+            max_simplices=100,
+            q=0,
+            n_eigenvalues=4,
+        )
+    )
+    topology = PersistentLaplacianCUSUM(
+        backend,
+        PersistentCUSUMConfig(
+            cloud_window=4,
+            min_points=4,
+            backend_eigenvalues=4,
+            positive_spectrum_width=2,
+            betti_dimensions=(0, 1),
+            calibration_window=2,
+            calibration_min_periods=2,
+            threshold=100.0,
+            forgetting_lambda_min=0.8,
+            forgetting_lambda_max=0.99,
+        ),
+    )
+
+    result = run_causal_rls_replay(
+        book,
+        tuple(range(1, len(observations) + 1)),
+        tuple(f"t{index}" for index in range(1, len(observations) + 1)),
+        plan=feature_plan,
+        learner=make_learner(),
+        detector=topology,
+        model_config=CausalRLSConfig(model_id="persistent-causal-rls"),
+    )
+
+    assert len(result.steps) == len(observations)
+    assert result.topology_evidence_digests[:3] == (None, None, None)
+    assert all(digest is not None for digest in result.topology_evidence_digests[3:])
+    assert result.steps[5].ready is True
+    assert all(step.acceleration_authorized is False for step in result.steps)
+    np.testing.assert_allclose(result.forgetting_factors, 0.99)
+    assert all(step.method == PersistentLaplacianCUSUM.method for step in result.steps)
+
+    first = run_causal_rls_replay(
+        book,
+        (1, 2, 3, 4),
+        ("t1", "t2", "t3", "t4"),
+        plan=feature_plan,
+        learner=make_learner(),
+        detector=PersistentLaplacianCUSUM(backend, topology.config),
+        model_config=CausalRLSConfig(model_id="persistent-causal-rls"),
+    )
+    second = run_causal_rls_replay(
+        book,
+        (5, 6, 7, 8),
+        ("t5", "t6", "t7", "t8"),
+        plan=feature_plan,
+        learner=make_learner(),
+        detector=PersistentLaplacianCUSUM(backend, topology.config),
+        model_config=CausalRLSConfig(model_id="persistent-causal-rls"),
+        model_state=first.state.model_state,
+        initial_state=first.state,
+    )
+
+    np.testing.assert_allclose(
+        np.r_[first.predictions, second.predictions], result.predictions
+    )
+    np.testing.assert_allclose(
+        np.r_[first.forgetting_factors, second.forgetting_factors],
+        result.forgetting_factors,
+    )
+    assert first.topology_evidence_digests + second.topology_evidence_digests == result.topology_evidence_digests
+    assert second.state.model_state == result.state.model_state
 
 
 def test_chunked_timestamped_replay_matches_one_shot_after_state_restore() -> None:
