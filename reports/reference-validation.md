@@ -5,22 +5,22 @@ Interpreter: CPython 3.12.10
 Scope: bounded research/control layer only; no live-data or execution claim
 
 Supported-interpreter matrix: CPython 3.10.11, 3.11.15, and 3.12.10 each
-passed the current 291-test suite; the 3.10 and 3.11 runs used isolated `uv`
+passed the current 296-test suite; the 3.10 and 3.11 runs used isolated `uv`
 environment. The CPython 3.12 release gate also passed Ruff, mypy, and
 compileall. Coverage is reported from CPython 3.12 only.
 
 ## Reproducible engineering checks
 
-- Full suite: **291 passed**.
-- Configured coverage run: **80.93%** total coverage.
+- Full suite: **296 passed**.
+- Configured coverage run: **80.91%** total coverage.
 - Coverage enforcement: configured floor **80%**; the current CPython 3.10,
-  3.11, and 3.12 runs each clear it at **80.93%** total.
+  3.11, and 3.12 runs each clear it at **80.91%** total.
 - Ruff: passed on `src`, `tests`, and `examples`.
-- Mypy: passed on all 26 source modules.
+- Mypy: passed on all 27 source modules.
 - Dependency-light root import: passed without NumPy site packages.
 - Wheel build and isolated target-directory smoke: passed; SHA-256
-  `94DD3795B479EBD8A3572BFD5A0F9B3AB2B9E07DB06C8E6B3DA0F2B3AEDE1758`;
-  source commit `617df40` supplied `SOURCE_DATE_EPOCH=1785873005`; two
+  `A4082C4380D7E2D05C8C7D5936ADA513F9F273068E12AB6BD5677C50BA715B30`;
+  source commit `373b3e7` supplied `SOURCE_DATE_EPOCH=1785873897`; two
   consecutive builds under the same source date produced the same digest.
   The smoke verified a dependency-free root import under `python -S` and
   optional worker exports in the numeric environment. CI now repeats the
@@ -90,6 +90,10 @@ compileall. Coverage is reported from CPython 3.12 only.
   reads and fail-closed rejection of missing directories and unsafe paths. The
   intake command still requires a vendor-produced package and raw payloads;
   it does not manufacture market data or certify the vendor source.
+- Heavy-tail expert-allocation tests: passed for Catoni outlier resistance,
+  full-information next-boundary selection, switching-cost behavior,
+  change-point history resets, deterministic checkpoint round-trip, identity
+  tamper rejection, and invalid-input/resource boundaries.
 - Stationary block-bootstrap tests: passed for seeded reproducibility, source
   identity binding, feature-dimension rejection, and result-level factory
   identity recording.
@@ -197,6 +201,12 @@ therefore fail-closed.
   for raw causal RLS, so it was rejected as an improvement in this fixture.
   This is a prototype negative result, not adapted-Wasserstein or market
   evidence; see [`reports/causal-transport-replay.md`](causal-transport-replay.md).
+- The heavy-tail expert-allocation diagnostic used four Student-t(df=2) paths.
+  Catoni allocation averaged net utility `33.0241` versus `32.9105` for an
+  ordinary-mean allocator, with 5.0 versus 6.5 mean switches; one of four
+  paths favored the ordinary mean. This is a mixed control-layer diagnostic,
+  not a heavy-tail regret or market result; see
+  [`reports/heavy-tail-expert-allocation.md`](heavy-tail-expert-allocation.md).
 
 ## Acceptance disposition
 
