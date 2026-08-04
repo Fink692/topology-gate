@@ -5,26 +5,27 @@ Interpreter: CPython 3.12.10
 Scope: bounded research/control layer only; no live-data or execution claim
 
 Supported-interpreter matrix: CPython 3.10.11 and 3.11.15 each passed the
-current 249-test suite in isolated `uv` environments. The CPython 3.12 release
+current 252-test suite in isolated `uv` environments. The CPython 3.12 release
 gate also passed Ruff, mypy, and compileall. Coverage is reported from CPython
 3.12 only.
 
 ## Reproducible engineering checks
 
-- Full suite: **249 passed**.
-- Configured coverage run: **80.58%** total coverage.
+- Full suite: **252 passed**.
+- Configured coverage run: **80.52%** total coverage.
 - Ruff: passed on `src` and `tests`.
 - Mypy: passed on all 23 source modules.
 - Dependency-light root import: passed without NumPy site packages.
 - Wheel build and isolated target-directory smoke: passed; SHA-256
-  `1c0f14b889946377a80619c5c94f2d3ef1d283bfbd1433c5f234a1dbeed7547f`;
-  source commit `a26df7b` supplied `SOURCE_DATE_EPOCH=1785862260`; two
+  `3c23eab5ef396f068d9113de2b4053b670b273ab980227b2540b7e1bc03070a8`;
+  source commit `7e6d4c4` supplied `SOURCE_DATE_EPOCH=1785862260`; two
   consecutive builds under the same source date produced the same digest;
   the smoke exercised canonical `StudySourcePackage` serialization/restoration,
   exact raw source-artifact ID-set and byte/size verification, strict
   `RunManifest`/`StudyManifest` restore, canonical `AsOfBook` source restore
   from the wheel, the license/release/adapter-revision provenance envelope,
-  and the role-bound `calibrate_threshold` split API plus certificate identity.
+  the role-bound `calibrate_threshold` split API plus certificate identity,
+  and the `StudySourceAudit` receipt round trip.
 - Authenticated checkpoint, manifest digest, promotion/evidence state, and
   detached restore tests: passed; checkpoint and online-state top-level schema
   drift is rejected before state mutation.
@@ -48,9 +49,11 @@ gate also passed Ruff, mypy, and compileall. Coverage is reported from CPython
 - Canonical study-source package tests: passed for tagged timeline round-trip,
   nested manifest/as-of/economic artifact restoration, provenance and package
   digest binding, raw-artifact byte/size fingerprints, exact complete
-  payload-ID verification, exact schema fields, and tamper rejection. The
-  provenance envelope records adapter policy but does not independently certify
-  vendor point-in-time claims.
+  payload-ID verification, exact schema fields, tamper rejection, and strict
+  market-source auditing of required roles, vintage binding, observed economic
+  records, and capacity evidence. The provenance envelope and receipt record
+  adapter policy and verified bytes but do not independently certify vendor
+  point-in-time claims.
 - Causal replay prediction-before-label, future-prefix invariance, explicit
   missing/invalid status, chained-record tamper detection, and model-state
   restore tests: passed; composite causal numerical and paired-promotion
@@ -161,12 +164,12 @@ therefore fail-closed.
 
 | Gate | Disposition | Evidence |
 |---|---|---|
-| G0 identity/claim freeze | Partial/pass for the declared protocol | `RunSpec`, `RunManifest`, `StudySpec`, sealed/opened `StudyManifest`, strict `StudyInputBundle`/`StudyTimeline` preflight, digest-verified `StudySourcePackage`/provenance/raw-artifact fingerprints, `run_causal_rls_study`/`run_causal_promotion_study`, evidence config, as-of records, and authenticated checkpoint identities exist; no vendor-native adapter or source dataset is present. |
+| G0 identity/claim freeze | Partial/pass for the declared protocol | `RunSpec`, `RunManifest`, `StudySpec`, sealed/opened `StudyManifest`, strict `StudyInputBundle`/`StudyTimeline` preflight, digest-verified `StudySourcePackage`/provenance/raw-artifact fingerprints, strict `StudySourceAudit` market gate, `run_causal_rls_study`/`run_causal_promotion_study`, evidence config, as-of records, and authenticated checkpoint identities exist; no vendor-native adapter or source dataset is present. |
 | G1 exact persistent MVP | Pass for bounded reference scope | `persistent.py` plus hand-built and algebraic invariants, and the exploratory `PersistentLaplacianCUSUM` controller; only the declared finite VR/F2/q/pair construction is covered. |
 | G2 calibrated forgetting | Synthetic protocol pass; market claim fail | `calibrate_threshold` now binds predeclared candidate selection to distinct role-bound observation factories and an independent evaluation split, and carries the selection identity into the certificate. The surrogate record includes a stricter-budget rejection; no independent market/dependence calibration artifact authorizes accelerated forgetting. |
 | G3 recursive transactional state | Partial/pass for the migrated path | `CausalReplay` drives numerical detector/RLS plus paired challenger/`PromotionGate` state with prediction-time factor/utility capture, model-state rollback, and detached restore; legacy workers and the generic evidence-ledger path are not all one transaction. |
 | G4 causal replay/recovery | Partial/pass for the migrated path | `AsOfBook`, `PointInTimePanel`, `StudyInputBundle`, `StudyTimeline`, digest-verified `StudySourcePackage`, `StudyManifest` phase checks, the RLS and paired-promotion study wrappers, `CausalReplay`, `CausalRLSModel`, paired promotion, delayed-label ledger, chunk state, HMAC restore, prefix invariance, future append acceptance, consumed-prefix revision rejection, canonical panel identity, and terminal pending cleanup are tested; legacy row adapters remain compatibility paths. |
-| G5 economic validation | Contract pass; market evidence not evaluated | `economic.py` is fail-closed for separate returns/costs and explicit abstention accounting, and `StudyManifest` records a sealed holdout boundary, but no point-in-time vendor data, capacity, delistings, or opened final holdout evidence are present. |
+| G5 economic validation | Contract pass; market evidence not evaluated | `economic.py` and `StudySourcePackage.audit_market` are fail-closed for separate returns/costs, explicit abstentions, required capacity evidence, and sealed holdout handling, but no point-in-time vendor data, capacity, delistings, or opened final holdout evidence are present. |
 
 The package remains research/alpha. The evidence needed to upgrade the two
 remaining scientific claims is explicit: a pre-registered dependence-aware
