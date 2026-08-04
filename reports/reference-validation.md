@@ -12,17 +12,17 @@ gate also passed Ruff, mypy, and compileall. Coverage is reported from CPython
 ## Reproducible engineering checks
 
 - Full suite: **247 passed**.
-- Configured coverage run: **80.60%** total coverage.
+- Configured coverage run: **80.62%** total coverage.
 - Ruff: passed on `src` and `tests`.
 - Mypy: passed on all 23 source modules.
 - Dependency-light root import: passed without NumPy site packages.
 - Wheel build and isolated target-directory smoke: passed; SHA-256
-  `4be0a0d7f4d5e9479c5ec7695a70e7100bf320c4dba8f339bcb1426ae1024532`;
-  source commit `c4f297a` supplied `SOURCE_DATE_EPOCH=1785860294`; two
+  `6277f019b96b2a4b9ad005a56909081e0687aa2b736cb803b95448b36617c393`;
+  source commit `1105250` supplied `SOURCE_DATE_EPOCH=1785860745`; two
   consecutive builds under the same source date produced the same digest;
   the smoke exercised canonical `StudySourcePackage` serialization/restoration,
-  strict `RunManifest`/`StudyManifest` restore, and canonical `AsOfBook` source
-  restore from the wheel.
+  raw source-byte SHA-256 verification, strict `RunManifest`/`StudyManifest`
+  restore, and canonical `AsOfBook` source restore from the wheel.
 - Authenticated checkpoint, manifest digest, promotion/evidence state, and
   detached restore tests: passed; checkpoint and online-state top-level schema
   drift is rejected before state mutation.
@@ -45,9 +45,9 @@ gate also passed Ruff, mypy, and compileall. Coverage is reported from CPython
   source itself.
 - Canonical study-source package tests: passed for tagged timeline round-trip,
   nested manifest/as-of/economic artifact restoration, provenance and package
-  digest binding, exact schema fields, and tamper rejection. The provenance
-  envelope records adapter policy but does not independently certify vendor
-  point-in-time claims.
+  digest binding, raw-artifact byte/size fingerprints, exact schema fields, and
+  tamper rejection. The provenance envelope records adapter policy but does not
+  independently certify vendor point-in-time claims.
 - Causal replay prediction-before-label, future-prefix invariance, explicit
   missing/invalid status, chained-record tamper detection, and model-state
   restore tests: passed; composite causal numerical and paired-promotion
@@ -148,7 +148,7 @@ therefore fail-closed.
 
 | Gate | Disposition | Evidence |
 |---|---|---|
-| G0 identity/claim freeze | Partial/pass for the declared protocol | `RunSpec`, `RunManifest`, `StudySpec`, sealed/opened `StudyManifest`, strict `StudyInputBundle`/`StudyTimeline` preflight, digest-verified `StudySourcePackage`/provenance, `run_causal_rls_study`/`run_causal_promotion_study`, evidence config, as-of records, and authenticated checkpoint identities exist; no vendor-native adapter or source dataset is present. |
+| G0 identity/claim freeze | Partial/pass for the declared protocol | `RunSpec`, `RunManifest`, `StudySpec`, sealed/opened `StudyManifest`, strict `StudyInputBundle`/`StudyTimeline` preflight, digest-verified `StudySourcePackage`/provenance/raw-artifact fingerprints, `run_causal_rls_study`/`run_causal_promotion_study`, evidence config, as-of records, and authenticated checkpoint identities exist; no vendor-native adapter or source dataset is present. |
 | G1 exact persistent MVP | Pass for bounded reference scope | `persistent.py` plus hand-built and algebraic invariants, and the exploratory `PersistentLaplacianCUSUM` controller; only the declared finite VR/F2/q/pair construction is covered. |
 | G2 calibrated forgetting | Fail for a calibrated claim | The persistent-spectrum controller and calibration harness are exercised, and the harness caught a false-alarm failure; no independent market/dependence calibration artifact authorizes accelerated forgetting. |
 | G3 recursive transactional state | Partial/pass for the migrated path | `CausalReplay` drives numerical detector/RLS plus paired challenger/`PromotionGate` state with prediction-time factor/utility capture, model-state rollback, and detached restore; legacy workers and the generic evidence-ledger path are not all one transaction. |
