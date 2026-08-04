@@ -232,8 +232,10 @@ realized returns and execution costs; call `select_at(...)` before evaluation
 to make the evidence cutoff explicit, or use the wrapper that records both the
 bundle digest and cutoff in the economic result.
 
-For the vendor-to-model handoff, [`docs/study-runbook.md`](docs/study-runbook.md)
-documents `StudyInputBundle`, `StudyTimeline`, and `run_causal_rls_study`. This
+For the vendor-to-model handoff, the exact field-level request is in
+[`docs/vendor-handoff-request.md`](docs/vendor-handoff-request.md), and the
+execution instructions are in [`docs/study-runbook.md`](docs/study-runbook.md),
+which documents `StudyInputBundle`, `StudyTimeline`, and `run_causal_rls_study`. This
 preflights manifest phase indices, target-label visibility, expected
 point-in-time universe coverage, and optional economic evidence before entering
 the shared causal replay. `run_causal_promotion_study` applies the same

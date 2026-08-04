@@ -105,6 +105,21 @@ complete point-in-time universe, observed economic records, and capacity
 evidence. Missing, extra, unsafe, or tampered artifacts fail before a study
 run starts. The command is an intake verifier, not a vendor-native parser.
 
+To audit every pre-holdout phase and write one receipt per phase, use:
+
+```powershell
+$env:PYTHONPATH = 'src'
+py -3.12 examples\market_source_intake.py `
+  --package handoff\study-source-package.json `
+  --raw-dir handoff\raw `
+  --all-pre-holdout `
+  --receipt-dir handoff\source-audits
+```
+
+This audits `calibration`, `tuning`, and `validation` in that order. It never
+calls the holdout path; opening holdout still requires a new manifest and an
+explicit release event.
+
 The ordinary `audit(...)` path remains appropriate for synthetic or partial
 engineering runs. It does not authorize a market-performance claim.
 
