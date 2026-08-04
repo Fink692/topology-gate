@@ -1,0 +1,14 @@
+{
+  "kind": "mechanism_localized_continual_learning_synthetic",
+  "steps": 180,
+  "shift": 110,
+  "localized_steps": 17,
+  "first_shift": {
+    "step": 110,
+    "shifted_mechanisms": ["transmission"],
+    "updated_mechanisms": ["transmission"]
+  },
+  "stable_module_frozen_during_first_localized_shift": true,
+  "stable_module_coefficients_after": [0.39616274268810986, 0.7985270845532477],
+  "note": "synthetic control diagnostic; not causal market evidence"
+}

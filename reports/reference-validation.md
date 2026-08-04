@@ -5,22 +5,22 @@ Interpreter: CPython 3.12.10
 Scope: bounded research/control layer only; no live-data or execution claim
 
 Supported-interpreter matrix: CPython 3.10.11, 3.11.15, and 3.12.10 each
-passed the current 296-test suite; the 3.10 and 3.11 runs used isolated `uv`
+passed the current 304-test suite; the 3.10 and 3.11 runs used isolated `uv`
 environment. The CPython 3.12 release gate also passed Ruff, mypy, and
-compileall. Coverage is reported from CPython 3.12 only.
+compileall. Coverage is reported from CPython 3.10 only for this local run.
 
 ## Reproducible engineering checks
 
-- Full suite: **299 passed**.
-- Configured coverage run: **80.91%** total coverage.
-- Coverage enforcement: configured floor **80%**; the current CPython 3.10,
-  3.11, and 3.12 runs each clear it at **80.91%** total.
+- Full suite: **304 passed**.
+- Configured coverage run: **80.99%** total coverage.
+- Coverage enforcement: configured floor **80%**; the current CPython 3.10
+  run clears it at **80.99%** total.
 - Ruff: passed on `src`, `tests`, and `examples`.
-- Mypy: passed on all 27 source modules.
+- Mypy: passed on all 28 source modules.
 - Dependency-light root import: passed without NumPy site packages.
 - Wheel build and isolated target-directory smoke: passed; SHA-256
-  `A4082C4380D7E2D05C8C7D5936ADA513F9F273068E12AB6BD5677C50BA715B30`;
-  source commit `373b3e7` supplied `SOURCE_DATE_EPOCH=1785873897`; two
+  `7C08CEC6C60411DBE243BA7BE2A78C50F2E07BA2465174766696A5C8B7F13F1F`;
+  source commit `98eaffa` supplied `SOURCE_DATE_EPOCH=1785873897`; two
   consecutive builds under the same source date produced the same digest.
   The smoke verified a dependency-free root import under `python -S` and
   optional worker exports in the numeric environment. CI now repeats the
@@ -101,6 +101,14 @@ compileall. Coverage is reported from CPython 3.12 only.
   full-information next-boundary selection, switching-cost behavior,
   change-point history resets, deterministic checkpoint round-trip, identity
   tamper rejection, and invalid-input/resource boundaries.
+- Mechanism-localized continual-learning tests: passed for prefix-only robust
+  residual diagnosis, localized shift detection, freezing of unchanged RLS
+  modules, stable-factor updates, strict input validation, and digest-bound
+  state round-trip. The synthetic diagnostic flagged only `transmission` at
+  the declared shift and froze `volatility` on the first localized transition;
+  this is a control-layer result, not causal market evidence. See
+  [`docs/mechanism-localized-continual-learning.md`](../docs/mechanism-localized-continual-learning.md)
+  and [`reports/mechanism-localized-continuous-learning.json`](mechanism-localized-continuous-learning.json).
 - Stationary block-bootstrap tests: passed for seeded reproducibility, source
   identity binding, feature-dimension rejection, and result-level factory
   identity recording.
@@ -238,7 +246,11 @@ therefore fail-closed.
 | G5 economic validation | Contract pass; market evidence not evaluated | `economic.py` and `StudySourcePackage.audit_market` are fail-closed for separate returns/costs, explicit abstentions, required capacity evidence, and sealed holdout handling, but no point-in-time vendor data, capacity, delistings, or opened final holdout evidence are present. |
 
 The package remains research/alpha. The local protocol, selection controls,
-finite null calibration, synthetic strict walk-forward, and causal transport
-prototype are complete. The
-remaining upgrade path is external: a point-in-time cross-asset source bundle,
-an audited dependence-aware market calibration split, and a sealed final test.
+finite null calibration, synthetic strict walk-forward, causal transport
+prototype, heavy-tail allocator, and mechanism-localized control are complete
+as bounded research artifacts. The remaining upgrade path is external: a
+point-in-time cross-asset source bundle, an audited dependence-aware market
+calibration split, and a sealed final test. The repository now contains the
+handoff request, canonical package builder, and fail-closed pre-holdout audit;
+it cannot manufacture the licensed vendor data or certify its point-in-time
+claims.

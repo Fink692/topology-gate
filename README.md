@@ -153,6 +153,12 @@ full-information expert allocator with switching-cost penalties and explicit
 change-point resets. It is a control-layer diagnostic, not a market or
 promotion certificate; see [`docs/heavy-tail-expert-allocation.md`](docs/heavy-tail-expert-allocation.md).
 
+The experimental `topology_gate.mechanisms` module provides a modular RLS
+control with prefix-only residual diagnostics. During a localized shift it
+updates only the declared shifted mechanisms and freezes the others; it does
+not infer causal structure from observational data. See
+[`docs/mechanism-localized-continual-learning.md`](docs/mechanism-localized-continual-learning.md).
+
 Set `require_realized_returns=True` in the worker backtest or online config for
 economic evaluation. The compatibility default still permits target outcomes
 to stand in for realized returns, but that path is diagnostic and must not be
