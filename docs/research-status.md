@@ -49,3 +49,7 @@ The exact machine-readable request can be regenerated with
 [`vendor_handoff_template.py`](../examples/vendor_handoff_template.py); the
 current workspace status is recorded in
 [`vendor-handoff-status.json`](../reports/vendor-handoff-status.json).
+
+The source procurement decision and alternatives are recorded in
+[`source-options.md`](source-options.md). No source has yet been received or
+authorized for a market claim.

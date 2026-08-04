@@ -307,4 +307,5 @@ repository now contains the handoff request, canonical JSONL normalizer,
 canonical package builder,
 phase-aware package audit, synthetic end-to-end intake receipt, and fail-closed
 pre-holdout audit; it cannot manufacture the licensed vendor data
-or certify its point-in-time claims.
+or certify its point-in-time claims. The source procurement decision is in
+[`docs/source-options.md`](../docs/source-options.md).
