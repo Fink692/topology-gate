@@ -9,6 +9,9 @@ the smallest candidate whose calibration-split Wilson upper bound met the
 declared budget was selected, then evaluated once through a separately
 declared observation-factory instance and split seed.
 
+It is reproducible from the committed example with:
+`uv run --isolated --extra test -- python examples/persistent_detector_calibration.py`.
+
 ## Declared experiment
 
 - Observation null: `StationaryBlockBootstrap` over a deterministic 512-by-2
@@ -50,11 +53,11 @@ generalization.
 - Selected detector identity:
   `856c87c650a17122b64d223527a63fbe0643f57c94bbd16802a7917e486926d7`
 - Split-calibration result identity:
-  `a28b32f1251cc1d1f7f604a107efda228387ff719415e413297bf34cd5d03fc1`
+  `d1e41336cdb545e7139b247110027dcf06731748af0f7703c2811dbd0baf92b3`
 - Selected evaluation null-configuration identity:
   `c19ab87e1f5bf3e645e84188ba67e9ed3e922a1c46876c327f05c244d4c8179e`
 - Certificate identity:
-  `62043f59890bac87cc9873cc53a606f016a84cfd440513eeb947b55e7ce7fe7e`
+  `764dd68d34ae5c60378c83660772945f95aa4cd26f491c34ef6ebfc1ea58692e`
 
 The certificate carries the split-calibration result identity and is valid
 only for this detector identity, source identity, horizon, seed schedule, and
