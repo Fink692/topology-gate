@@ -21,6 +21,35 @@ The bundle also rejects a `StudyManifest` whose embedded `RunSpec` does not
 match the supplied `RunManifest`; source, split, and execution identities must
 refer to the same registered run.
 
+For a reproducible handoff, wrap the bundle in `StudySourcePackage`:
+
+```python
+from topology_gate import StudySourcePackage, StudySourceProvenance
+
+package = StudySourcePackage(
+    provenance=StudySourceProvenance(
+        provider_id="vendor-adapter:v1",
+        dataset_id="cross-asset:v1",
+        vintage_id=run_manifest.spec.input_vintage_id,
+        as_of_rule="available_time <= decision_time",
+        revision_rule="latest visible source_revision at cutoff",
+        universe_rule="visible membership interval at decision time",
+        delisting_rule="retain delisted instruments through final visible interval",
+        retrieved_at=retrieved_at,
+    ),
+    bundle=bundle,
+)
+payload = package.to_json()
+restored = StudySourcePackage.from_json(payload)
+audit = restored.audit("validation", require_complete_universe=True)
+```
+
+The package carries the full canonical manifests, timeline, as-of book, and
+optional economic evidence. Restoration verifies exact schema fields, tagged
+time domains, every nested artifact digest, the bundle digest, and the package
+digest. Provenance describes the adapter's source policy; it is not independent
+proof that a vendor source is survivorship-free or revision-complete.
+
 ```python
 from topology_gate import (
     StudyInputBundle,

@@ -88,6 +88,33 @@ def _encode_time(value: TimePoint, name: str) -> dict[str, Any]:
     return {"kind": type(value).__name__, "value": value}
 
 
+def _decode_time(value: Any, name: str) -> TimePoint:
+    if not isinstance(value, Mapping) or set(value) != {"kind", "value"}:
+        raise StudyInputError(f"{name} must be a tagged time point")
+    kind = value["kind"]
+    raw = value["value"]
+    if kind == "datetime":
+        if not isinstance(raw, str) or not raw:
+            raise StudyInputError(f"{name} datetime value must be a non-empty string")
+        try:
+            return datetime.fromisoformat(raw)
+        except ValueError as exc:
+            raise StudyInputError(f"{name} datetime value is invalid") from exc
+    if kind == "str":
+        if not isinstance(raw, str) or not raw:
+            raise StudyInputError(f"{name} string value must be non-empty")
+        return raw
+    if kind == "int":
+        if isinstance(raw, bool) or not isinstance(raw, int):
+            raise StudyInputError(f"{name} integer value is invalid")
+        return raw
+    if kind == "float":
+        if isinstance(raw, bool) or not isinstance(raw, float) or not math.isfinite(raw):
+            raise StudyInputError(f"{name} float value is invalid")
+        return raw
+    raise StudyInputError(f"{name} has an unsupported time-point kind")
+
+
 def _canonical(value: Any) -> bytes:
     try:
         return json.dumps(
@@ -190,6 +217,48 @@ class StudyTimeline:
                 None if expected is None else [list(row) for row in expected]
             ),
         }
+
+    @classmethod
+    def from_dict(cls, state: Mapping[str, Any]) -> "StudyTimeline":
+        if not isinstance(state, Mapping):
+            raise StudyInputError("study timeline state must be a mapping")
+        expected_keys = {
+            "decision_times",
+            "target_ids",
+            "decision_indices",
+            "expected_instrument_ids",
+        }
+        if set(state) != expected_keys:
+            raise StudyInputError(
+                "study timeline contains unknown or missing fields"
+            )
+        raw_times = _sequence(state["decision_times"], "decision_times")
+        times = tuple(
+            _decode_time(value, f"decision_times[{index}]")
+            for index, value in enumerate(raw_times)
+        )
+        expected = state["expected_instrument_ids"]
+        try:
+            return cls(
+                decision_times=times,
+                target_ids=state["target_ids"],
+                decision_indices=state["decision_indices"],
+                expected_instrument_ids=(
+                    None if expected is None else expected
+                ),
+            )
+        except (TypeError, ValueError) as exc:
+            raise StudyInputError("study timeline is invalid") from exc
+
+    @classmethod
+    def from_json(cls, payload: str) -> "StudyTimeline":
+        if not isinstance(payload, str) or not payload.strip():
+            raise TypeError("study timeline JSON must be a non-empty string")
+        try:
+            state = json.loads(payload)
+        except json.JSONDecodeError as exc:
+            raise StudyInputError("study timeline JSON is invalid") from exc
+        return cls.from_dict(state)
 
     @property
     def digest(self) -> str:

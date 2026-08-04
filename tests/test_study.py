@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 from dataclasses import replace
 
 import pytest
@@ -32,6 +33,11 @@ from topology_gate.study import (
     StudyTimeline,
     run_causal_promotion_study,
     run_causal_rls_study,
+)
+from topology_gate.study_package import (
+    StudySourcePackage,
+    StudySourcePackageError,
+    StudySourceProvenance,
 )
 
 
@@ -168,6 +174,19 @@ def _bundle(
         as_of_book=book or _book(),
         economic_evidence=economic_evidence,
         economic_cutoff=10 if economic_evidence is not None else None,
+    )
+
+
+def _source_provenance() -> StudySourceProvenance:
+    return StudySourceProvenance(
+        provider_id="vendor-adapter:v1",
+        dataset_id="cross-asset:v1",
+        vintage_id="vendor-vintage:v1",
+        as_of_rule="available_time <= decision_time",
+        revision_rule="latest visible source_revision at cutoff",
+        universe_rule="visible membership interval at decision time",
+        delisting_rule="retain delisted instruments through final visible interval",
+        retrieved_at=2026_08_04,
     )
 
 
@@ -384,3 +403,64 @@ def test_study_bundle_digest_binds_source_artifact_revisions() -> None:
     changed = replace(first, as_of_book=_book(first_label_available=3))
 
     assert first.digest != changed.digest
+
+
+def test_timeline_json_round_trip_preserves_tagged_time_identity() -> None:
+    timeline = StudyTimeline(
+        decision_times=(1.0, 2.5, 3.0),
+        target_ids=("t1", "t2", "t3"),
+        decision_indices=(0, 1, 2),
+        expected_instrument_ids=(("ES",), ("ES",), ("ES",)),
+    )
+
+    restored = StudyTimeline.from_json(json.dumps(timeline.to_dict()))
+
+    assert restored.digest == timeline.digest
+    assert restored.decision_times == timeline.decision_times
+
+
+def test_source_package_round_trip_binds_provenance_and_all_artifacts() -> None:
+    timeline = StudyTimeline((1, 2), ("t1", "t2"), (0, 1), (("ES",), ("ES",)))
+    bundle = _bundle(timeline, economic_evidence=_economic_evidence())
+    package = StudySourcePackage(_source_provenance(), bundle)
+
+    restored = StudySourcePackage.from_json(package.to_json())
+
+    assert restored.digest == package.digest
+    assert restored.bundle.digest == bundle.digest
+    assert restored.provenance.digest == package.provenance.digest
+    assert restored.audit("calibration").decision_count == 2
+
+
+def test_source_package_rejects_tampered_artifacts_and_unknown_fields() -> None:
+    package = StudySourcePackage(
+        _source_provenance(),
+        _bundle(StudyTimeline((1,), ("t1",), (0,), (("ES",),))),
+    )
+    state = json.loads(package.to_json())
+    state["as_of_book"]["observations"][0]["fields"]["x"] = 999.0
+
+    with pytest.raises(StudySourcePackageError, match="as-of book"):
+        StudySourcePackage.from_dict(state)
+
+    unknown = json.loads(package.to_json())
+    unknown["unexpected"] = True
+    with pytest.raises(StudySourcePackageError, match="unknown or missing"):
+        StudySourcePackage.from_dict(unknown)
+
+
+def test_source_package_rejects_schema_and_provenance_digest_tampering() -> None:
+    package = StudySourcePackage(
+        _source_provenance(),
+        _bundle(StudyTimeline((1,), ("t1",), (0,), (("ES",),))),
+    )
+
+    wrong_schema = json.loads(package.to_json())
+    wrong_schema["schema"] = "other"
+    with pytest.raises(StudySourcePackageError, match="schema"):
+        StudySourcePackage.from_dict(wrong_schema)
+
+    wrong_provenance = json.loads(package.to_json())
+    wrong_provenance["provenance"]["provider_id"] = "tampered"
+    with pytest.raises(StudySourcePackageError, match="provenance digest"):
+        StudySourcePackage.from_dict(wrong_provenance)
