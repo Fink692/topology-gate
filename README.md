@@ -155,6 +155,14 @@ design. Use `evaluate_economic_path` only with separately sourced
 `RealizedReturn` and `ExecutionCost` records; missing returns and costs fail
 closed, and abstentions remain visible.
 
+`run_causal_promotion_replay` composes the same transition with paired
+challenger/incumbent learners and the existing alpha-spending promotion gate.
+Predictions are frozen at decision time; only an observed settled label can
+advance the gate. Missing, invalid, censored, or terminally unresolved labels
+clear pending context without creating evidence. The adapter requires a
+predeclared constant eta and bounded absolute-error utility scale; it does not
+turn a synthetic or unbound run into a certified promotion claim.
+
 ## Calibration evidence
 
 Use [`docs/calibration.md`](docs/calibration.md) and the bounded

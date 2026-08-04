@@ -64,7 +64,7 @@ class ReplayModel(Protocol):
 PredictionFn: TypeAlias = Callable[[AsOfSnapshot, str], Any]
 ScoreFn: TypeAlias = Callable[["ReplayPrediction", LabelObservation], Any]
 LabelFn: TypeAlias = Callable[["ReplayPrediction", LabelObservation, float | None], None]
-ResolutionFn: TypeAlias = Callable[["ReplayPrediction", LabelObservation, ReplayStatus], None]
+ResolutionFn: TypeAlias = Callable[["ReplayPrediction", LabelObservation | None, ReplayStatus], None]
 
 
 def _text(value: Any, name: str) -> str:
@@ -844,6 +844,15 @@ class CausalReplay:
                 before_digest, _ = _state_snapshot(
                     model, required=self.config.require_model_state
                 )
+                if self.on_resolution is not None:
+                    self.on_resolution(
+                        prediction_by_target[pending_target],
+                        None,
+                        ReplayStatus.UNRESOLVED,
+                    )
+                after_digest, _ = _state_snapshot(
+                    model, required=self.config.require_model_state
+                )
                 resolution = ReplayResolution(
                     resolution_id=f"{self.config.model_id}:resolution:{sequence}",
                     prediction_id=prediction_by_target[pending_target].prediction_id,
@@ -858,7 +867,7 @@ class CausalReplay:
                     score=None,
                     reason="no label was available at the terminal boundary",
                     model_state_before=before_digest,
-                    model_state_after=before_digest,
+                    model_state_after=after_digest,
                 )
                 sequence, chain_digest = self._append(
                     records,

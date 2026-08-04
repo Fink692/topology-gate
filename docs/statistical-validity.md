@@ -133,6 +133,15 @@ execution-cost components, rejects target/zero substitution and unavailable
 costs, and reports abstentions explicitly; it is an evaluation boundary, not
 market evidence.
 
+The `causal_promotion` adapter extends the same state boundary to paired
+challenger/incumbent learners and a registered `PromotionGate`. It freezes both
+predictions before labels arrive, advances bounded paired utility only at
+observed settlement, and rolls back both learners and gate state on a failed
+transition. Missing or terminally unresolved labels never advance the
+e-process. This is a tested composition boundary, not a calibrated market
+promotion result; the utility scale, eta policy, source manifest, and holdout
+evidence still require a pre-registered study.
+
 ## Minimum evidence before a stronger claim
 
 Any paper or deployment claiming calibrated change detection, anytime-valid
