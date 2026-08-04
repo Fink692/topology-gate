@@ -116,15 +116,19 @@ rolling re-estimation policy, missing-label policy, stopping rule, and model/
 feature/eta selection budget.
 
 `EvidenceLedger` provides the composed promotion boundary for one registered
-challenger: it freezes paired predictions and eta before labels, buffers label
-arrivals until their source-availability boundary, settles in prediction order,
-exposes burn-in and missing/expired records, and never accepts a settlement-time
-eta override. `PromotionEvidenceConfig` makes the run/family, score, null,
-missingness, allocation, dependency, backend, and manifest identities explicit;
-without a certified configuration the ledger reports a diagnostic claim only.
-This materially strengthens the audit contract, but the conditional null and
-the model/feature selection budget still require an independent pre-registered
-study.
+challenger: certified runs require a sealed challenger family, freeze paired
+predictions and eta before labels, buffer label arrivals until their
+source-availability boundary, settle in prediction order, expose burn-in and
+missing/expired records, and never accept a settlement-time eta override.
+Certified settlement derives utilities from the frozen actions and a raw label
+through the declared score specification; caller-supplied utility pairs remain
+diagnostic-only. Its checkpoint fingerprint also detects direct gate evidence
+injection or reset outside the ledger. `PromotionEvidenceConfig` makes the
+run/family, score, null, missingness, allocation, dependency, backend, and
+manifest identities explicit; without a certified configuration the ledger
+reports a diagnostic claim only. This materially strengthens the audit
+contract, but the conditional null and the model/feature selection budget still
+require an independent pre-registered study.
 
 `RunSpec`/`RunManifest` and authenticated checkpoint envelopes provide the
 reproducibility identity layer. They do not manufacture point-in-time market

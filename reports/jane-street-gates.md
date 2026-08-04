@@ -484,8 +484,10 @@ the adapter does not establish the conditional market null, model/feature
 selection budget, numerical/risk readiness checks, or the required
 optional-stopping and selection simulations. Learner class/config identity and
 mutable gate-evidence fingerprints are now also bound at each checkpoint and
-boundary. Those remaining inferential and production checks are release
-blockers.
+boundary. The standalone `EvidenceLedger` now requires a sealed family for
+certified use, derives utilities from frozen actions and raw labels through a
+declared score specification, and rejects direct gate evidence injection or
+reset. Those remaining inferential and production checks are release blockers.
 
 ### G6 — Economic evaluation and release evidence (P1)
 

@@ -266,6 +266,14 @@ The checkpoint also binds each learner's stable class/config identity and the
 full mutable gate-evidence fingerprint; an outside learner reconfiguration or
 gate observation is rejected at the next boundary.
 
+The standalone `EvidenceLedger` applies the same strict boundary for callers
+that already own a promotion gate: certified use requires a sealed challenger
+family and a declared score specification. Certified labels carry the raw
+target value; utilities are recomputed from the frozen challenger/incumbent
+actions, while caller-supplied utility pairs remain diagnostic-only. Its
+checkpoint records the gate evidence fingerprint and rejects direct gate
+observations, resets, or score-spec substitution outside the ledger.
+
 The external data acceptance checklist is in
 [`docs/vendor-data-gate.md`](docs/vendor-data-gate.md). It explicitly requires
 permanent identifiers, delisting/universe history, dated source cuts, separate

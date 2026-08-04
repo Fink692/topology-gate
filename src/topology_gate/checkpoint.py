@@ -410,6 +410,7 @@ def restore_component_states(
     evidence: Any | None = None,
     evidence_gate: Any | None = None,
     evidence_eta_policy: Any | None = None,
+    evidence_score_spec: Any | None = None,
     forgetting_factor: Any | None = None,
     eta: Any | None = None,
     hmac_key: bytes | None = None,
@@ -513,6 +514,7 @@ def restore_component_states(
                     detached_evidence_state,
                     gate=gate_for_evidence,
                     eta_policy=evidence_eta_policy,
+                    score_spec=evidence_score_spec,
                 )
             if candidate is evidence:
                 raise CheckpointError("evidence detached restore returned the supplied object")

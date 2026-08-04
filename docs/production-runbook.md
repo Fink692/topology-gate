@@ -128,6 +128,13 @@ The checkpoint binds stable learner class/config identities and the mutable
 gate-evidence fingerprint as well. External learner reconfiguration or an
 outside gate observation is rejected before the next prediction or settlement.
 
+For callers using the standalone `EvidenceLedger`, certified construction also
+requires the gate's challenger registration to be sealed. Supply raw label
+values and the declared score specification; the ledger recomputes utilities
+from its frozen paired predictions. Settlement-time utility pairs are retained
+only for diagnostic ledgers. The ledger checkpoint binds the score-spec and
+gate-evidence fingerprints and rejects direct gate observations or resets.
+
 Before a multi-challenger study, run `calibrate_promotion_null` with the exact
 bounded score factory, constant eta, challenger count, and global alpha used
 by the gate. If the gate can reset, declare the epoch count and retain the
