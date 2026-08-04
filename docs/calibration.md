@@ -39,6 +39,16 @@ upper bound must be mutually consistent; hand-editing one field cannot create
 an approved artifact. A certificate from a synthetic or dependent null is not
 market calibration.
 
+`calibrate_eprocess_null` is the corresponding finite simulation for the
+promotion layer. It accepts a score factory that must return one-dimensional
+scores in `[-1, 1]`, uses a predeclared constant `eta`, inspects the e-value at
+every step, and stops each path at its first `1/alpha` crossing. The result
+records the score-factory identity, threshold, crossing rate, Wilson interval,
+and first-crossing sequence. This tests optional-stopping behavior of a
+declared bounded stream; it cannot establish the required conditional-mean
+null, validate a market utility, or replace an alpha-allocation and selection
+audit.
+
 Minimum protocol for a research release:
 
 1. Freeze detector configuration, source revision, dependency fingerprint, and
@@ -51,3 +61,6 @@ Minimum protocol for a research release:
    tune the detector.
 5. Keep the calibration report beside the walk-forward run manifest and spend
    challenger alpha separately from detector-threshold selection.
+6. Run an optional-stopping e-process null simulation with the exact bounded
+   utility and predictable eta rule used by the causal promotion path; report
+   it as empirical evidence, not as a theorem or market guarantee.

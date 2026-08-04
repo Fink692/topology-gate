@@ -17,6 +17,8 @@ def test_root_all_is_unique_and_resolves_every_public_name() -> None:
     numeric_names = {
         "BacktestEngine",
         "CalibrationCertificate",
+        "EProcessCalibrationConfig",
+        "EProcessNullCalibrationResult",
         "CausalFeaturePlan",
         "CausalNumericError",
         "CausalPromotionConfig",
@@ -50,6 +52,7 @@ def test_root_all_is_unique_and_resolves_every_public_name() -> None:
         "run_recursive_rls",
         "run_causal_rls_replay",
         "run_causal_promotion_replay",
+        "calibrate_eprocess_null",
         "compute_persistent_laplacian",
         "persistent_laplacian_backend",
     }

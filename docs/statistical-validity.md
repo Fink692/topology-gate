@@ -156,6 +156,13 @@ composition boundary, not a calibrated market promotion result; the utility
 scale, eta policy, source manifest, and holdout evidence still require a
 pre-registered study.
 
+`calibrate_eprocess_null` provides a finite optional-stopping simulation for
+that bounded score primitive. It uses a predeclared constant eta, stops each
+path at the first e-value threshold crossing, and reports a Wilson interval for
+the crossing frequency. A Rademacher score stream is a useful algebraic null
+check; it does not verify the conditional-mean assumption for paired market
+utility or pay for data-dependent model selection.
+
 ## Minimum evidence before a stronger claim
 
 Any paper or deployment claiming calibrated change detection, anytime-valid

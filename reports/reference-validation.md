@@ -6,8 +6,8 @@ Scope: bounded research/control layer only; no live-data or execution claim
 
 ## Reproducible engineering checks
 
-- Full suite: **188 passed**.
-- Configured coverage run: **79.94%** total coverage.
+- Full suite: **190 passed**.
+- Configured coverage run: **79.99%** total coverage.
 - Ruff: passed on `src` and `tests`.
 - Mypy: passed on all 20 source modules.
 - Dependency-light root import: passed without NumPy site packages.
@@ -29,6 +29,9 @@ Scope: bounded research/control layer only; no live-data or execution claim
 - Finite-null certificate tests: passed for conservative Wilson-bound approval,
   detector-identity binding, explicit rejection of an unapproved budget, and
   rejection of count/rate/interval inconsistencies.
+- E-process optional-stopping harness tests: passed for reproducible bounded
+  score paths, predeclared constant eta, first-crossing termination, score
+  bounds, malformed factory output, and identity recording.
 - Stationary block-bootstrap tests: passed for seeded reproducibility, source
   identity binding, feature-dimension rejection, and result-level factory
   identity recording.
@@ -66,10 +69,11 @@ therefore fail-closed.
 
 ## Statistical control checks
 
-- A 1,000-path, 500-step Rademacher null with `alpha=0.05`, optional stopping,
-  and `eta=0.5` produced 43 threshold crossings. The 95% Wilson upper bound was
-  0.05742. This is a finite simulation of the primitive, not a proof for a
-  market score stream.
+- A 1,000-path, 500-step Rademacher null through `calibrate_eprocess_null` with
+  `alpha=0.05`, optional stopping, and `eta=0.5` produced 40 threshold
+  crossings. The 95% Wilson upper bound was 0.05401. This is a finite
+  simulation of the bounded primitive, not a proof for a market score stream
+  or its conditional-mean null.
 - The detector calibration harness was run on a declared AR(1) null and a
   volatility-shift alternative. Under the tested configuration the null
   alarmed on 32/32 paths at step 9. That result is intentionally retained as a

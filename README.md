@@ -192,6 +192,12 @@ at its neutral maximum. Use `StationaryBlockBootstrap` when the declared null
 must preserve local serial dependence; its source and bootstrap specification
 are included in the calibration identity.
 
+Use `calibrate_eprocess_null` for the paired-promotion control layer. It
+simulates bounded score paths under optional stopping with a predeclared
+constant betting fraction and records the finite crossing interval. It is an
+empirical diagnostic of the declared stream, not a replacement for the
+conditional-mean assumption or a market-selection audit.
+
 ## Tests and typing
 
 Run the configured test suite with:

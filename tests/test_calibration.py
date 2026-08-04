@@ -10,7 +10,9 @@ import pytest
 from topology_gate.calibration import (
     CalibrationCertificate,
     CalibrationConfig,
+    EProcessCalibrationConfig,
     StationaryBlockBootstrap,
+    calibrate_eprocess_null,
     calibrate_null,
     calibrate_shift,
 )
@@ -23,6 +25,13 @@ class _ThresholdDetector:
     def detect(self, observations: np.ndarray) -> SimpleNamespace:
         alarms = np.asarray(observations[:, 0] > 3.0, dtype=bool)
         return SimpleNamespace(alarms=alarms)
+
+
+class _RademacherScores:
+    identity = "rademacher-score-null:v1"
+
+    def __call__(self, rng: np.random.Generator, horizon: int) -> np.ndarray:
+        return np.where(rng.integers(0, 2, size=horizon) == 0, -1.0, 1.0)
 
 
 def _zeros(rng: np.random.Generator, horizon: int, n_features: int) -> np.ndarray:
@@ -161,6 +170,41 @@ def test_stationary_block_bootstrap_is_seeded_and_identity_bound() -> None:
 
     with pytest.raises(ValueError, match="feature dimension"):
         factory(np.random.default_rng(17), 24, 1)
+
+
+def test_eprocess_null_calibration_is_reproducible_and_stops_at_crossing() -> None:
+    config = EProcessCalibrationConfig(
+        trials=256,
+        horizon=256,
+        alpha=0.05,
+        eta=0.5,
+        seed=19,
+    )
+    first = calibrate_eprocess_null(_RademacherScores(), config=config)
+    second = calibrate_eprocess_null(_RademacherScores(), config=config)
+
+    assert first == second
+    assert first.score_factory_identity == _RademacherScores.identity
+    assert first.threshold == 20.0
+    assert first.threshold_crossing_count < first.trials
+    assert first.threshold_crossing_ci_high < 0.1
+    assert first.to_dict()["config_identity"] == first.config_identity
+    assert all(0 <= step <= config.horizon for step in first.first_crossing_steps)
+
+
+def test_eprocess_null_calibration_rejects_unbounded_or_malformed_scores() -> None:
+    with pytest.raises(ValueError, match="outside"):
+        calibrate_eprocess_null(
+            lambda rng, horizon: np.full(horizon, 1.1),
+            config=EProcessCalibrationConfig(trials=2, horizon=4),
+        )
+    with pytest.raises(ValueError, match="one-dimensional"):
+        calibrate_eprocess_null(
+            lambda rng, horizon: np.zeros((horizon, 1)),
+            config=EProcessCalibrationConfig(trials=2, horizon=4),
+        )
+    with pytest.raises(ValueError, match="eta"):
+        EProcessCalibrationConfig(eta=1.1)
 
 
 def test_calibration_result_records_observation_factory_identity() -> None:

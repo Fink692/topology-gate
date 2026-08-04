@@ -1,9 +1,11 @@
-"""Bounded empirical calibration for causal detector alarms.
+"""Bounded empirical calibration for causal detector alarms and e-processes.
 
 This module does not turn a heuristic detector into a likelihood-ratio test.
 It provides a reproducible null/power experiment with explicit finite-horizon
 uncertainty, censoring, and detector identity so that thresholds and
-score-to-memory policies can be evaluated honestly.
+score-to-memory policies can be evaluated honestly.  The e-process harness
+below is an optional-stopping simulation of declared bounded score streams; it
+does not establish the conditional-mean null for a market comparison.
 """
 
 from __future__ import annotations
@@ -13,6 +15,8 @@ import json
 import math
 from dataclasses import dataclass
 from typing import Any, Callable
+
+from .promotion import EProcess, validate_eta
 
 try:
     import numpy as np
@@ -32,6 +36,7 @@ _WILSON_CONFIDENCE_95 = 0.95
 
 ObservationFactory = Callable[[np.random.Generator, int, int], Any]
 DetectorFactory = Callable[[], Any]
+EProcessScoreFactory = Callable[[np.random.Generator, int], Any]
 
 
 def _bounded_int(name: str, value: Any, minimum: int, maximum: int) -> int:
@@ -92,6 +97,43 @@ class CalibrationConfig:
         object.__setattr__(self, "seed", seed)
 
 
+@dataclass(frozen=True, slots=True)
+class EProcessCalibrationConfig:
+    """Finite optional-stopping simulation limits for bounded e-processes."""
+
+    trials: int = 1_000
+    horizon: int = 512
+    alpha: float = 0.05
+    eta: float = 0.5
+    initial_wealth: float = 1.0
+    seed: int = 7
+
+    def __post_init__(self) -> None:
+        trials = _bounded_int("trials", self.trials, 1, MAX_CALIBRATION_TRIALS)
+        horizon = _bounded_int("horizon", self.horizon, 2, MAX_CALIBRATION_HORIZON)
+        alpha = _finite_probability("alpha", self.alpha)
+        eta = validate_eta(self.eta)
+        try:
+            initial_wealth = float(self.initial_wealth)
+        except (TypeError, ValueError, OverflowError) as exc:
+            raise ValueError("initial_wealth must be finite and positive") from exc
+        if not math.isfinite(initial_wealth) or initial_wealth <= 0.0:
+            raise ValueError("initial_wealth must be finite and positive")
+        if isinstance(self.seed, (bool, np.bool_)) or not isinstance(
+            self.seed, (int, np.integer)
+        ):
+            raise ValueError("seed must be an integer")
+        seed = int(self.seed)
+        if seed < 0:
+            raise ValueError("seed must be non-negative")
+        object.__setattr__(self, "trials", trials)
+        object.__setattr__(self, "horizon", horizon)
+        object.__setattr__(self, "alpha", alpha)
+        object.__setattr__(self, "eta", eta)
+        object.__setattr__(self, "initial_wealth", initial_wealth)
+        object.__setattr__(self, "seed", seed)
+
+
 def _wilson_interval(successes: int, trials: int) -> tuple[float, float]:
     if not 0 <= successes <= trials or trials < 1:
         raise ValueError("successes must be between zero and trials")
@@ -139,6 +181,27 @@ def _factory_identity(factory: Any) -> str:
         )
     if not isinstance(value, str) or not value:
         raise ValueError("observation factory identity must be a non-empty string")
+    return value
+
+
+def _score_factory_identity(factory: Any) -> str:
+    if not callable(factory):
+        raise ValueError("score_factory must be callable")
+    value = getattr(factory, "identity", None)
+    if callable(value):
+        value = value()
+    if value is None:
+        code = getattr(factory, "__code__", None)
+        location = ""
+        if code is not None:
+            location = f":{code.co_filename}:{code.co_firstlineno}"
+        value = (
+            f"{getattr(factory, '__module__', type(factory).__module__)}:"
+            f"{getattr(factory, '__qualname__', type(factory).__qualname__)}"
+            f"{location}"
+        )
+    if not isinstance(value, str) or not value:
+        raise ValueError("score factory identity must be a non-empty string")
     return value
 
 
@@ -516,6 +579,175 @@ class ShiftCalibrationResult:
         }
 
 
+@dataclass(frozen=True, slots=True)
+class EProcessNullCalibrationResult:
+    """Finite optional-stopping crossing evidence for a bounded score stream.
+
+    A first-crossing step equal to ``horizon`` is the explicit no-crossing
+    sentinel for that finite path.
+    """
+
+    score_factory_identity: str
+    trials: int
+    horizon: int
+    alpha: float
+    eta: float
+    initial_wealth: float
+    seed: int
+    threshold_crossing_count: int
+    threshold_crossing_rate: float
+    threshold_crossing_ci_low: float
+    threshold_crossing_ci_high: float
+    first_crossing_steps: tuple[int, ...]
+
+    def __post_init__(self) -> None:
+        if not isinstance(self.score_factory_identity, str) or not self.score_factory_identity:
+            raise ValueError("score_factory_identity must be a non-empty string")
+        _bounded_int("trials", self.trials, 1, MAX_CALIBRATION_TRIALS)
+        _bounded_int("horizon", self.horizon, 2, MAX_CALIBRATION_HORIZON)
+        _finite_probability("alpha", self.alpha)
+        validate_eta(self.eta)
+        if not math.isfinite(float(self.initial_wealth)) or self.initial_wealth <= 0.0:
+            raise ValueError("initial_wealth must be finite and positive")
+        if isinstance(self.seed, bool) or not isinstance(self.seed, int) or self.seed < 0:
+            raise ValueError("seed must be a non-negative integer")
+        if len(self.first_crossing_steps) != self.trials:
+            raise ValueError("first_crossing_steps must have one value per trial")
+        if not 0 <= self.threshold_crossing_count <= self.trials:
+            raise ValueError("threshold_crossing_count must be between zero and trials")
+        if not all(
+            math.isfinite(float(value))
+            for value in (
+                self.threshold_crossing_rate,
+                self.threshold_crossing_ci_low,
+                self.threshold_crossing_ci_high,
+            )
+        ):
+            raise ValueError("e-process calibration contains a non-finite value")
+        if not 0.0 <= self.threshold_crossing_rate <= 1.0:
+            raise ValueError("threshold_crossing_rate must be in [0, 1]")
+        if not 0.0 <= self.threshold_crossing_ci_low <= self.threshold_crossing_ci_high <= 1.0:
+            raise ValueError("threshold crossing interval is invalid")
+        if any(step < 0 or step > self.horizon for step in self.first_crossing_steps):
+            raise ValueError("first_crossing_steps must be valid zero-based steps")
+        expected_rate = self.threshold_crossing_count / self.trials
+        if not math.isclose(
+            self.threshold_crossing_rate, expected_rate, rel_tol=0.0, abs_tol=1.0e-12
+        ):
+            raise ValueError(
+                "threshold_crossing_rate is inconsistent with threshold_crossing_count"
+            )
+        expected_count = sum(step < self.horizon for step in self.first_crossing_steps)
+        if expected_count != self.threshold_crossing_count:
+            raise ValueError(
+                "threshold_crossing_count is inconsistent with first_crossing_steps"
+            )
+
+    @property
+    def threshold(self) -> float:
+        """The optional-stopping e-value threshold used by the simulation."""
+
+        return self.initial_wealth / self.alpha
+
+    @property
+    def config_identity(self) -> str:
+        payload = {
+            "score_factory_identity": self.score_factory_identity,
+            "trials": self.trials,
+            "horizon": self.horizon,
+            "alpha": self.alpha,
+            "eta": self.eta,
+            "initial_wealth": self.initial_wealth,
+            "seed": self.seed,
+        }
+        return hashlib.sha256(
+            json.dumps(payload, sort_keys=True, separators=(",", ":")).encode()
+        ).hexdigest()
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "kind": "eprocess_null_calibration",
+            "score_factory_identity": self.score_factory_identity,
+            "trials": self.trials,
+            "horizon": self.horizon,
+            "alpha": self.alpha,
+            "eta": self.eta,
+            "initial_wealth": self.initial_wealth,
+            "threshold": self.threshold,
+            "seed": self.seed,
+            "threshold_crossing_count": self.threshold_crossing_count,
+            "threshold_crossing_rate": self.threshold_crossing_rate,
+            "threshold_crossing_ci_95": [
+                self.threshold_crossing_ci_low,
+                self.threshold_crossing_ci_high,
+            ],
+            "first_crossing_steps": list(self.first_crossing_steps),
+            "config_identity": self.config_identity,
+        }
+
+
+def calibrate_eprocess_null(
+    score_factory: EProcessScoreFactory,
+    *,
+    config: EProcessCalibrationConfig | None = None,
+) -> EProcessNullCalibrationResult:
+    """Simulate optional stopping for a declared bounded score null.
+
+    The factory must return one-dimensional scores in ``[-1, 1]``.  The
+    harness stops each path at its first threshold crossing and records the
+    finite-horizon crossing rate.  It checks boundedness and predictably uses
+    the predeclared constant ``eta``; it cannot prove that the supplied score
+    factory satisfies the conditional-mean null required by the e-process
+    theorem.
+    """
+
+    settings = config or EProcessCalibrationConfig()
+    identity = _score_factory_identity(score_factory)
+    first_crossing_steps: list[int] = []
+    rng = np.random.default_rng(settings.seed)
+    for _ in range(settings.trials):
+        try:
+            values = np.asarray(score_factory(rng, settings.horizon), dtype=float)
+        except (TypeError, ValueError, OverflowError) as exc:
+            raise ValueError("score_factory must return finite bounded scores") from exc
+        if values.ndim != 1 or values.size != settings.horizon:
+            raise ValueError(
+                "score_factory must return a one-dimensional array shaped "
+                f"({settings.horizon},)"
+            )
+        if not np.all(np.isfinite(values)) or np.any(values < -1.0) or np.any(values > 1.0):
+            raise ValueError("score_factory returned scores outside [-1, 1]")
+        process = EProcess(
+            alpha=settings.alpha,
+            eta=settings.eta,
+            initial_wealth=settings.initial_wealth,
+        )
+        first = settings.horizon
+        for step, value in enumerate(values):
+            update = process.update(float(value), eta=settings.eta)
+            if update.first_crossing:
+                first = step
+                break
+        first_crossing_steps.append(first)
+    crossing_count = sum(step < settings.horizon for step in first_crossing_steps)
+    rate = crossing_count / settings.trials
+    low, high = _wilson_interval(crossing_count, settings.trials)
+    return EProcessNullCalibrationResult(
+        score_factory_identity=identity,
+        trials=settings.trials,
+        horizon=settings.horizon,
+        alpha=settings.alpha,
+        eta=settings.eta,
+        initial_wealth=settings.initial_wealth,
+        seed=settings.seed,
+        threshold_crossing_count=crossing_count,
+        threshold_crossing_rate=rate,
+        threshold_crossing_ci_low=low,
+        threshold_crossing_ci_high=high,
+        first_crossing_steps=tuple(first_crossing_steps),
+    )
+
+
 def calibrate_null(
     detector_factory: DetectorFactory,
     observation_factory: ObservationFactory,
@@ -616,6 +848,8 @@ def calibrate_shift(
 __all__ = [
     "CalibrationCertificate",
     "CalibrationConfig",
+    "EProcessCalibrationConfig",
+    "EProcessNullCalibrationResult",
     "MAX_CALIBRATION_FEATURES",
     "MAX_CALIBRATION_HORIZON",
     "MAX_CALIBRATION_SOURCE_ROWS",
@@ -624,5 +858,6 @@ __all__ = [
     "StationaryBlockBootstrap",
     "ShiftCalibrationResult",
     "calibrate_null",
+    "calibrate_eprocess_null",
     "calibrate_shift",
 ]
