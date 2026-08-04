@@ -12,18 +12,18 @@ gate also passed Ruff, mypy, and compileall. Coverage is reported from CPython
 ## Reproducible engineering checks
 
 - Full suite: **247 passed**.
-- Configured coverage run: **80.62%** total coverage.
+- Configured coverage run: **80.63%** total coverage.
 - Ruff: passed on `src` and `tests`.
 - Mypy: passed on all 23 source modules.
 - Dependency-light root import: passed without NumPy site packages.
 - Wheel build and isolated target-directory smoke: passed; SHA-256
-  `4c183b1b66efdb3b1fd5c4f2406f3cb42e12c6d0e515d492960b7e13d0fb5f66`;
-  source commit `6070291` supplied `SOURCE_DATE_EPOCH=1785861018`; two
+  `f92313d8eab8b168c6f729c3a62ac9ce58e9bed9bedbed55d8b2fc16ecaf539e`;
+  source commit `a685555` supplied `SOURCE_DATE_EPOCH=1785861596`; two
   consecutive builds under the same source date produced the same digest;
   the smoke exercised canonical `StudySourcePackage` serialization/restoration,
-  raw source-byte SHA-256 verification, strict `RunManifest`/`StudyManifest`
-  restore, canonical `AsOfBook` source restore from the wheel, and the
-  license/release/adapter-revision provenance envelope.
+  exact raw source-artifact ID-set and byte/size verification, strict
+  `RunManifest`/`StudyManifest` restore, canonical `AsOfBook` source restore
+  from the wheel, and the license/release/adapter-revision provenance envelope.
 - Authenticated checkpoint, manifest digest, promotion/evidence state, and
   detached restore tests: passed; checkpoint and online-state top-level schema
   drift is rejected before state mutation.
@@ -46,9 +46,10 @@ gate also passed Ruff, mypy, and compileall. Coverage is reported from CPython
   source itself.
 - Canonical study-source package tests: passed for tagged timeline round-trip,
   nested manifest/as-of/economic artifact restoration, provenance and package
-  digest binding, raw-artifact byte/size fingerprints, exact schema fields, and
-  tamper rejection. The provenance envelope records adapter policy but does not
-  independently certify vendor point-in-time claims.
+  digest binding, raw-artifact byte/size fingerprints, exact complete
+  payload-ID verification, exact schema fields, and tamper rejection. The
+  provenance envelope records adapter policy but does not independently certify
+  vendor point-in-time claims.
 - Causal replay prediction-before-label, future-prefix invariance, explicit
   missing/invalid status, chained-record tamper detection, and model-state
   restore tests: passed; composite causal numerical and paired-promotion
