@@ -35,6 +35,7 @@ from topology_gate.study import (
     run_causal_rls_study,
 )
 from topology_gate.study_package import (
+    StudySourceArtifact,
     StudySourcePackage,
     StudySourcePackageError,
     StudySourceProvenance,
@@ -186,6 +187,14 @@ def _source_provenance() -> StudySourceProvenance:
         revision_rule="latest visible source_revision at cutoff",
         universe_rule="visible membership interval at decision time",
         delisting_rule="retain delisted instruments through final visible interval",
+        source_artifacts=(
+            StudySourceArtifact.from_bytes(
+                "market-data.csv",
+                "market observations and universe",
+                b"record_id,instrument_id\nm1,ES\n",
+                2,
+            ),
+        ),
         retrieved_at=2026_08_04,
     )
 
@@ -429,6 +438,12 @@ def test_source_package_round_trip_binds_provenance_and_all_artifacts() -> None:
     assert restored.digest == package.digest
     assert restored.bundle.digest == bundle.digest
     assert restored.provenance.digest == package.provenance.digest
+    restored.verify_source_artifact(
+        "market-data.csv",
+        b"record_id,instrument_id\nm1,ES\n",
+    )
+    with pytest.raises(StudySourcePackageError, match="byte size|sha256"):
+        restored.verify_source_artifact("market-data.csv", b"tampered")
     assert restored.audit("calibration").decision_count == 2
 
 
@@ -464,3 +479,8 @@ def test_source_package_rejects_schema_and_provenance_digest_tampering() -> None
     wrong_provenance["provenance"]["provider_id"] = "tampered"
     with pytest.raises(StudySourcePackageError, match="provenance digest"):
         StudySourcePackage.from_dict(wrong_provenance)
+
+    wrong_artifact = json.loads(package.to_json())
+    wrong_artifact["provenance"]["source_artifacts"][0]["sha256"] = "0" * 64
+    with pytest.raises(StudySourcePackageError, match="source artifact digest"):
+        StudySourcePackage.from_dict(wrong_artifact)

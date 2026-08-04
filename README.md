@@ -228,8 +228,10 @@ point-in-time universe coverage, and optional economic evidence before entering
 the shared causal replay. `run_causal_promotion_study` applies the same
 preflight to paired challenger/e-process runs. `StudySourcePackage` adds a
 canonical JSON envelope for the normalized artifacts and records the adapter's
-as-of, revision, universe, and delisting policies with digest verification. It
-does not parse vendor-native files or certify a vendor's point-in-time claim.
+as-of, revision, universe, and delisting policies with digest verification. Its
+required raw-artifact fingerprints can be checked byte-for-byte through
+`verify_source_artifact(...)`. It does not parse vendor-native files or certify
+a vendor's point-in-time claim.
 
 `run_causal_promotion_replay` composes the same transition with paired
 challenger/incumbent learners and the existing alpha-spending promotion gate.

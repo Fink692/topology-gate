@@ -30,6 +30,8 @@ SOURCE_PROVENANCE_SCHEMA = "topology_gate.study_source_provenance"
 SOURCE_PROVENANCE_VERSION = 1
 SOURCE_PACKAGE_SCHEMA = "topology_gate.study_source_package"
 SOURCE_PACKAGE_VERSION = 1
+SOURCE_ARTIFACT_SCHEMA = "topology_gate.study_source_artifact"
+SOURCE_ARTIFACT_VERSION = 1
 
 
 class StudySourcePackageError(ValueError):
@@ -68,6 +70,130 @@ def _stored_digest(value: Any, name: str) -> str:
 
 
 @dataclass(frozen=True, slots=True)
+class StudySourceArtifact:
+    """Fingerprint for one immutable raw input artifact."""
+
+    artifact_id: str
+    role: str
+    sha256: str
+    byte_size: int
+    record_count: int
+    schema: str = SOURCE_ARTIFACT_SCHEMA
+    version: int = SOURCE_ARTIFACT_VERSION
+
+    def __post_init__(self) -> None:
+        self_id = _text(self.artifact_id, "artifact_id")
+        role = _text(self.role, "role")
+        object.__setattr__(self, "artifact_id", self_id)
+        object.__setattr__(self, "role", role)
+        object.__setattr__(
+            self,
+            "sha256",
+            _stored_digest(self.sha256, "artifact sha256"),
+        )
+        for name in ("byte_size", "record_count"):
+            value = getattr(self, name)
+            if isinstance(value, bool) or not isinstance(value, int) or value < 0:
+                raise StudySourcePackageError(
+                    f"{name} must be a non-negative integer"
+                )
+        if self.schema != SOURCE_ARTIFACT_SCHEMA:
+            raise StudySourcePackageError(
+                f"schema must be exactly {SOURCE_ARTIFACT_SCHEMA!r}"
+            )
+        if type(self.version) is not int or self.version != SOURCE_ARTIFACT_VERSION:
+            raise StudySourcePackageError(
+                f"version must be exactly {SOURCE_ARTIFACT_VERSION}"
+            )
+
+    @classmethod
+    def from_bytes(
+        cls,
+        artifact_id: str,
+        role: str,
+        payload: bytes,
+        record_count: int,
+    ) -> "StudySourceArtifact":
+        if not isinstance(payload, bytes):
+            raise TypeError("source artifact payload must be bytes")
+        return cls(
+            artifact_id=artifact_id,
+            role=role,
+            sha256=hashlib.sha256(payload).hexdigest(),
+            byte_size=len(payload),
+            record_count=record_count,
+        )
+
+    def _payload(self) -> dict[str, Any]:
+        return {
+            "schema": self.schema,
+            "version": self.version,
+            "artifact_id": self.artifact_id,
+            "role": self.role,
+            "sha256": self.sha256,
+            "byte_size": self.byte_size,
+            "record_count": self.record_count,
+        }
+
+    @property
+    def digest(self) -> str:
+        return _digest(self._payload())
+
+    def to_dict(self) -> dict[str, Any]:
+        return {**self._payload(), "digest": self.digest}
+
+    def verify_bytes(self, payload: bytes) -> None:
+        if not isinstance(payload, bytes):
+            raise TypeError("source artifact payload must be bytes")
+        if len(payload) != self.byte_size:
+            raise StudySourcePackageError(
+                f"source artifact {self.artifact_id!r} byte size does not match"
+            )
+        actual = hashlib.sha256(payload).hexdigest()
+        if actual != self.sha256:
+            raise StudySourcePackageError(
+                f"source artifact {self.artifact_id!r} sha256 does not match"
+            )
+
+    @classmethod
+    def from_dict(cls, state: Mapping[str, Any]) -> "StudySourceArtifact":
+        if not isinstance(state, Mapping):
+            raise StudySourcePackageError("source artifact must be a mapping")
+        expected = {
+            "schema",
+            "version",
+            "artifact_id",
+            "role",
+            "sha256",
+            "byte_size",
+            "record_count",
+            "digest",
+        }
+        if set(state) != expected:
+            raise StudySourcePackageError(
+                "source artifact contains unknown or missing fields"
+            )
+        try:
+            candidate = cls(
+                artifact_id=state["artifact_id"],
+                role=state["role"],
+                sha256=state["sha256"],
+                byte_size=state["byte_size"],
+                record_count=state["record_count"],
+                schema=state["schema"],
+                version=state["version"],
+            )
+        except (TypeError, ValueError) as exc:
+            raise StudySourcePackageError("source artifact is invalid") from exc
+        stored = _stored_digest(state["digest"], "source artifact digest")
+        if stored != candidate.digest:
+            raise StudySourcePackageError(
+                "source artifact digest does not match its content"
+            )
+        return candidate
+
+
+@dataclass(frozen=True, slots=True)
 class StudySourceProvenance:
     """Source-policy metadata carried beside normalized study artifacts.
 
@@ -83,6 +209,7 @@ class StudySourceProvenance:
     revision_rule: str
     universe_rule: str
     delisting_rule: str
+    source_artifacts: tuple[StudySourceArtifact, ...]
     retrieved_at: TimePoint
     schema: str = SOURCE_PROVENANCE_SCHEMA
     version: int = SOURCE_PROVENANCE_VERSION
@@ -98,6 +225,21 @@ class StudySourceProvenance:
             "delisting_rule",
         ):
             _text(getattr(self, name), name)
+        try:
+            artifacts = tuple(self.source_artifacts)
+        except TypeError as exc:
+            raise StudySourcePackageError(
+                "source_artifacts must be a sequence"
+            ) from exc
+        if not artifacts or not all(
+            isinstance(item, StudySourceArtifact) for item in artifacts
+        ):
+            raise StudySourcePackageError(
+                "source_artifacts must contain StudySourceArtifact values"
+            )
+        if len({item.artifact_id for item in artifacts}) != len(artifacts):
+            raise StudySourcePackageError("source_artifacts must have unique IDs")
+        object.__setattr__(self, "source_artifacts", artifacts)
         if self.schema != SOURCE_PROVENANCE_SCHEMA:
             raise StudySourcePackageError(
                 f"schema must be exactly {SOURCE_PROVENANCE_SCHEMA!r}"
@@ -119,6 +261,9 @@ class StudySourceProvenance:
             "revision_rule": self.revision_rule,
             "universe_rule": self.universe_rule,
             "delisting_rule": self.delisting_rule,
+            "source_artifacts": [
+                item.to_dict() for item in self.source_artifacts
+            ],
             "retrieved_at": _encode_time(self.retrieved_at, "retrieved_at"),
         }
 
@@ -143,6 +288,7 @@ class StudySourceProvenance:
             "revision_rule",
             "universe_rule",
             "delisting_rule",
+            "source_artifacts",
             "retrieved_at",
             "digest",
         }
@@ -159,12 +305,20 @@ class StudySourceProvenance:
                 revision_rule=state["revision_rule"],
                 universe_rule=state["universe_rule"],
                 delisting_rule=state["delisting_rule"],
+                source_artifacts=tuple(
+                    StudySourceArtifact.from_dict(item)
+                    for item in state["source_artifacts"]
+                ),
                 retrieved_at=_decode_time(state["retrieved_at"], "retrieved_at"),
                 schema=state["schema"],
                 version=state["version"],
             )
         except (TypeError, ValueError) as exc:
-            raise StudySourcePackageError("source provenance is invalid") from exc
+            if isinstance(exc, StudySourcePackageError):
+                raise
+            raise StudySourcePackageError(
+                f"source provenance is invalid: {exc}"
+            ) from exc
         stored = _stored_digest(state["digest"], "source provenance digest")
         if stored != candidate.digest:
             raise StudySourcePackageError(
@@ -325,13 +479,28 @@ class StudySourcePackage:
 
         return self.bundle.audit(phase, **kwargs)
 
+    def verify_source_artifact(self, artifact_id: str, payload: bytes) -> None:
+        """Verify raw bytes against the package's declared artifact fingerprint."""
+
+        artifact_name = _text(artifact_id, "artifact_id")
+        for artifact in self.provenance.source_artifacts:
+            if artifact.artifact_id == artifact_name:
+                artifact.verify_bytes(payload)
+                return
+        raise StudySourcePackageError(
+            f"source artifact {artifact_name!r} is not declared"
+        )
+
 
 __all__ = [
     "SOURCE_PACKAGE_SCHEMA",
     "SOURCE_PACKAGE_VERSION",
+    "SOURCE_ARTIFACT_SCHEMA",
+    "SOURCE_ARTIFACT_VERSION",
     "SOURCE_PROVENANCE_SCHEMA",
     "SOURCE_PROVENANCE_VERSION",
     "StudySourcePackage",
     "StudySourcePackageError",
+    "StudySourceArtifact",
     "StudySourceProvenance",
 ]
