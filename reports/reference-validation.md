@@ -5,13 +5,13 @@ Interpreter: CPython 3.12.10
 Scope: bounded research/control layer only; no live-data or execution claim
 
 Supported-interpreter matrix: CPython 3.10.11, 3.11.15, and 3.12.10 each
-passed the current 288-test suite; the 3.10 and 3.11 runs used isolated `uv`
+passed the current 291-test suite; the 3.10 and 3.11 runs used isolated `uv`
 environment. The CPython 3.12 release gate also passed Ruff, mypy, and
 compileall. Coverage is reported from CPython 3.12 only.
 
 ## Reproducible engineering checks
 
-- Full suite: **288 passed**.
+- Full suite: **291 passed**.
 - Configured coverage run: **80.93%** total coverage.
 - Coverage enforcement: configured floor **80%**; the current CPython 3.10,
   3.11, and 3.12 runs each clear it at **80.93%** total.
@@ -86,6 +86,10 @@ compileall. Coverage is reported from CPython 3.12 only.
 - Mean/covariance CUSUM tests: passed for block-score alarms, bounded
   forgetting-factor mapping, reset/stream-state behavior, deterministic
   checkpoint round-trip, tamper rejection, and resource limits.
+- Filesystem market-source intake tests: passed for exact declared-artifact
+  reads and fail-closed rejection of missing directories and unsafe paths. The
+  intake command still requires a vendor-produced package and raw payloads;
+  it does not manufacture market data or certify the vendor source.
 - Stationary block-bootstrap tests: passed for seeded reproducibility, source
   identity binding, feature-dimension rejection, and result-level factory
   identity recording.
