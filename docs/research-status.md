@@ -65,3 +65,8 @@ fixed-scale exploratory filtration activated topology but saturated the
 forgetting map and still failed the e-process promotion gate. The next
 mathematical task is score-to-memory normalization on a calibration split,
 with fresh holdout evaluation.
+
+The calibration-only score-normalization experiment is recorded in
+[`public-market-score-normalization.md`](public-market-score-normalization.md).
+It improved the fixed-scale proxy to holdout net Sharpe `-0.1679`, but static
+RLS remained better and the challenger was not promoted.

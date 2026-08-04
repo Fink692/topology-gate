@@ -43,6 +43,11 @@ The correct next research change is therefore a predeclared, calibration-only
 score-to-memory normalization or bounded score map, followed by fresh
 independent calibration. It must not be selected by looking at this holdout.
 
+That follow-up is now implemented in
+[`public-market-score-normalization.py`](../examples/public_market_score_normalization.py).
+It derives the score scale from the calibration-prefix median and is reported
+separately so the exploratory sensitivity cells remain unchanged.
+
 The machine-readable receipt is
 [`public-market-sensitivity.json`](../reports/public-market-sensitivity.json).
 This remains public-final-history diagnostic evidence, not point-in-time

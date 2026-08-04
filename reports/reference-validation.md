@@ -283,6 +283,13 @@ therefore fail-closed.
   This is public-final-history sensitivity evidence only; see
   [`docs/public-market-sensitivity.md`](../docs/public-market-sensitivity.md)
   and [`reports/public-market-sensitivity.json`](public-market-sensitivity.json).
+- The calibration-only score-normalization follow-up fit
+  `forgetting_score_scale=936.886` on the calibration prefix, selected
+  threshold `128`, and produced holdout net Sharpe `-0.1679` versus static RLS
+  `0.0943`; its e-process ended at `5.16e-32` against threshold `80` and did
+  not promote. This remains public-final-history evidence only; see
+  [`docs/public-market-score-normalization.md`](../docs/public-market-score-normalization.md)
+  and [`reports/public-market-score-normalization.json`](public-market-score-normalization.json).
 
 - The single-package phase-selection path was exercised on one full synthetic
   timeline: calibration, tuning, and validation each selected two declared

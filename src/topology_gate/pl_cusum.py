@@ -146,6 +146,7 @@ class PersistentCUSUMConfig:
     forgetting_lambda_min: float = 0.8
     forgetting_lambda_max: float = 0.99
     forgetting_sensitivity: float = 1.0
+    forgetting_score_scale: float = 1.0
     max_stream_observations: int = 100_000
     max_history: int = 4_096
 
@@ -239,6 +240,11 @@ class PersistentCUSUMConfig:
             )
         if sensitivity < 0.0:
             raise PersistentCUSUMError("forgetting_sensitivity must be non-negative")
+        score_scale = _finite(
+            self.forgetting_score_scale, "forgetting_score_scale"
+        )
+        if score_scale <= 0.0:
+            raise PersistentCUSUMError("forgetting_score_scale must be positive")
         max_observations = _integer(
             self.max_stream_observations,
             "max_stream_observations",
@@ -267,6 +273,7 @@ class PersistentCUSUMConfig:
         object.__setattr__(self, "forgetting_lambda_min", lambda_min)
         object.__setattr__(self, "forgetting_lambda_max", lambda_max)
         object.__setattr__(self, "forgetting_sensitivity", sensitivity)
+        object.__setattr__(self, "forgetting_score_scale", score_scale)
         object.__setattr__(self, "max_stream_observations", max_observations)
         object.__setattr__(self, "max_history", max_history)
 
@@ -293,6 +300,7 @@ class PersistentCUSUMConfig:
             "forgetting_lambda_min": self.forgetting_lambda_min,
             "forgetting_lambda_max": self.forgetting_lambda_max,
             "forgetting_sensitivity": self.forgetting_sensitivity,
+            "forgetting_score_scale": self.forgetting_score_scale,
             "max_stream_observations": self.max_stream_observations,
             "max_history": self.max_history,
         }
@@ -463,7 +471,9 @@ class PersistentLaplacianCUSUM:
             return self.config.forgetting_lambda_max
         span = self.config.forgetting_lambda_max - self.config.forgetting_lambda_min
         return self.config.forgetting_lambda_min + span * math.exp(
-            -self.config.forgetting_sensitivity * score
+            -self.config.forgetting_sensitivity
+            * score
+            / self.config.forgetting_score_scale
         )
 
     def _not_ready(

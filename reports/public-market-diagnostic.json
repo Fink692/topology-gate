@@ -13,8 +13,8 @@
           "alpha": 0.05,
           "average_run_length_censored": 49.0,
           "censored_run_fraction": 1.0,
-          "config_identity": "a845443aca5937f78c975eb63f96105401615824158a7bd210df981d55e67089",
-          "detector_identity": "856c87c650a17122b64d223527a63fbe0643f57c94bbd16802a7917e486926d7",
+          "config_identity": "4478102c9c4aaf870b9fdf31427574d4e1f4c162c3299277300c33603bc1efcf",
+          "detector_identity": "16167e6c0659bffd388d75111d718c855fe59c3706f01dab5e21eb90fe03d588",
           "false_alarm_ci_95": [
             0.0,
             0.1071791982550706
@@ -66,8 +66,8 @@
           "alpha": 0.05,
           "average_run_length_censored": 49.0,
           "censored_run_fraction": 1.0,
-          "config_identity": "f214257d4d6b8779c8e8b8044b613061e31078c2c41625c966607df4ff15c48f",
-          "detector_identity": "a5b37fa88b5f07a577085b0a3acb2dcd1ca4f7b33112b37c3aed49f775f7bbb7",
+          "config_identity": "6bfb1d33c954da2de5a310d2dffaa10832ee1ad87f6a5de09b14769e4bfc8674",
+          "detector_identity": "9fabce40d6957197ce0db43245998794c9f6842c511e49f7e6d27bf3b729c58a",
           "false_alarm_ci_95": [
             0.0,
             0.1071791982550706
@@ -119,8 +119,8 @@
           "alpha": 0.05,
           "average_run_length_censored": 49.0,
           "censored_run_fraction": 1.0,
-          "config_identity": "4ad231678320569c5f0dbb4ccc6cb06efefa03800ed9a699676d0693ed2465fe",
-          "detector_identity": "faca49532de2208cc7b0a2e085328b0e01b53d227d83dd1f40c0b3223dab63a3",
+          "config_identity": "30c4f192c81c5fd1d87b1fd089872c4f333afa05692752e45ebd7f81c4364cb0",
+          "detector_identity": "2c14a4acc2198933bbe905c70c2ff3ceea780f75485ee8b3ef3b99eff027d4e8",
           "false_alarm_ci_95": [
             0.0,
             0.1071791982550706
@@ -172,8 +172,8 @@
           "alpha": 0.05,
           "average_run_length_censored": 49.0,
           "censored_run_fraction": 1.0,
-          "config_identity": "4e1c038d1c07dc1c30bc65f7c0534460d00d4360435ccd769bd9fb0019ff1a9e",
-          "detector_identity": "ec39e3fb0a112aebd0c2fd7ce6eade48dcc9d1dfbe85f27f9a6be832871ca994",
+          "config_identity": "6240c44975e8ad886bcfd725a5329adbb45d5fc99912af0e624fa01bfa1257c2",
+          "detector_identity": "5b2e9144fbffd0fc6e247b2bd9e20f39f6cc3d09df20ac1e8539342487816ab8",
           "false_alarm_ci_95": [
             0.0,
             0.1071791982550706
@@ -225,8 +225,8 @@
           "alpha": 0.05,
           "average_run_length_censored": 49.0,
           "censored_run_fraction": 1.0,
-          "config_identity": "1b35d721c80799947c4cd2b07bce2d4a673ad2df561b15775c4acff7c3d5b871",
-          "detector_identity": "70377d7fa3f703c6d10af5d465cfbc18350edf35d72691f3e89e7f5ec071217c",
+          "config_identity": "5c0c32c24659e826d0bcc970fb5693fdb12ffce89eaa569e1c9bb3694b17fb4c",
+          "detector_identity": "3b8885dac01716088943a149fef943db4e8bc9f2fde9d255a891b6f50ccfc899",
           "false_alarm_ci_95": [
             0.0,
             0.1071791982550706
@@ -289,8 +289,8 @@
         "alpha": 0.05,
         "average_run_length_censored": 49.0,
         "censored_run_fraction": 1.0,
-        "config_identity": "e159caee5e515c79195eb1aee058ead0bacca66fb05b1dbad47b02837299c505",
-        "detector_identity": "856c87c650a17122b64d223527a63fbe0643f57c94bbd16802a7917e486926d7",
+        "config_identity": "b1f9ad6fd908cc1371ea14f12be83e544ad889c57bd399b70829a1356838dd5b",
+        "detector_identity": "16167e6c0659bffd388d75111d718c855fe59c3706f01dab5e21eb90fe03d588",
         "false_alarm_ci_95": [
           0.0,
           0.1071791982550706
@@ -338,7 +338,7 @@
         "seed": 2903,
         "trials": 32
       },
-      "identity": "009bbf7a6f28a48bd9eb18d57876ceaef95f3820506716e2a7c715641d8db383",
+      "identity": "c4e931823aee75fe1234cb3ac50b0d4a77ae83021b6a82875d4057c8be8773d1",
       "kind": "threshold_calibration",
       "max_false_alarm_rate": 0.2,
       "schema": "topology_gate.threshold_calibration",
@@ -348,7 +348,7 @@
     }
   },
   "claim_status": "public-final-history diagnostic only",
-  "created_at_utc": "2026-08-04T21:55:41+00:00",
+  "created_at_utc": "2026-08-04T22:29:53+00:00",
   "data": {
     "feature_count": 18,
     "feature_end": "2026-08-03",
@@ -558,7 +558,7 @@
         "turnover": 0.705453233995191
       },
       "authorized_acceleration_count": 4894,
-      "calibration_identity": "f00b66c19a83b4e715b8f00a18cba609ab3c9a9f06260e314ab1fec9651a5a1a",
+      "calibration_identity": "a02b04d6e2c6a644c9e772dcc7ec502047fecd3bcc511e0f5b5c117670561aa1",
       "detector_telemetry": {
         "forgetting_factor_max": 0.99,
         "forgetting_factor_min": 0.99,

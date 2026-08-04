@@ -22,8 +22,8 @@
             "alpha": 0.05,
             "average_run_length_censored": 49.0,
             "censored_run_fraction": 1.0,
-            "config_identity": "48c881c9b4bed71500881574ce682e778f7cbf5efb6a8e69853abdd3123c4960",
-            "detector_identity": "34cdde951318ae44de568dc6eb93bd4d7d4ec6c58b7c50ff4aa7524868cdeeaf",
+            "config_identity": "f58eddddca05192372c157b754e8ae09b662f87dcdbcb6e7ae239ddd55a75813",
+            "detector_identity": "4f528700252a28c655d7317f4ca42180220ddf85f58456c4428f00274c10be72",
             "false_alarm_ci_95": [
               0.0,
               0.1071791982550706
@@ -75,8 +75,8 @@
             "alpha": 0.05,
             "average_run_length_censored": 49.0,
             "censored_run_fraction": 1.0,
-            "config_identity": "dc1439abab9b9f96c4ed19d67584fd9dd210b5df37e57fee28b8d4b56027f57f",
-            "detector_identity": "af238ef98026ff1d1f5c35ffdbeae973bd48b8cb672f8e88559f856d43bff096",
+            "config_identity": "3604627e930c2758ff13b8cd36eb91d20b7e1fb60b072b9cc961acee5cffb6ec",
+            "detector_identity": "9d404a93628cbf751fb6774f00b5542fd52d02b44de7bad04e6e6e5ad80a635d",
             "false_alarm_ci_95": [
               0.0,
               0.1071791982550706
@@ -128,8 +128,8 @@
             "alpha": 0.05,
             "average_run_length_censored": 49.0,
             "censored_run_fraction": 1.0,
-            "config_identity": "213ca24107445b979d949601ef5502aae1bfcda6bc684aa39619666107d9c644",
-            "detector_identity": "dcc9dd3c1225d8f0d3815d1d5766eac51063fae9fbc243f2b5237870b696f0e1",
+            "config_identity": "948839c7e71b0f91970371a65ade0d4978542aac46119ca94c6d7b846ad80615",
+            "detector_identity": "40735c83c20d165481821d00de16f1c0d3c466444d31079a9e03eabe7108c6f2",
             "false_alarm_ci_95": [
               0.0,
               0.1071791982550706
@@ -181,8 +181,8 @@
             "alpha": 0.05,
             "average_run_length_censored": 49.0,
             "censored_run_fraction": 1.0,
-            "config_identity": "0ab95f63f51fa36c48ac3a3bd07936e82bd51f94bc9735a0511c2fd0c7869396",
-            "detector_identity": "c93415fbce4863dfc67bb9521ffdde02541367adf5a215065f2ee7e3ddf7ff21",
+            "config_identity": "09119d91215d93c9337303c36faeccb9fcdd4f61ddbe406e994b0a5199adb194",
+            "detector_identity": "bb66a81a3d139b56505d87c2f32b0f39c33e4a8eedb0adc8e58446956f800a18",
             "false_alarm_ci_95": [
               0.0,
               0.1071791982550706
@@ -234,8 +234,8 @@
             "alpha": 0.05,
             "average_run_length_censored": 49.0,
             "censored_run_fraction": 1.0,
-            "config_identity": "f862d3bc38bfa46ec1e737ea8f0cbf3f86141b7b5ec215d02e99b839ce4041bd",
-            "detector_identity": "3fb5acf3722be3b6146433411cd9e733813a50fab7327e2298c978fd2f259a36",
+            "config_identity": "e857686483d003996ba75686ebd98cc7e6fecb826500fe50531426346bf541d9",
+            "detector_identity": "b649fc54cc338c57740882e1466f29add7f9f0b71f495498f35b325c5fb0ac3d",
             "false_alarm_ci_95": [
               0.0,
               0.1071791982550706
@@ -298,8 +298,8 @@
           "alpha": 0.05,
           "average_run_length_censored": 49.0,
           "censored_run_fraction": 1.0,
-          "config_identity": "790a8444fa65486f46149e48b9001d0d7f4fd7c7521c816255441c7a013a24b7",
-          "detector_identity": "34cdde951318ae44de568dc6eb93bd4d7d4ec6c58b7c50ff4aa7524868cdeeaf",
+          "config_identity": "653d50bb2a71cd2d7c2838a9c26d5c349a0b1f43edf48b20278128ca0aa11dd9",
+          "detector_identity": "4f528700252a28c655d7317f4ca42180220ddf85f58456c4428f00274c10be72",
           "false_alarm_ci_95": [
             0.0,
             0.1071791982550706
@@ -347,7 +347,7 @@
           "seed": 6103,
           "trials": 32
         },
-        "identity": "1118992649e14a4a960359323cd4451f3dfce45bcce0b94a9a55714ecf5f6e87",
+        "identity": "17f49bbd350c166451f25b64b77e283d18d375076fa7d74121367b8e56f265fe",
         "kind": "threshold_calibration",
         "max_false_alarm_rate": 0.2,
         "schema": "topology_gate.threshold_calibration",
@@ -355,7 +355,7 @@
         "selected_threshold": 2.0,
         "version": 2
       },
-      "calibration_identity": "e52fdcaabc1c637a4e1d22ff3bdc6407125928aa30e62eeca117892c49802353",
+      "calibration_identity": "e4faa68e9cfd9337669c8be5da9782027fa53d2b381ddd2eaf79d14d8de99559",
       "detector_telemetry": {
         "forgetting_factor_max": 0.99,
         "forgetting_factor_min": 0.99,
@@ -457,8 +457,8 @@
             "alpha": 0.05,
             "average_run_length_censored": 49.0,
             "censored_run_fraction": 1.0,
-            "config_identity": "6912a585fb8c41d85b7d1f872464c45e9bfa4e44afb3ce1303ea576e70e16af7",
-            "detector_identity": "f2008a1e3fa287e85b5aabbf0ceb6fca36fe9ec946e28121e27d97a8d429ed96",
+            "config_identity": "36b76809540cb7121efb459f0abf7f8057356e20e47aa9d3f1caa3a8d80da699",
+            "detector_identity": "852d3591dab060cc7c9fc4bf49aaa2b9e8f53b0819841dfff52b0a8534daade0",
             "false_alarm_ci_95": [
               0.0,
               0.1071791982550706
@@ -510,8 +510,8 @@
             "alpha": 0.05,
             "average_run_length_censored": 49.0,
             "censored_run_fraction": 1.0,
-            "config_identity": "63c6a7aa5623c5ae996a66796aec6e519adfa83660da7f1bfef3f76dfa7c2c25",
-            "detector_identity": "e2457fc60e377ca66034602c7622dfd8f2d66221c7073af7337be9007bc733b4",
+            "config_identity": "b57d5c7d9fd1105d5904474e9c6eac37dc0d042d634355bbdd6ee3b14d8b8b67",
+            "detector_identity": "0829ec083ed6d2af4397f7783866deb00cf5590c03f28bdc28891d586b70b781",
             "false_alarm_ci_95": [
               0.0,
               0.1071791982550706
@@ -563,8 +563,8 @@
             "alpha": 0.05,
             "average_run_length_censored": 49.0,
             "censored_run_fraction": 1.0,
-            "config_identity": "1f63ad603494dd64c0e13be1e45053194e3390e409c3385c635f24a865754a03",
-            "detector_identity": "55a6980373c8a3b3744562669ebb205f387230284aa7a7e5dbb65dfcc88edade",
+            "config_identity": "fe587f393be2b0dc8a62d50a3cd14ec15ea8123accbf29865fd6c757699e1004",
+            "detector_identity": "92e6b8576680d550b9093ecbc956b7594ea571424b6bf83317e86b5dcff4ba7c",
             "false_alarm_ci_95": [
               0.0,
               0.1071791982550706
@@ -616,8 +616,8 @@
             "alpha": 0.05,
             "average_run_length_censored": 49.0,
             "censored_run_fraction": 1.0,
-            "config_identity": "81f4ca819122466494c4860842f02f92449b1dd9dd35727121aaf49feeb91987",
-            "detector_identity": "2bb5327ddcd74a6994ef1d7b9d402bc232961f048a22ad088844821956912ff9",
+            "config_identity": "b2cc1ae30740b4a05b9a6165a7c2ec61af6287d18d739ab769a8c6d6597901b4",
+            "detector_identity": "0fb61ca63a26f9218f770698739681c02d831466fe8d7a8d8a63b17978b55be7",
             "false_alarm_ci_95": [
               0.0,
               0.1071791982550706
@@ -669,8 +669,8 @@
             "alpha": 0.05,
             "average_run_length_censored": 49.0,
             "censored_run_fraction": 1.0,
-            "config_identity": "1b5848578ae873ff87a374582378016240aae2c9736f8b851eb9ffa484cdd812",
-            "detector_identity": "530fb1b51f64de151dec2c783b1d743af6f661228b806081ca67453a9c98a8bc",
+            "config_identity": "dbf9b7003ba86cac0c2f13ae783be228343c1d6752e7be82bfe4aab614640f59",
+            "detector_identity": "b9ca3742b76166d6fd55d09ec9b863ec03950d1ec32ddc0d2273c2936e4004ea",
             "false_alarm_ci_95": [
               0.0,
               0.1071791982550706
@@ -733,8 +733,8 @@
           "alpha": 0.05,
           "average_run_length_censored": 49.0,
           "censored_run_fraction": 1.0,
-          "config_identity": "87882f219afb2e0d9f79b9c1b3e023ca1da2112f42d3b9bae2a01e247a54ada4",
-          "detector_identity": "f2008a1e3fa287e85b5aabbf0ceb6fca36fe9ec946e28121e27d97a8d429ed96",
+          "config_identity": "6bb8724eb5f8766137c47927510d187efe7e849b00456479d4d6bae83c5d5779",
+          "detector_identity": "852d3591dab060cc7c9fc4bf49aaa2b9e8f53b0819841dfff52b0a8534daade0",
           "false_alarm_ci_95": [
             0.0,
             0.1071791982550706
@@ -782,7 +782,7 @@
           "seed": 6204,
           "trials": 32
         },
-        "identity": "dcb29962a8a5b9a7cda4eeddf98050f4fa36705732fd88b8dcfa789bb811605e",
+        "identity": "e20a5b9086f6c92dcdef75833f431073793394d68c8efb5e12950c311c193ece",
         "kind": "threshold_calibration",
         "max_false_alarm_rate": 0.2,
         "schema": "topology_gate.threshold_calibration",
@@ -790,7 +790,7 @@
         "selected_threshold": 2.0,
         "version": 2
       },
-      "calibration_identity": "262647a07264ed4d7c20b59a1cb9d217fb0aff7aef731d5a11a6bbfd530cc1a2",
+      "calibration_identity": "9a0a2d0f1ff61f49491adc5c67c7ca51ad490f350ffd5270bb0dd3df6dfb922f",
       "detector_telemetry": {
         "forgetting_factor_max": 0.99,
         "forgetting_factor_min": 0.99,
@@ -892,8 +892,8 @@
             "alpha": 0.05,
             "average_run_length_censored": 49.0,
             "censored_run_fraction": 1.0,
-            "config_identity": "c382d571f8abbc9796a2879f6c42815cb6163cfd24710d95fa3a4d3ce54f5f89",
-            "detector_identity": "856c87c650a17122b64d223527a63fbe0643f57c94bbd16802a7917e486926d7",
+            "config_identity": "36520ef40e10042713f8f3622dbf6569e4ab3d05fe6febfada858fec3b7df84f",
+            "detector_identity": "16167e6c0659bffd388d75111d718c855fe59c3706f01dab5e21eb90fe03d588",
             "false_alarm_ci_95": [
               0.0,
               0.1071791982550706
@@ -945,8 +945,8 @@
             "alpha": 0.05,
             "average_run_length_censored": 49.0,
             "censored_run_fraction": 1.0,
-            "config_identity": "d4257351d482efc947e5949a3d9fbc8332b86f0aa8ef4655ff767308b288f3a9",
-            "detector_identity": "a5b37fa88b5f07a577085b0a3acb2dcd1ca4f7b33112b37c3aed49f775f7bbb7",
+            "config_identity": "70d37bbf6e7820cdaffebed45d162b28e46e2445a47485c1818f1a1d56343e9e",
+            "detector_identity": "9fabce40d6957197ce0db43245998794c9f6842c511e49f7e6d27bf3b729c58a",
             "false_alarm_ci_95": [
               0.0,
               0.1071791982550706
@@ -998,8 +998,8 @@
             "alpha": 0.05,
             "average_run_length_censored": 49.0,
             "censored_run_fraction": 1.0,
-            "config_identity": "d0e74e5360ac9438a9d13574ae3163b6e77b1ed803d3b4f3ee139f72629f6935",
-            "detector_identity": "faca49532de2208cc7b0a2e085328b0e01b53d227d83dd1f40c0b3223dab63a3",
+            "config_identity": "139f8a51580d8c5ff13e8f47ca920c8d05f3ff3718b0aaee75c6abd0d619cae7",
+            "detector_identity": "2c14a4acc2198933bbe905c70c2ff3ceea780f75485ee8b3ef3b99eff027d4e8",
             "false_alarm_ci_95": [
               0.0,
               0.1071791982550706
@@ -1051,8 +1051,8 @@
             "alpha": 0.05,
             "average_run_length_censored": 49.0,
             "censored_run_fraction": 1.0,
-            "config_identity": "80bb5f58dc8a4e9b7d02fd679fe06f799f5578b7c1dfa5de4aaba81f1e3cdc56",
-            "detector_identity": "ec39e3fb0a112aebd0c2fd7ce6eade48dcc9d1dfbe85f27f9a6be832871ca994",
+            "config_identity": "5782dccd67d13e2313b9a8902679bcfe59ff7929f6a2a8b8b0a1e844c4062efd",
+            "detector_identity": "5b2e9144fbffd0fc6e247b2bd9e20f39f6cc3d09df20ac1e8539342487816ab8",
             "false_alarm_ci_95": [
               0.0,
               0.1071791982550706
@@ -1104,8 +1104,8 @@
             "alpha": 0.05,
             "average_run_length_censored": 49.0,
             "censored_run_fraction": 1.0,
-            "config_identity": "41288b7b29194909ecf64f1a8e48f5e7be50328abf0c99631ec7831b59e09e74",
-            "detector_identity": "70377d7fa3f703c6d10af5d465cfbc18350edf35d72691f3e89e7f5ec071217c",
+            "config_identity": "a0a849acbe59e50a92fcee6877082fe7f54781640f3a72e5bf152c3f98d1617a",
+            "detector_identity": "3b8885dac01716088943a149fef943db4e8bc9f2fde9d255a891b6f50ccfc899",
             "false_alarm_ci_95": [
               0.0,
               0.1071791982550706
@@ -1168,8 +1168,8 @@
           "alpha": 0.05,
           "average_run_length_censored": 49.0,
           "censored_run_fraction": 1.0,
-          "config_identity": "2323f3efa7f72c05e9ebc7faba97caafc26b2abb37a332006e66d492735c0569",
-          "detector_identity": "856c87c650a17122b64d223527a63fbe0643f57c94bbd16802a7917e486926d7",
+          "config_identity": "fdc18e016097d604603ea589d976cbc14f5ba159d98936dc896d55a388605efb",
+          "detector_identity": "16167e6c0659bffd388d75111d718c855fe59c3706f01dab5e21eb90fe03d588",
           "false_alarm_ci_95": [
             0.0,
             0.1071791982550706
@@ -1217,7 +1217,7 @@
           "seed": 6305,
           "trials": 32
         },
-        "identity": "ba23d8a75e65cd90c6900611f7c081da6eb57bc4468259af9ce8793cb4d4a287",
+        "identity": "7938b20862902385d05210ca6bb38f92845e287845de1e06fe5be1f551a13a32",
         "kind": "threshold_calibration",
         "max_false_alarm_rate": 0.2,
         "schema": "topology_gate.threshold_calibration",
@@ -1225,7 +1225,7 @@
         "selected_threshold": 2.0,
         "version": 2
       },
-      "calibration_identity": "4411a2554f61330849a4740efc71ca3f32407e2d3a365e13bf530e32a690d7ac",
+      "calibration_identity": "5aa12280c913373dd544d56faa41f5e3c8abcef5e54c5a935fa52bed7341cd2c",
       "detector_telemetry": {
         "forgetting_factor_max": 0.99,
         "forgetting_factor_min": 0.99,
@@ -1327,8 +1327,8 @@
             "alpha": 0.05,
             "average_run_length_censored": 22.25,
             "censored_run_fraction": 0.09375,
-            "config_identity": "40b6d334cb28ff5af7cd6c79597b6735a291cb5284572a24560ef022834bf5c5",
-            "detector_identity": "28fa2e22c9c3a4824cf3f8a1c35245d8885163661cab2da70a2575e1f723a8f9",
+            "config_identity": "fa38b89c771ce166d756e61029e125e91823643ce7b3a7e0ef94b37ae396b37c",
+            "detector_identity": "dec1fa5d88518aac9e2aacf2c7742553c20b27ee1bd12d558d59c88de34fda04",
             "false_alarm_ci_95": [
               0.7578184527161212,
               0.9675984487016337
@@ -1380,8 +1380,8 @@
             "alpha": 0.05,
             "average_run_length_censored": 24.65625,
             "censored_run_fraction": 0.09375,
-            "config_identity": "19407292d23618cd20c6a30eb0c02e6d79d0187e83a77aa2af5c48bd5ca5f720",
-            "detector_identity": "03db0b402c31f1ca09abb6b8682d2d039f63e7f415a52b19c905009baf1c2b7d",
+            "config_identity": "a66f337299adb944a01a2aa53957cc0feb6b2d42ba09b212b3afec998331a3cf",
+            "detector_identity": "9819bc378f094a1cbbdedeac3a3f5939c99263ac06ec95c79fd8a9842574a831",
             "false_alarm_ci_95": [
               0.7578184527161212,
               0.9675984487016337
@@ -1433,8 +1433,8 @@
             "alpha": 0.05,
             "average_run_length_censored": 41.84375,
             "censored_run_fraction": 0.5,
-            "config_identity": "7f7620e0d7eca31bd5780541913091c55b1068ff653984a7473ae2bfb00cb5a1",
-            "detector_identity": "767e5e00b3267e1a780b8c56af9bfe13525f9a06010f4924b4ea6e9c90c5a48a",
+            "config_identity": "79ae6fa6bab0662ccf63d1bc51d7ad9adb5d0a5a9bba278af4cd03092042999b",
+            "detector_identity": "a68a61d8f20904d0cabd6020843fa2db488f5fc93efd72319301ac8c810c2568",
             "false_alarm_ci_95": [
               0.33630882869327483,
               0.6636911713067252
@@ -1486,8 +1486,8 @@
             "alpha": 0.05,
             "average_run_length_censored": 49.0,
             "censored_run_fraction": 1.0,
-            "config_identity": "53b1d33d972ad1a5f6f729635f790b520b1a41ce72ee2470414088127fc67046",
-            "detector_identity": "6c52f7e1d979e6a9f2102fa14653359550807e65ebda60d99d395a8f88b9cd2e",
+            "config_identity": "bbc9b3ed3b581487f66ca1ac21100a87e310502eca3be3bb27e58b7ac8a04a1e",
+            "detector_identity": "dcc5024597f334123bf3c47cc35bc3556c2cdc5ce8f0a7c0f3478557552564e8",
             "false_alarm_ci_95": [
               0.0,
               0.1071791982550706
@@ -1539,8 +1539,8 @@
             "alpha": 0.05,
             "average_run_length_censored": 49.0,
             "censored_run_fraction": 1.0,
-            "config_identity": "379393cc3886ea5e11100667eeaa0ddadc308d7ff722656e2eeb213e870a4912",
-            "detector_identity": "f5c3aa0605c5cba093fa13decb98ef7c2bc92d7d76eb6b8ee96038e4e822930b",
+            "config_identity": "d6cb0ba20cb5cb375a2970c2f5e9ad9282b4cf26aef9c90adb3b2105852543c2",
+            "detector_identity": "7f7d3d57b54bd510edce0d5460e36539bebc0dda5ec55cdd34bd806ba1dedd08",
             "false_alarm_ci_95": [
               0.0,
               0.1071791982550706
@@ -1603,8 +1603,8 @@
           "alpha": 0.05,
           "average_run_length_censored": 49.0,
           "censored_run_fraction": 1.0,
-          "config_identity": "656b2402dc458b162e9e63605ec002b146c9cc80cb9e5b6b5f48b4ace3ebbf57",
-          "detector_identity": "6c52f7e1d979e6a9f2102fa14653359550807e65ebda60d99d395a8f88b9cd2e",
+          "config_identity": "c62800a6a8c1c942a713a6e6a9b023d2dfde6883a39d062222550490fa914b91",
+          "detector_identity": "dcc5024597f334123bf3c47cc35bc3556c2cdc5ce8f0a7c0f3478557552564e8",
           "false_alarm_ci_95": [
             0.0,
             0.1071791982550706
@@ -1652,7 +1652,7 @@
           "seed": 6406,
           "trials": 32
         },
-        "identity": "c966e340c5d87ac93fe256fec9a01d10698b43677e1d0ea671d0bbf244014a4f",
+        "identity": "9e06073cb124b5b0f19c42dff4ac59fc3bbc1084c0b3c8175a027355bc59489d",
         "kind": "threshold_calibration",
         "max_false_alarm_rate": 0.2,
         "schema": "topology_gate.threshold_calibration",
@@ -1660,7 +1660,7 @@
         "selected_threshold": 128.0,
         "version": 2
       },
-      "calibration_identity": "5f640da8e709f4d50d051d17aba1398c2d65b38b5dd43544c603156d4cd78fac",
+      "calibration_identity": "2f2c31e9fd1eb2ff2ea07b27b090a0559163432960a09e7b7c2e824bd3df15f2",
       "detector_telemetry": {
         "forgetting_factor_max": 0.99,
         "forgetting_factor_min": 0.8,
@@ -1762,8 +1762,8 @@
             "alpha": 0.05,
             "average_run_length_censored": 16.75,
             "censored_run_fraction": 0.0,
-            "config_identity": "9e26ac6113842a65a024ed182f326bdcaa347da6f959b81b6b5417ad596e633b",
-            "detector_identity": "24196a640f4a0b0579f4a603bc9d903d10491998150f03ca042e5cef2939e4ab",
+            "config_identity": "b0e0e34665a2e04285db00a0f059710f6030887adf9583b5f87c0ce2e4e4036f",
+            "detector_identity": "0fc3fb26ed23716660ada7c4621a23a9ee505ce939cacbdd460fec8860049959",
             "false_alarm_ci_95": [
               0.8928208017449293,
               1.0
@@ -1815,8 +1815,8 @@
             "alpha": 0.05,
             "average_run_length_censored": 21.03125,
             "censored_run_fraction": 0.0625,
-            "config_identity": "64f351d4d6020b4754ef5e73fbf3b635c487f29c7c009ba7bf2fdf85738e08cb",
-            "detector_identity": "7af7e7112cc553622e397852c2965eed744083f4afea71775b4812322556d4ce",
+            "config_identity": "4da25b662335762b3b2e49cca1e38c0565dd7633c863c4fa95a1327399cc5e54",
+            "detector_identity": "898565037e00970a125ce367b2d8d824df3d251e2f7165f6b131f339a4117863",
             "false_alarm_ci_95": [
               0.7985287685584542,
               0.982689432968359
@@ -1868,8 +1868,8 @@
             "alpha": 0.05,
             "average_run_length_censored": 38.0,
             "censored_run_fraction": 0.34375,
-            "config_identity": "b085c8d194d60a5b776f5891813bcd97d6ca904b0dd0609699753b72471d9a07",
-            "detector_identity": "f2f7de8c567424dc3aa183a5789aa4db3426d20b95964d266e07ba9af30ef66c",
+            "config_identity": "55d7fe816dd8aa41403fe2c856dbf16b8009ff8fd7ad0c95b3bd91290e622b07",
+            "detector_identity": "2a31a493225c983c004f292b359a91e3b8f1672322133719238670affb34f9d5",
             "false_alarm_ci_95": [
               0.4831108797896222,
               0.7958956207556682
@@ -1921,8 +1921,8 @@
             "alpha": 0.05,
             "average_run_length_censored": 49.0,
             "censored_run_fraction": 1.0,
-            "config_identity": "218494404265d0e4507650a4626cc172bf9c8c6ba8f2de1d6fc42c3e624bfe02",
-            "detector_identity": "ee5abba9c2cc4343b089df3ce43f9161580f842777af15b5bbdb9de0e545b8ed",
+            "config_identity": "db9230c5686f1c4f9393ef6bd08bb17472e5ef7dd67b7982dad99f1184d894a6",
+            "detector_identity": "8fc61bf6f5e248b8856377151c95534bbad97678bc82bcb393075997de67534c",
             "false_alarm_ci_95": [
               0.0,
               0.1071791982550706
@@ -1974,8 +1974,8 @@
             "alpha": 0.05,
             "average_run_length_censored": 49.0,
             "censored_run_fraction": 1.0,
-            "config_identity": "eca054bcefa38dc5920e95e5c8a0b6a4e6e4ae52e649523823f6671873ff3ebf",
-            "detector_identity": "7b8351a4d05e1c4044be169cc1879f5e0a9ca23791926f736166d94cee11ab91",
+            "config_identity": "fbfc7e2389acc9dad537602033d0d3696d5c00df876ca0739ce43297a3847758",
+            "detector_identity": "0ec5ceb37790e7e9e244b3ce467cd628e30eabf098e6ebe6bd19c646c0e1867c",
             "false_alarm_ci_95": [
               0.0,
               0.1071791982550706
@@ -2038,8 +2038,8 @@
           "alpha": 0.05,
           "average_run_length_censored": 49.0,
           "censored_run_fraction": 1.0,
-          "config_identity": "bddbf57c298208c3c1d22aff6edea8ba3ea6637f9fe1a3a135a35f225ead682a",
-          "detector_identity": "ee5abba9c2cc4343b089df3ce43f9161580f842777af15b5bbdb9de0e545b8ed",
+          "config_identity": "173947c1908644a265169f16730b9c7f721b97e72f346e8ca1a108b2c9f4cf2b",
+          "detector_identity": "8fc61bf6f5e248b8856377151c95534bbad97678bc82bcb393075997de67534c",
           "false_alarm_ci_95": [
             0.0,
             0.1071791982550706
@@ -2087,7 +2087,7 @@
           "seed": 6507,
           "trials": 32
         },
-        "identity": "2ac6a6c2981882db1cec3fd413516f48955ea60a14e50bde17b7189dcfd012fd",
+        "identity": "e9e924d1294a8eb6ce04d7740d93115de48ac9a4ec4d87f8ffa9496e4f7d888f",
         "kind": "threshold_calibration",
         "max_false_alarm_rate": 0.2,
         "schema": "topology_gate.threshold_calibration",
@@ -2095,7 +2095,7 @@
         "selected_threshold": 128.0,
         "version": 2
       },
-      "calibration_identity": "49dcbd0ede3f5aaf6e22b9f008d17a7ec27544414242d2ccd7505e4b227f2054",
+      "calibration_identity": "b4483f4dfc0483648068dfa942543fa328503b982e1e2597c3a7224ca3a13be9",
       "detector_telemetry": {
         "forgetting_factor_max": 0.99,
         "forgetting_factor_min": 0.8,
@@ -2197,8 +2197,8 @@
             "alpha": 0.05,
             "average_run_length_censored": 17.75,
             "censored_run_fraction": 0.03125,
-            "config_identity": "4de0a2c96c1152e0a433a2229992d5594b248a811e480938dafc9665bb881c64",
-            "detector_identity": "9712f83de1057424630b93d4a73f8476f03bdaaade9d645ad0f9160d4d7ee800",
+            "config_identity": "0bed520a7c28003c2811eedcb2d25cad214ec97ac22d33f52d6b958807b814d7",
+            "detector_identity": "4523d517d66f5bb3b42abc8a863ac9e57efa85145d9f0411836af4f53de444c9",
             "false_alarm_ci_95": [
               0.8425573617998744,
               0.9944621398359969
@@ -2250,8 +2250,8 @@
             "alpha": 0.05,
             "average_run_length_censored": 21.21875,
             "censored_run_fraction": 0.03125,
-            "config_identity": "60821b61e20239acccc443b21cdf234ffb1db06b414db8138180cbb9753a4ca6",
-            "detector_identity": "0d2a62403c5b6d6d411552422aad3af82f6cf1e412603465cef6378d20560202",
+            "config_identity": "c6e60691cbf9ed1c236e2ecf7e80753ee213cf73ed55b435d000ae148acdc7fc",
+            "detector_identity": "5c868791f9cd2cdf6837bfdfc7c9ce4d1cb29cf994602f8cccb25ca5cacb2575",
             "false_alarm_ci_95": [
               0.8425573617998744,
               0.9944621398359969
@@ -2303,8 +2303,8 @@
             "alpha": 0.05,
             "average_run_length_censored": 40.0,
             "censored_run_fraction": 0.28125,
-            "config_identity": "797cff37b0f2e13bd1690af6edd774f1498a87b42a782e6655d43ee296b0640e",
-            "detector_identity": "1d8239c03d62ce129c55f0bac6f9a9e76e788f0b01fbee031dd56928bdcd7d77",
+            "config_identity": "556a12567d376efd75f028cc53239c44bf58f80ff4939a6df351e815d32a1c97",
+            "detector_identity": "cd60aa31829028d1ed6c488c4c48bb4cdf8b1fdd848731eee9db159cf183907e",
             "false_alarm_ci_95": [
               0.5462549057408342,
               0.8443541950225723
@@ -2356,8 +2356,8 @@
             "alpha": 0.05,
             "average_run_length_censored": 49.0,
             "censored_run_fraction": 1.0,
-            "config_identity": "9da519e9711dc0823567071f85fa6ed12e1c3217229c647cae427b06bc015e63",
-            "detector_identity": "b984555a83b6415830e94d4eb44eb6f907eb73fc8cbc029faf94cda7ffcb670a",
+            "config_identity": "52fa9d6f8fd2a38c42231395c3aa0bffd9d59979b23da78e3539bd6d63401e95",
+            "detector_identity": "e1ad6520765a1b23feca2ebdfdbc0a29cedf7cd7813152cfcacf1794ad0afcfd",
             "false_alarm_ci_95": [
               0.0,
               0.1071791982550706
@@ -2409,8 +2409,8 @@
             "alpha": 0.05,
             "average_run_length_censored": 49.0,
             "censored_run_fraction": 1.0,
-            "config_identity": "7d823dc2558337c9cd4ae5b13927d33a2cd5f719cdc237c47adacd4e1a8e9a6b",
-            "detector_identity": "bb9003b0cbf482b6597804f0941100deb97fdd85a5684df114ca8d96434c7701",
+            "config_identity": "9e62d46fb23e9748d79621ec1e0c5c5dd572fe43778a460f099e357cf6317c6f",
+            "detector_identity": "d2bcc828a3c546b44457a538775d95a4ffd4a8873ddbf0e62f55eb1804743132",
             "false_alarm_ci_95": [
               0.0,
               0.1071791982550706
@@ -2473,8 +2473,8 @@
           "alpha": 0.05,
           "average_run_length_censored": 49.0,
           "censored_run_fraction": 1.0,
-          "config_identity": "7d6a685bc806816ff429e278a080e578eb166123f46ab391132eb619268dc801",
-          "detector_identity": "b984555a83b6415830e94d4eb44eb6f907eb73fc8cbc029faf94cda7ffcb670a",
+          "config_identity": "c284f91292de3f0d6a9d31291793b6b73ce0632e1405c0fb97cd0b1e1759fbec",
+          "detector_identity": "e1ad6520765a1b23feca2ebdfdbc0a29cedf7cd7813152cfcacf1794ad0afcfd",
           "false_alarm_ci_95": [
             0.0,
             0.1071791982550706
@@ -2522,7 +2522,7 @@
           "seed": 6608,
           "trials": 32
         },
-        "identity": "5fc082e1a42d9458c4c6f04ee54e68af1cfce4d945ef10953eaa866c19cf751a",
+        "identity": "44de4eb5c3c795fdfda7be36deb29bacfe4cb832148974ccf83a2d07f9444879",
         "kind": "threshold_calibration",
         "max_false_alarm_rate": 0.2,
         "schema": "topology_gate.threshold_calibration",
@@ -2530,7 +2530,7 @@
         "selected_threshold": 128.0,
         "version": 2
       },
-      "calibration_identity": "b9b4d318fd1d6fe66741086eff3412c0eff9996515540e2e1a955e1c065b36e4",
+      "calibration_identity": "cf3c19ae563590c735290e7b6b7cb2bb401cd401d3e03568d54ad3091311dcbb",
       "detector_telemetry": {
         "forgetting_factor_max": 0.99,
         "forgetting_factor_min": 0.8,
@@ -2632,8 +2632,8 @@
             "alpha": 0.05,
             "average_run_length_censored": 19.28125,
             "censored_run_fraction": 0.03125,
-            "config_identity": "af355c42a991724b94bf49b07912bfa69d24cb756cf5501a85011a5de2944b70",
-            "detector_identity": "d55d01f1113b48ce708efba2dccfd01a6383c69c551a583e2819b35b2faf9e5d",
+            "config_identity": "6549e1b46f4dcfa98703e901022c88dfeaeba49525a98c15354cb58df2cb35de",
+            "detector_identity": "77ae8b10a306035a85fff6afa181c657dcbfa95d7f85202c58fbe675358dc181",
             "false_alarm_ci_95": [
               0.8425573617998744,
               0.9944621398359969
@@ -2685,8 +2685,8 @@
             "alpha": 0.05,
             "average_run_length_censored": 21.75,
             "censored_run_fraction": 0.03125,
-            "config_identity": "d405b0fbb4c03716f9732f12ac2faae15cb532c10c624158599d0a2cb49ba043",
-            "detector_identity": "9db056914155a81e2d5d524de82b58499be6fefd6ee42425f627b67b214017c8",
+            "config_identity": "d7d78d2647b53d729b69014b64bf3cdcde2a222307da44ed0b8052c7633c89b7",
+            "detector_identity": "fb9bf404b88511ccad8d34079e442dc71e13a524dc1b761b786f4131c799abf1",
             "false_alarm_ci_95": [
               0.8425573617998744,
               0.9944621398359969
@@ -2738,8 +2738,8 @@
             "alpha": 0.05,
             "average_run_length_censored": 37.625,
             "censored_run_fraction": 0.1875,
-            "config_identity": "26a2911f52691f6f501840501989276d4ac0842e2271c185b63b7ec62eae62db",
-            "detector_identity": "bc8bf077ed11442d4c9009a2c6e7d8cb35863b0037d8bdd7388249e3aef193dd",
+            "config_identity": "a64e48ae939e50f49aad6b5ab9051c4157ce56aad1959e33ec3eccca8de78073",
+            "detector_identity": "4fb273e0abd2256c97d54cb10f024bcc8ad2badfb14f1e832481010c8a7183fe",
             "false_alarm_ci_95": [
               0.6469084479862404,
               0.9111045531043405
@@ -2791,8 +2791,8 @@
             "alpha": 0.05,
             "average_run_length_censored": 49.0,
             "censored_run_fraction": 1.0,
-            "config_identity": "a0f990cd7f583a5ad8ae1074b105e5ef5db4ab16016aae0f4981e9c06d073487",
-            "detector_identity": "3db05bef2043873de23fc838df429e5ecef324fcf7c678738afdbcbe0ad74377",
+            "config_identity": "f9f54dc07e13896775ef6492f577ee210ec11eeb258f8ed0740337ae44fad6db",
+            "detector_identity": "c5c497e1c6c9db61bb7fb729bee078a1b897db67a1c53516d7453dd4d3e335b7",
             "false_alarm_ci_95": [
               0.0,
               0.1071791982550706
@@ -2844,8 +2844,8 @@
             "alpha": 0.05,
             "average_run_length_censored": 49.0,
             "censored_run_fraction": 1.0,
-            "config_identity": "6c55a900a8024ee8a58fd332520587e5380ad308e37fa11f7078bafb032f1622",
-            "detector_identity": "a6c500558ec302b723ebf3a6617b726692d8789741331254657f0fc16b793579",
+            "config_identity": "71602be05712677b3fae152bfdb8b02432006ce4539dbc3dd0a8b753e1b34f47",
+            "detector_identity": "8b2ece2dda2d93bce8e1c964a100e531441b60877d62d20d2c4e099aa8838b69",
             "false_alarm_ci_95": [
               0.0,
               0.1071791982550706
@@ -2908,8 +2908,8 @@
           "alpha": 0.05,
           "average_run_length_censored": 49.0,
           "censored_run_fraction": 1.0,
-          "config_identity": "e460aad56936f8afbbfefdf1d0e2b1fc3fa01039dfd533f2d8b3daaa1dd03302",
-          "detector_identity": "3db05bef2043873de23fc838df429e5ecef324fcf7c678738afdbcbe0ad74377",
+          "config_identity": "d9bd320b2737f612480f5a0a3cdecc8710812bad50a63351d735c3c94d210466",
+          "detector_identity": "c5c497e1c6c9db61bb7fb729bee078a1b897db67a1c53516d7453dd4d3e335b7",
           "false_alarm_ci_95": [
             0.0,
             0.1071791982550706
@@ -2957,7 +2957,7 @@
           "seed": 6709,
           "trials": 32
         },
-        "identity": "14a910cd95bd9a8897f158f6ec104ae52ddda2cc5b50e7b5221e4c6de7947236",
+        "identity": "15fff2a8991e65bd50ba741e535dc41b3fdab5a8ab9138238bf30fb8b52aff25",
         "kind": "threshold_calibration",
         "max_false_alarm_rate": 0.2,
         "schema": "topology_gate.threshold_calibration",
@@ -2965,7 +2965,7 @@
         "selected_threshold": 128.0,
         "version": 2
       },
-      "calibration_identity": "0e859d8f07aa102d4579946982daaf60c6d040ae192806b3bd7e89c44ea169e0",
+      "calibration_identity": "04a69aa3bed20025b02e6f3f56db4fbe9f21388f776d7b55d3b83cd8777eadd8",
       "detector_telemetry": {
         "forgetting_factor_max": 0.99,
         "forgetting_factor_min": 0.9080109942888052,
@@ -3067,8 +3067,8 @@
             "alpha": 0.05,
             "average_run_length_censored": 17.125,
             "censored_run_fraction": 0.0,
-            "config_identity": "e8ec24f79a5dc3da392997355fb8cc1c66b6f7e7ce89d62156f456be354a196a",
-            "detector_identity": "378c48befa8c8ae17dcc87296272ca498333878ba9bb3de89379a72216e5eebb",
+            "config_identity": "5c124b2029fd108b7faf2db2f802ec4b4505339f7301cc8271c98c5002aa1b95",
+            "detector_identity": "6aeb1e2fdc79d024141e65e1cd0a41d0a5634e9962e7f1af5c7aa98d76a39732",
             "false_alarm_ci_95": [
               0.8928208017449293,
               1.0
@@ -3120,8 +3120,8 @@
             "alpha": 0.05,
             "average_run_length_censored": 20.625,
             "censored_run_fraction": 0.0,
-            "config_identity": "8751f21f13698addcb20afb956dec1bed1959edc41bb75d0d1ca89baff4c7b76",
-            "detector_identity": "4337589d8daac231461c781228edb1d0a28a3fbec5ded61b3af07b267b5a7931",
+            "config_identity": "af49703d9f4451a1e59b48c3d0696c97461df7e555c31151f6df18151d20f09c",
+            "detector_identity": "3e3570df3587fcc74a16f3c40767a3088522af8a3676c2ef9162e426bf4f5e13",
             "false_alarm_ci_95": [
               0.8928208017449293,
               1.0
@@ -3173,8 +3173,8 @@
             "alpha": 0.05,
             "average_run_length_censored": 39.3125,
             "censored_run_fraction": 0.25,
-            "config_identity": "3872aaab90399f96e0265e0d9c3a4464ab451f5b68474216fb2898a44c2a02ee",
-            "detector_identity": "e90d74cdb798def686c58ad927281010992209331bdbb4daf9d6b401c77cdb3e",
+            "config_identity": "ed1f44533eaac1ada2b9d6f8df7a458d6189684c2535f3c6f2fe0f9da1026769",
+            "detector_identity": "8002b674f447b2a3e692bd330c3aecf940f440d562eb5ac94581b7f73cf54bd4",
             "false_alarm_ci_95": [
               0.5789344100575552,
               0.8674759908149096
@@ -3226,8 +3226,8 @@
             "alpha": 0.05,
             "average_run_length_censored": 49.0,
             "censored_run_fraction": 1.0,
-            "config_identity": "49109d704f1dffa68a60598864a3e15b3e1cfa5a179b4f9fd14af3f145bbf53e",
-            "detector_identity": "45f2c5c0a7d5243a37bdbeecf1c738a56e7cc23dc3a30020e8c8f87c9815603f",
+            "config_identity": "a5ca81a7a1f07dc3ddecd5e8abd59abea87b6a27eacab1b466444b1eeff90a15",
+            "detector_identity": "740255ada88b984c6d3f6f42e06ca3fc3ac6a7a6ca1e37f0f790d368b790e257",
             "false_alarm_ci_95": [
               0.0,
               0.1071791982550706
@@ -3279,8 +3279,8 @@
             "alpha": 0.05,
             "average_run_length_censored": 49.0,
             "censored_run_fraction": 1.0,
-            "config_identity": "601491218640ef16f267578312f5224c973ba943cdc0fd0921b96d70e8a4e1e6",
-            "detector_identity": "30c7f3c7a763a8de162e96ff5bc6d6aa07269d6e17c446842a3b2a964ff5f24a",
+            "config_identity": "f68f972d75f673ff600a33fc335c52235ab0038454b6ae49b8597c1e134ea063",
+            "detector_identity": "dad3987673a7894817d92ddf84fcc711ca04b421a54cdb03f741be1bdc16bdec",
             "false_alarm_ci_95": [
               0.0,
               0.1071791982550706
@@ -3343,8 +3343,8 @@
           "alpha": 0.05,
           "average_run_length_censored": 49.0,
           "censored_run_fraction": 1.0,
-          "config_identity": "b748afabe10f256db801d82e163f3ac233e3919885f86c5acb04550b01d649f8",
-          "detector_identity": "45f2c5c0a7d5243a37bdbeecf1c738a56e7cc23dc3a30020e8c8f87c9815603f",
+          "config_identity": "b31249fc99f74969d248270b95542aab4389a73601ffa1962a6721a2f2842d9c",
+          "detector_identity": "740255ada88b984c6d3f6f42e06ca3fc3ac6a7a6ca1e37f0f790d368b790e257",
           "false_alarm_ci_95": [
             0.0,
             0.1071791982550706
@@ -3392,7 +3392,7 @@
           "seed": 6810,
           "trials": 32
         },
-        "identity": "742792396876f30287797e691009c6f845584d68afe9fb5614b9756e6e535ac7",
+        "identity": "e7fb9f5acaa77e8a29a959dd7008cdd1e6f3c8d9bb448c13e5f808e7d92b4e1d",
         "kind": "threshold_calibration",
         "max_false_alarm_rate": 0.2,
         "schema": "topology_gate.threshold_calibration",
@@ -3400,7 +3400,7 @@
         "selected_threshold": 128.0,
         "version": 2
       },
-      "calibration_identity": "1c0a8390136f42b64346c52c1cbe8b10754378c0bb3c35a7ae0a9742a01916f2",
+      "calibration_identity": "aa6ad5c2073652e60d3b1b539501e691f4e050a77f51218c8c4a3e7e7cfe1d64",
       "detector_telemetry": {
         "forgetting_factor_max": 0.99,
         "forgetting_factor_min": 0.9795663840320814,
@@ -3482,7 +3482,7 @@
     }
   ],
   "claim_status": "public-final-history sensitivity diagnostic only",
-  "created_at_utc": "2026-08-04T22:19:48+00:00",
+  "created_at_utc": "2026-08-04T22:35:42+00:00",
   "data": {
     "calibration_rows": 1962,
     "feature_rows": 4905,

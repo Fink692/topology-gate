@@ -166,3 +166,34 @@ def test_persistent_cusum_configuration_rejects_incompatible_width() -> None:
 
     with pytest.raises(PersistentCUSUMError, match="stable identity"):
         PersistentLaplacianCUSUM(lambda point_cloud, width: (0.0, 1.0))
+
+
+def test_forgetting_score_scale_is_positive_and_changes_memory_map() -> None:
+    with pytest.raises(PersistentCUSUMError, match="forgetting_score_scale"):
+        PersistentCUSUMConfig(forgetting_score_scale=0.0)
+
+    fast = PersistentLaplacianCUSUM(backend(), config(threshold=100.0))
+    slow = PersistentLaplacianCUSUM(
+        backend(),
+        PersistentCUSUMConfig(
+            cloud_window=4,
+            min_points=4,
+            backend_eigenvalues=4,
+            positive_spectrum_width=2,
+            betti_dimensions=(0, 1),
+            calibration_window=2,
+            calibration_min_periods=2,
+            drift=0.0,
+            threshold=100.0,
+            forgetting_lambda_min=0.8,
+            forgetting_lambda_max=0.99,
+            forgetting_score_scale=10.0,
+        ),
+    )
+    fast_observations = [fast.observe(row) for row in rows()]
+    slow_observations = [slow.observe(row) for row in rows()]
+    assert fast_observations[-1].score > 0.0
+    assert (
+        slow_observations[-1].forgetting_factor
+        > fast_observations[-1].forgetting_factor
+    )
