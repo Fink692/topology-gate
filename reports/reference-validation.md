@@ -13,19 +13,17 @@ compileall. Coverage is reported from CPython 3.12 only.
 
 - Full suite: **267 passed**.
 - Configured coverage run: **80.65%** total coverage.
+- Coverage enforcement: configured floor **80%**; the current run clears it.
 - Ruff: passed on `src` and `tests`.
 - Mypy: passed on all 23 source modules.
 - Dependency-light root import: passed without NumPy site packages.
 - Wheel build and isolated target-directory smoke: passed; SHA-256
   `366CE69F4F9D3856E67E4EC3B6E9EB35330D7E4590935B451AED3A5C50E40EE3`;
-  source commit `6db1057` supplied `SOURCE_DATE_EPOCH=1785862260`; two
-  consecutive builds under the same source date produced the same digest;
-  the smoke exercised canonical `StudySourcePackage` serialization/restoration,
-  exact raw source-artifact ID-set and byte/size verification, strict
-  `RunManifest`/`StudyManifest` restore, canonical `AsOfBook` source restore
-  from the wheel, the license/release/adapter-revision provenance envelope,
-  the role-bound `calibrate_threshold` split API plus certificate identity,
-  and the `StudySourceAudit` receipt round trip.
+  source commit `662ada5` supplied `SOURCE_DATE_EPOCH=1785862260`; two
+  consecutive builds under the same source date produced the same digest.
+  The smoke verified a dependency-free root import under `python -S` and
+  optional worker exports in the numeric environment. CI now repeats the
+  deterministic-build and root-import checks in the CPython 3.12 release lane.
 - Authenticated checkpoint, manifest digest, promotion/evidence state, and
   detached restore tests: passed; checkpoint and online-state top-level schema
   drift is rejected before state mutation.
