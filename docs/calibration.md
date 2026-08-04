@@ -40,6 +40,10 @@ records every candidate calibration identity, both split seeds, the detector
 factory identity, and the selection identity. It is still evidence for the
 declared finite null and not market calibration.
 
+The current finite persistent-CUSUM surrogate record, including a stricter
+budget rejection, is maintained in
+[`reports/detector-calibration.md`](../reports/detector-calibration.md).
+
 Each result records:
 
 - detector identity and experiment configuration hash;

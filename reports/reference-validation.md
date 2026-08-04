@@ -11,8 +11,8 @@ gate also passed Ruff, mypy, and compileall. Coverage is reported from CPython
 
 ## Reproducible engineering checks
 
-- Full suite: **247 passed**.
-- Configured coverage run: **80.63%** total coverage.
+- Full suite: **249 passed**.
+- Configured coverage run: **80.57%** total coverage.
 - Ruff: passed on `src` and `tests`.
 - Mypy: passed on all 23 source modules.
 - Dependency-light root import: passed without NumPy site packages.
@@ -145,6 +145,15 @@ therefore fail-closed.
   failure signal: the detector is **not** treated as calibrated, and its
   forgetting map remains exploratory until threshold selection and independent
   dependence-aware calibration are completed.
+- The split threshold protocol was then exercised on the exact finite
+  persistent-Laplacian CUSUM with a declared stationary block-bootstrap AR(1)
+  surrogate. Five predeclared candidates had 0/64 calibration alarms; the
+  smallest candidate, `2.0`, was evaluated on a distinct 64-trial split and
+  produced 2/64 alarms with a 95% Wilson upper bound of `0.106973`. It passed
+  only the declared `0.15` finite surrogate budget; the same evaluation was
+  rejected at `0.10`. The full identities and negative-control boundary are in
+  [`reports/detector-calibration.md`](detector-calibration.md). This is still
+  not market or dependence-validity evidence.
 
 ## Acceptance disposition
 
@@ -152,7 +161,7 @@ therefore fail-closed.
 |---|---|---|
 | G0 identity/claim freeze | Partial/pass for the declared protocol | `RunSpec`, `RunManifest`, `StudySpec`, sealed/opened `StudyManifest`, strict `StudyInputBundle`/`StudyTimeline` preflight, digest-verified `StudySourcePackage`/provenance/raw-artifact fingerprints, `run_causal_rls_study`/`run_causal_promotion_study`, evidence config, as-of records, and authenticated checkpoint identities exist; no vendor-native adapter or source dataset is present. |
 | G1 exact persistent MVP | Pass for bounded reference scope | `persistent.py` plus hand-built and algebraic invariants, and the exploratory `PersistentLaplacianCUSUM` controller; only the declared finite VR/F2/q/pair construction is covered. |
-| G2 calibrated forgetting | Fail for a calibrated claim | The persistent-spectrum controller and calibration harness are exercised, and the harness caught a false-alarm failure; no independent market/dependence calibration artifact authorizes accelerated forgetting. |
+| G2 calibrated forgetting | Synthetic protocol pass; market claim fail | `calibrate_threshold` now binds predeclared candidate selection to an independent evaluation split and carries the selection identity into the certificate. The surrogate record includes a stricter-budget rejection; no independent market/dependence calibration artifact authorizes accelerated forgetting. |
 | G3 recursive transactional state | Partial/pass for the migrated path | `CausalReplay` drives numerical detector/RLS plus paired challenger/`PromotionGate` state with prediction-time factor/utility capture, model-state rollback, and detached restore; legacy workers and the generic evidence-ledger path are not all one transaction. |
 | G4 causal replay/recovery | Partial/pass for the migrated path | `AsOfBook`, `PointInTimePanel`, `StudyInputBundle`, `StudyTimeline`, digest-verified `StudySourcePackage`, `StudyManifest` phase checks, the RLS and paired-promotion study wrappers, `CausalReplay`, `CausalRLSModel`, paired promotion, delayed-label ledger, chunk state, HMAC restore, prefix invariance, future append acceptance, consumed-prefix revision rejection, canonical panel identity, and terminal pending cleanup are tested; legacy row adapters remain compatibility paths. |
 | G5 economic validation | Contract pass; market evidence not evaluated | `economic.py` is fail-closed for separate returns/costs and explicit abstention accounting, and `StudyManifest` records a sealed holdout boundary, but no point-in-time vendor data, capacity, delistings, or opened final holdout evidence are present. |
