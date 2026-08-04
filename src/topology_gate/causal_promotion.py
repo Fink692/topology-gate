@@ -9,6 +9,11 @@ and unresolved comparisons share one checkpointable model state.
 The adapter is an evidence-control contract, not a market study.  Its
 absolute-error utility is deliberately explicit and bounded so callers must
 choose a utility scale before looking at labels.
+
+``CausalPromotionConfig.minimum_labels`` provides an explicit burn-in boundary:
+observed labels can update both learners before they become eligible to
+advance the promotion e-process.  The count is checkpointed and is part of the
+configuration identity.
 """
 
 from __future__ import annotations
@@ -37,7 +42,7 @@ CAUSAL_PROMOTION_SCHEMA = "topology_gate.causal_promotion"
 # Pending comparisons now carry the canonical panel identity used to produce
 # their paired predictions.  Older promotion checkpoints must not resume
 # without that provenance.
-CAUSAL_PROMOTION_VERSION = 3
+CAUSAL_PROMOTION_VERSION = 4
 MAX_CAUSAL_PROMOTION_PENDING = 8_192
 
 
@@ -149,6 +154,7 @@ class CausalPromotionConfig:
     incumbent_id: str = "incumbent"
     eta: float = 0.5
     utility_cap: float = 1.0
+    minimum_labels: int = 1
     max_pending: int = MAX_CAUSAL_PROMOTION_PENDING
 
     def __post_init__(self) -> None:
@@ -163,6 +169,12 @@ class CausalPromotionConfig:
         if cap <= 0.0:
             raise CausalPromotionError("utility_cap must be positive")
         object.__setattr__(self, "utility_cap", cap)
+        if (
+            isinstance(self.minimum_labels, bool)
+            or not isinstance(self.minimum_labels, int)
+            or not 1 <= self.minimum_labels <= MAX_CAUSAL_PROMOTION_PENDING
+        ):
+            raise CausalPromotionError("minimum_labels exceeds the resource limit")
         if (
             isinstance(self.max_pending, bool)
             or not isinstance(self.max_pending, int)
@@ -180,6 +192,7 @@ class CausalPromotionConfig:
             "incumbent_id": self.incumbent_id,
             "eta": self.eta,
             "utility_cap": self.utility_cap,
+            "minimum_labels": self.minimum_labels,
             "max_pending": self.max_pending,
         }
         return _digest(payload, "promotion configuration")
@@ -251,6 +264,7 @@ class CausalPromotionModel:
         self._validate_gate(gate)
         self._pending: dict[str, _PendingComparison] = {}
         self._prediction_count = 0
+        self._observed_label_count = 0
         self._steps: list[CausalPromotionStep] = []
 
     @staticmethod
@@ -304,12 +318,15 @@ class CausalPromotionModel:
         pending: Mapping[str, _PendingComparison],
         prediction_count: int,
         steps: Sequence[CausalPromotionStep],
+        observed_label_count: int | None = None,
     ) -> None:
         _restore_component(self.challenger, challenger_state, "challenger")
         _restore_component(self.incumbent, incumbent_state, "incumbent")
         self.gate.load_state_dict(gate_state, eta=self.config.eta)
         self._pending = dict(pending)
         self._prediction_count = prediction_count
+        if observed_label_count is not None:
+            self._observed_label_count = observed_label_count
         self._steps = list(steps)
 
     def predict(self, snapshot: AsOfSnapshot, target_id: str) -> float | None:
@@ -334,6 +351,7 @@ class CausalPromotionModel:
         pending_before = dict(self._pending)
         steps_before = tuple(self._steps)
         count_before = self._prediction_count
+        labels_before = self._observed_label_count
         try:
             challenger_prediction = _scalar_prediction(
                 self.challenger.predict(features), "challenger prediction"
@@ -393,6 +411,7 @@ class CausalPromotionModel:
                 pending_before,
                 count_before,
                 steps_before,
+                labels_before,
             )
             raise
 
@@ -416,12 +435,17 @@ class CausalPromotionModel:
         pending_before = dict(self._pending)
         steps_before = tuple(self._steps)
         count_before = self._prediction_count
+        labels_before = self._observed_label_count
         try:
             challenger_utility = self._utility(pending.challenger_prediction, target)
             incumbent_utility = self._utility(pending.incumbent_prediction, target)
             self.challenger.update(pending.features, target)
             self.incumbent.update(pending.features, target)
-            if self.gate.status is GateStatus.OPEN:
+            self._observed_label_count += 1
+            if (
+                self.gate.status is GateStatus.OPEN
+                and self._observed_label_count >= self.config.minimum_labels
+            ):
                 self.gate.observe_utilities(
                     self.config.challenger_id,
                     challenger_utility,
@@ -445,6 +469,7 @@ class CausalPromotionModel:
                 pending_before,
                 count_before,
                 steps_before,
+                labels_before,
             )
             raise
 
@@ -480,6 +505,7 @@ class CausalPromotionModel:
                 for target, value in sorted(self._pending.items())
             },
             "prediction_count": self._prediction_count,
+            "observed_label_count": self._observed_label_count,
         }
 
     def load_state_dict(self, state: Mapping[str, Any]) -> None:
@@ -585,6 +611,20 @@ class CausalPromotionModel:
             or prediction_count < len(pending)
         ):
             raise CausalPromotionError("prediction_count is invalid")
+        observed_label_count = state.get("observed_label_count")
+        if (
+            isinstance(observed_label_count, bool)
+            or not isinstance(observed_label_count, int)
+            or observed_label_count < 0
+        ):
+            raise CausalPromotionError("observed_label_count is invalid")
+        gate_observations = candidate_gate.challenger_state(
+            self.config.challenger_id
+        ).observations
+        if observed_label_count < gate_observations:
+            raise CausalPromotionError(
+                "observed_label_count cannot be below promotion observations"
+            )
         old_challenger = _component_state(self.challenger, "challenger")
         old_incumbent = _component_state(self.incumbent, "incumbent")
         old_gate = _clone_json(self.gate.state_dict(), "promotion gate state")
@@ -604,6 +644,7 @@ class CausalPromotionModel:
             raise
         self._pending = pending
         self._prediction_count = prediction_count
+        self._observed_label_count = observed_label_count
         self._steps = []
 
 

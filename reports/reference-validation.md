@@ -6,15 +6,15 @@ Scope: bounded research/control layer only; no live-data or execution claim
 
 ## Reproducible engineering checks
 
-- Full suite: **202 passed**.
-- Configured coverage run: **80.19%** total coverage.
+- Full suite: **205 passed**.
+- Configured coverage run: **80.23%** total coverage.
 - Ruff: passed on `src` and `tests`.
 - Mypy: passed on all 20 source modules.
 - Dependency-light root import: passed without NumPy site packages.
 - Wheel build and isolated target-directory smoke: passed; SHA-256
-  `926e8dd4d1ccb9542f1c468fa84f484835c0f1b5bddd448b51b262f53f025465`;
-  the smoke exercised the public promotion-calibration epoch API and the
-  sealed-study phase API from the wheel.
+  `f7f24a22ea86f367d6d34d497ccddbe63fd903d42a60c0838c92372c19b6d65a`;
+  the smoke exercised public online authorization, promotion-calibration
+  epochs, and checkpointed minimum-label burn-in configuration from the wheel.
 - Authenticated checkpoint, manifest digest, promotion/evidence state, and
   detached restore tests: passed.
 - Study-manifest tests: passed for canonical split identity, ordered
@@ -50,9 +50,13 @@ Scope: bounded research/control layer only; no live-data or execution claim
   identity mismatches, unavailable costs, and non-observed return rejection.
 - Paired causal-promotion tests: passed for prediction-time freezing,
   settlement-only gate advancement, missing/unresolved cleanup, one-shot versus
-  resumed state equivalence, constant-eta enforcement, and learner/gate
-  rollback on failed updates; instrument-labelled promotion evidence carries the
-  canonical panel digest.
+  resumed state equivalence, constant-eta enforcement, checkpointed
+  minimum-label burn-in across chunked restore, internal state consistency,
+  and learner/gate rollback on failed updates;
+  instrument-labelled promotion evidence carries the canonical panel digest.
+- Legacy online authorization tests: passed for neutral forgetting without a
+  certificate, approved identity-matched acceleration, authorization telemetry,
+  and detector-certificate mismatch rejection.
 - Exact finite persistence algebra, PSD/eigen residual, permutation/duplicate,
   digest, and resource-cap invariants: passed.
 - Configured exact-backend tests: passed for complete evidence return, stable

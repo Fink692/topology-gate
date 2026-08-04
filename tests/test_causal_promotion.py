@@ -99,13 +99,14 @@ def make_gate() -> PromotionGate:
     return gate
 
 
-def config() -> CausalPromotionConfig:
+def config(*, minimum_labels: int = 1) -> CausalPromotionConfig:
     return CausalPromotionConfig(
         promotion_id="paired",
         challenger_id="challenger",
         incumbent_id="incumbent",
         eta=0.5,
         utility_cap=1.0,
+        minimum_labels=minimum_labels,
     )
 
 
@@ -153,6 +154,7 @@ def run(
     model_state: dict[str, object] | None = None,
     initial_state=None,
     missing: bool = False,
+    promotion_config: CausalPromotionConfig | None = None,
 ):
     return run_causal_promotion_replay(
         observation_book(missing=missing),
@@ -162,7 +164,7 @@ def run(
         challenger=challenger or FixedLearner(0.0),
         incumbent=incumbent or FixedLearner(1.0),
         gate=gate or make_gate(),
-        config=config(),
+        config=promotion_config or config(),
         replay_config=replay_config,
         model_state=model_state,
         initial_state=initial_state,
@@ -188,6 +190,67 @@ def test_paired_predictions_only_advance_the_gate_at_label_settlement() -> None:
     assert result.pending_target_ids == ()
     assert result.state.model_state["pending"] == {}
     assert result.state.model_state["gate"]["promoted_challenger_id"] == "challenger"
+
+
+def test_minimum_labels_burn_in_updates_learners_without_advancing_evidence() -> None:
+    gate = PromotionGate("incumbent", alpha=0.99, eta=0.5)
+    gate.register_challenger("challenger")
+    promotion_config = config(minimum_labels=3)
+    result = run(
+        (1, 2, 3, 4, 5),
+        ("t1", "t2", "t3", "t4", "t5"),
+        gate=gate,
+        promotion_config=promotion_config,
+        replay_config=replay_settings(finalize_unresolved=True),
+    )
+
+    assert not result.promoted
+    assert result.state.model_state["observed_label_count"] == 4
+    assert result.state.model_state["gate"]["challengers"][0]["state"][
+        "process"
+    ]["observation_count"] == 2
+
+
+def test_minimum_labels_burn_in_survives_chunked_restore() -> None:
+    settings = replay_settings(finalize_unresolved=False)
+    promotion_config = config(minimum_labels=3)
+    one_shot = run(
+        (1, 2, 3, 4, 5),
+        ("t1", "t2", "t3", "t4", "t5"),
+        replay_config=settings,
+        promotion_config=promotion_config,
+    )
+    first = run(
+        (1, 2, 3),
+        ("t1", "t2", "t3"),
+        replay_config=settings,
+        promotion_config=promotion_config,
+    )
+    second = run(
+        (4, 5),
+        ("t4", "t5"),
+        replay_config=settings,
+        promotion_config=promotion_config,
+        model_state=copy.deepcopy(first.state.model_state),
+        initial_state=first.state,
+    )
+
+    assert second.state.model_state == one_shot.state.model_state
+    assert second.state.model_state["observed_label_count"] == 4
+    assert second.state.model_state["gate"]["challengers"][0]["state"][
+        "process"
+    ]["observation_count"] == 2
+
+    invalid_state = copy.deepcopy(one_shot.state.model_state)
+    invalid_state["observed_label_count"] = 0
+    with pytest.raises(CausalPromotionError, match="below promotion observations"):
+        run(
+            (4,),
+            ("t4",),
+            replay_config=settings,
+            promotion_config=promotion_config,
+            model_state=invalid_state,
+        )
 
 
 def test_chunked_promotion_replay_matches_one_shot_state() -> None:

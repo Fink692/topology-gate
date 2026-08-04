@@ -72,6 +72,13 @@ outcome, then update immediately or queue the label until its availability
 boundary. A detector score never uses a future row, and the factor used for a
 queued update is captured at the original decision time.
 
+The compatibility runner keeps topology-driven forgetting at the learner's
+neutral maximum unless `run_recursive_rls(..., calibration=certificate)`
+receives an approved certificate bound to the detector's `config_identity`.
+The returned `acceleration_authorized` mask and calibration identity belong in
+the run evidence; a detector's warm-up or `ready` flag alone is not a
+calibration authorization.
+
 For restartable replay, capture the learner, detector, online terminal state,
 and promotion gate through `checkpoint_from_components`. Validate the envelope
 with its expected package/configuration/backend/dependency identities and an
@@ -92,6 +99,11 @@ and requires an explicit alpha allocation for each challenger. Do not reset an
 active e-process after looking at an unfavorable segment. A promotion becomes
 an operational decision only after the caller's schema, data-quality, risk, and
 deployment checks pass.
+
+Set `CausalPromotionConfig.minimum_labels` to the pre-registered burn-in
+count when a challenger must accumulate learner evidence before promotion
+testing. Those observed labels may update the paired learners, but they do not
+advance the gate; the count is checkpointed as part of the promotion identity.
 
 Before a multi-challenger study, run `calibrate_promotion_null` with the exact
 bounded score factory, constant eta, challenger count, and global alpha used

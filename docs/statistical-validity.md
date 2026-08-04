@@ -120,6 +120,13 @@ reproducibility identity layer. They do not manufacture point-in-time market
 data: the input-vintage and universe digests must still come from a source that
 records immutable availability and revision semantics.
 
+The legacy row-oriented `run_recursive_rls` path now follows the same
+authorization boundary as the timestamped adapter: a ready detector factor is
+applied only with an approved certificate matching the detector identity.
+Without that certificate, the runner records neutral forgetting and exposes a
+all-false `acceleration_authorized` mask rather than silently treating warm-up as
+calibration.
+
 `AsOfBook` supplies a dependency-light contract and adversarial fixture for
 those semantics. It keeps event and availability times separate, selects only
 visible revisions, orders equal-availability events deterministically, tracks
@@ -153,8 +160,10 @@ transition. Its instrument-labelled plans use the same canonical panel
 selection and carry the panel identity into pending promotion evidence. Missing
 or terminally unresolved labels never advance the e-process. This is a tested
 composition boundary, not a calibrated market promotion result; the utility
-scale, eta policy, source manifest, and holdout evidence still require a
-pre-registered study.
+scale, eta policy, minimum-label burn-in, source manifest, and holdout evidence
+still require a pre-registered study. When configured, burn-in labels update
+the learners but remain outside the e-process until the declared count is met;
+that count is checkpointed and identity-bound.
 
 `calibrate_eprocess_null` provides a finite optional-stopping simulation for
 that bounded score primitive. It uses a predeclared constant eta, stops each

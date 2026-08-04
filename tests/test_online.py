@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from types import SimpleNamespace
+
 import numpy as np
 import pytest
 
@@ -36,6 +38,76 @@ def _components() -> tuple[RollingTopologyDetector, RLS]:
     )
     learner = RLS(RLSConfig(n_features=1, lambda_min=0.8, lambda_max=1.0))
     return detector, learner
+
+
+class _AggressiveDetector:
+    config_identity = "test-aggressive-detector:v1"
+    config = SimpleNamespace(forgetting_lambda_max=0.99)
+
+    def __init__(self) -> None:
+        self.steps = 0
+
+    def reset_stream(self) -> None:
+        self.steps = 0
+
+    def observe(self, observation: np.ndarray) -> SimpleNamespace:
+        assert observation.shape == (1,)
+        self.steps += 1
+        return SimpleNamespace(
+            score=1.0,
+            alarm=True,
+            ready=True,
+            forgetting_factor=0.8,
+        )
+
+    def stream_state_dict(self) -> dict[str, object]:
+        return {"steps": self.steps}
+
+
+def test_online_forgetting_requires_matching_approved_calibration() -> None:
+    features = np.ones((4, 1), dtype=float)
+    outcomes = np.zeros(4, dtype=float)
+
+    uncertified = run_recursive_rls(
+        features,
+        outcomes,
+        learner=RLS(RLSConfig(n_features=1, lambda_min=0.8, lambda_max=1.0)),
+        detector=_AggressiveDetector(),
+    )
+    np.testing.assert_allclose(uncertified.forgetting_factors, 0.99)
+    assert uncertified.acceleration_authorized is not None
+    assert not np.any(uncertified.acceleration_authorized)
+    assert uncertified.metrics["accelerated_forgetting_count"] == 0.0
+
+    approved = run_recursive_rls(
+        features,
+        outcomes,
+        learner=RLS(RLSConfig(n_features=1, lambda_min=0.8, lambda_max=1.0)),
+        detector=_AggressiveDetector(),
+        calibration=SimpleNamespace(
+            detector_identity=_AggressiveDetector.config_identity,
+            identity="test-certificate:v1",
+            approved=True,
+        ),
+    )
+    np.testing.assert_allclose(approved.forgetting_factors, 0.8)
+    assert approved.acceleration_authorized is not None
+    assert np.all(approved.acceleration_authorized)
+    assert approved.calibration_identity == "test-certificate:v1"
+    assert approved.metrics["accelerated_forgetting_count"] == 4.0
+
+    with pytest.raises(ValueError, match="does not match detector identity"):
+        run_recursive_rls(
+            features[:1],
+            outcomes[:1],
+            learner=RLS(RLSConfig(n_features=1)),
+            detector=_AggressiveDetector(),
+            calibration=SimpleNamespace(
+                detector_identity="wrong-detector:v1",
+                identity="test-certificate:v1",
+                approved=True,
+            ),
+        )
 
 
 def test_recursive_runner_is_deterministic_and_respects_delayed_labels() -> None:

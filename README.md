@@ -124,6 +124,12 @@ an HMAC key from a secret manager; authenticated checkpoints are required by
 default and the key is never written into the checkpoint. Plain SHA-256 is
 available only with an explicit trusted-local opt-in.
 
+When a topology detector is supplied to `run_recursive_rls`, pass an approved
+calibration certificate through `calibration` before allowing its factor to
+accelerate forgetting. A missing, unapproved, or mismatched certificate keeps
+the detector diagnostic and applies the neutral learner maximum; the result
+exposes `acceleration_authorized` and the calibration identity.
+
 Set `require_realized_returns=True` in the worker backtest or online config for
 economic evaluation. The compatibility default still permits target outcomes
 to stand in for realized returns, but that path is diagnostic and must not be
@@ -188,8 +194,10 @@ challenger/incumbent learners and the existing alpha-spending promotion gate.
 Predictions are frozen at decision time; only an observed settled label can
 advance the gate. Missing, invalid, censored, or terminally unresolved labels
 clear pending context without creating evidence. The adapter requires a
-predeclared constant eta and bounded absolute-error utility scale; it does not
-turn a synthetic or unbound run into a certified promotion claim.
+predeclared constant eta and bounded absolute-error utility scale. Its
+checkpointed `minimum_labels` policy can burn in learner updates without
+advancing the e-process; it does not turn a synthetic or unbound run into a
+certified promotion claim.
 
 ## Calibration evidence
 

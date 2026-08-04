@@ -1,4 +1,11 @@
-"""End-to-end causal composition of the topology detector and recursive RLS."""
+"""End-to-end causal composition of the topology detector and recursive RLS.
+
+The row-oriented runner is a compatibility adapter, not a calibration
+certificate. Detector-driven acceleration is therefore fail-closed: an
+explicitly approved certificate matching the detector identity is required
+before a ready detector factor can reduce learner memory. Without it, the
+detector remains diagnostic and the neutral learner maximum is applied.
+"""
 
 from __future__ import annotations
 
@@ -216,6 +223,8 @@ class OnlineRunResult:
     stream_state: OnlineStreamState | None = None
     learner_state: Mapping[str, Any] | None = None
     detector_state: Mapping[str, Any] | None = None
+    acceleration_authorized: np.ndarray[Any, Any] | None = None
+    calibration_identity: str | None = None
 
     def state_dict(self) -> dict[str, Any]:
         """Return the terminal online state, including unresolved labels."""
@@ -255,6 +264,57 @@ def _checked_product(left: float, right: float, name: str) -> float:
     return result
 
 
+def _validated_forgetting_factor(value: Any, name: str, learner: Any) -> float:
+    try:
+        factor = float(value)
+    except (TypeError, ValueError, OverflowError) as exc:
+        raise ValueError(f"{name} must be finite") from exc
+    if not math.isfinite(factor) or not 0.0 < factor <= 1.0:
+        raise ValueError(f"{name} must be finite and in (0, 1]")
+    lower = getattr(learner, "lambda_min", None)
+    upper = getattr(learner, "lambda_max", None)
+    if lower is not None and factor < float(lower):
+        raise ValueError(f"{name} is below the learner lambda_min")
+    if upper is not None and factor > float(upper):
+        raise ValueError(f"{name} exceeds the learner lambda_max")
+    return factor
+
+
+def _neutral_forgetting_factor(detector: Any | None, learner: Any) -> float:
+    configured = getattr(
+        getattr(detector, "config", None), "forgetting_lambda_max", None
+    )
+    if configured is None:
+        configured = getattr(learner, "lambda_max", 1.0)
+    return _validated_forgetting_factor(configured, "neutral forgetting factor", learner)
+
+
+def _calibration_authorization(
+    detector: Any | None,
+    calibration: Any | None,
+) -> tuple[bool, str | None]:
+    if detector is None:
+        if calibration is not None:
+            raise ValueError("a calibration certificate requires a topology detector")
+        return False, None
+    if calibration is None:
+        return False, None
+    detector_identity = getattr(detector, "config_identity", None)
+    if callable(detector_identity):
+        detector_identity = detector_identity()
+    if not isinstance(detector_identity, str) or not detector_identity:
+        raise ValueError("a calibrated online detector must expose config_identity")
+    if getattr(calibration, "detector_identity", None) != detector_identity:
+        raise ValueError("calibration certificate does not match detector identity")
+    calibration_identity = getattr(calibration, "identity", None)
+    if not isinstance(calibration_identity, str) or not calibration_identity:
+        raise ValueError("calibration certificate identity must be non-empty")
+    approved = getattr(calibration, "approved", False)
+    if not isinstance(approved, bool):
+        raise ValueError("calibration certificate approval is invalid")
+    return approved, calibration_identity
+
+
 def _detection_delays(
     alarms: np.ndarray[Any, Any], shift_points: tuple[int, ...] | None
 ) -> float:
@@ -280,6 +340,7 @@ def run_recursive_rls(
     shift_points: tuple[int, ...] | None = None,
     label_available_at: Any | None = None,
     initial_state: OnlineStreamState | None = None,
+    calibration: Any | None = None,
 ) -> OnlineRunResult:
     """Run a causal RLS stream with optional topology-gated forgetting.
 
@@ -288,10 +349,17 @@ def run_recursive_rls(
     its availability boundary. The forgetting factor is captured at prediction
     time and cannot be changed by a future detector observation. ``initial_state``
     continues a prior chunk when ``config.reset_state`` is false; availability
-    positions are absolute stream positions in that mode.
+    positions are absolute stream positions in that mode. A detector factor
+    below the neutral learner maximum is applied only when ``calibration`` is
+    an approved certificate whose detector identity matches the active
+    detector.
     """
 
     settings = config or OnlineRunConfig()
+    calibration_authorized, calibration_identity = _calibration_authorization(
+        detector, calibration
+    )
+    neutral_factor = _neutral_forgetting_factor(detector, learner)
     x = _finite_matrix(features, "features")
     if x.shape[0] > MAX_ONLINE_ROWS:
         raise ValueError(f"features exceed the online row limit ({MAX_ONLINE_ROWS})")
@@ -366,6 +434,7 @@ def run_recursive_rls(
     scores = np.zeros(n, dtype=float)
     alarms = np.zeros(n, dtype=bool)
     factors = np.ones(n, dtype=float)
+    acceleration_authorized = np.zeros(n, dtype=bool)
     update_steps = np.zeros(n, dtype=bool)
     for t in range(n):
         global_step = start_step + t
@@ -383,12 +452,22 @@ def run_recursive_rls(
                     update_steps[local_source] = True
 
         if detector is None:
-            factor = 1.0
+            factor = neutral_factor
         else:
             detection = detector.observe(states[t])
             scores[t] = float(detection.score)
             alarms[t] = bool(detection.alarm)
-            factor = float(detection.forgetting_factor)
+            reported_factor = _validated_forgetting_factor(
+                detection.forgetting_factor,
+                "detector forgetting factor",
+                learner,
+            )
+            ready = bool(getattr(detection, "ready", False))
+            if ready and calibration_authorized:
+                factor = reported_factor
+                acceleration_authorized[t] = True
+            else:
+                factor = neutral_factor
         factors[t] = factor
 
         raw_prediction = learner.predict(x[t])
@@ -441,6 +520,9 @@ def run_recursive_rls(
         "false_alarm_count": float(np.count_nonzero(alarms[: shift_points[0]]))
         if shift_points
         else math.nan,
+        "accelerated_forgetting_count": float(
+            np.count_nonzero(acceleration_authorized)
+        ),
     }
     pending_records = tuple(pending)
     stream_state = OnlineStreamState(
@@ -471,6 +553,8 @@ def run_recursive_rls(
         stream_state=stream_state,
         learner_state=learner_state,
         detector_state=detector_state,
+        acceleration_authorized=acceleration_authorized,
+        calibration_identity=calibration_identity,
     )
 
 
