@@ -15,6 +15,31 @@ Its batch `detect(...)` facade can be passed directly to `calibrate_null` and
 `calibrate_shift`; use `observe(...)` for the stateful causal run whose stream
 state is checkpointed.
 
+Threshold selection must not inspect the final null evaluation split. Use
+`calibrate_threshold(...)` with a predeclared, sorted candidate list,
+distinct `CalibrationConfig.seed` values, and the exact detector factory:
+
+```python
+result = calibrate_threshold(
+    detector_factory,
+    observation_factory,
+    detector_family_identity="pl-cusum-family:v1",
+    candidate_thresholds=(2.0, 4.0, 8.0),
+    calibration_config=calibration_config,
+    evaluation_config=evaluation_config,
+    max_false_alarm_rate=0.05,
+)
+if result.approved:
+    certificate = result.to_certificate()
+```
+
+The smallest candidate whose calibration-split Wilson upper bound passes the
+budget is selected. The selected threshold is then run once on the untouched
+evaluation split; only that result can produce a certificate. The result
+records every candidate calibration identity, both split seeds, the detector
+factory identity, and the selection identity. It is still evidence for the
+declared finite null and not market calibration.
+
 Each result records:
 
 - detector identity and experiment configuration hash;
@@ -81,8 +106,9 @@ Minimum protocol for a research release:
    threshold as `alpha` without this calibration evidence.
 4. Use a separate shift family for power/delay, including shifts not used to
    tune the detector.
-5. Keep the calibration report beside the walk-forward run manifest and spend
-   challenger alpha separately from detector-threshold selection.
+5. Keep the split-threshold calibration report beside the walk-forward run
+   manifest and spend challenger alpha separately from detector-threshold
+   selection.
 6. Run an optional-stopping e-process null simulation with the exact bounded
    utility and predictable eta rule used by the causal promotion path; report
    it as empirical evidence, not as a theorem or market guarantee.

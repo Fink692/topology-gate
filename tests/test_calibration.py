@@ -13,10 +13,12 @@ from topology_gate.calibration import (
     EProcessCalibrationConfig,
     PromotionCalibrationConfig,
     StationaryBlockBootstrap,
+    ThresholdCalibrationResult,
     calibrate_eprocess_null,
     calibrate_null,
     calibrate_promotion_null,
     calibrate_shift,
+    calibrate_threshold,
 )
 from topology_gate.topology import RollingTopologyDetector, TopologyConfig
 
@@ -26,6 +28,16 @@ class _ThresholdDetector:
 
     def detect(self, observations: np.ndarray) -> SimpleNamespace:
         alarms = np.asarray(observations[:, 0] > 3.0, dtype=bool)
+        return SimpleNamespace(alarms=alarms)
+
+
+class _ParameterizedThresholdDetector:
+    def __init__(self, threshold: float) -> None:
+        self.threshold = threshold
+        self.config_identity = f"parameterized-threshold:{threshold:.6f}"
+
+    def detect(self, observations: np.ndarray) -> SimpleNamespace:
+        alarms = np.asarray(observations[:, 0] > self.threshold, dtype=bool)
         return SimpleNamespace(alarms=alarms)
 
 
@@ -107,6 +119,19 @@ def _shifted(rng: np.random.Generator, horizon: int, n_features: int) -> np.ndar
     return values
 
 
+def _constant_point(
+    rng: np.random.Generator, horizon: int, n_features: int
+) -> np.ndarray:
+    del rng
+    return np.full((horizon, n_features), 0.75, dtype=float)
+
+
+def _parameterized_threshold_factory(
+    threshold: float,
+) -> _ParameterizedThresholdDetector:
+    return _ParameterizedThresholdDetector(threshold)
+
+
 def test_null_calibration_is_deterministic_and_uncertainty_is_explicit() -> None:
     config = CalibrationConfig(trials=32, horizon=16, n_features=1, seed=11)
     first = calibrate_null(_ThresholdDetector, _zeros, config=config)
@@ -119,6 +144,68 @@ def test_null_calibration_is_deterministic_and_uncertainty_is_explicit() -> None
     assert first.censored_run_fraction == 1.0
     assert first.average_run_length == 17.0
     assert first.to_dict()["config_identity"] == first.config_identity
+
+
+def test_threshold_calibration_selects_on_calibration_and_certifies_evaluation() -> None:
+    calibration = CalibrationConfig(trials=32, horizon=16, n_features=1, seed=11)
+    evaluation = CalibrationConfig(trials=32, horizon=16, n_features=1, seed=12)
+    first = calibrate_threshold(
+        _parameterized_threshold_factory,
+        _constant_point,
+        detector_family_identity="parameterized-threshold-family:v1",
+        candidate_thresholds=(0.5, 1.0),
+        calibration_config=calibration,
+        evaluation_config=evaluation,
+        max_false_alarm_rate=0.2,
+    )
+    second = calibrate_threshold(
+        _parameterized_threshold_factory,
+        _constant_point,
+        detector_family_identity="parameterized-threshold-family:v1",
+        candidate_thresholds=(0.5, 1.0),
+        calibration_config=calibration,
+        evaluation_config=evaluation,
+        max_false_alarm_rate=0.2,
+    )
+
+    assert isinstance(first, ThresholdCalibrationResult)
+    assert first == second
+    assert first.selected_threshold == 1.0
+    assert first.selected_index == 1
+    assert first.calibration_results[0].false_alarm_rate == 1.0
+    assert first.calibration_results[1].false_alarm_rate == 0.0
+    assert first.evaluation_result.seed == evaluation.seed
+    assert first.approved
+    certificate = first.to_certificate()
+    assert certificate.approved
+    assert certificate.selection_identity == first.identity
+    assert first.to_dict()["identity"] == first.identity
+
+
+def test_threshold_calibration_rejects_unapproved_selection_or_reused_seed() -> None:
+    config = CalibrationConfig(trials=16, horizon=8, n_features=1, seed=11)
+    with pytest.raises(ValueError, match="no candidate threshold"):
+        calibrate_threshold(
+            _parameterized_threshold_factory,
+            _constant_point,
+            detector_family_identity="parameterized-threshold-family:v1",
+            candidate_thresholds=(0.5,),
+            calibration_config=config,
+            evaluation_config=CalibrationConfig(
+                trials=16, horizon=8, n_features=1, seed=12
+            ),
+            max_false_alarm_rate=0.2,
+        )
+    with pytest.raises(ValueError, match="distinct seeds"):
+        calibrate_threshold(
+            _parameterized_threshold_factory,
+            _constant_point,
+            detector_family_identity="parameterized-threshold-family:v1",
+            candidate_thresholds=(1.0,),
+            calibration_config=config,
+            evaluation_config=config,
+            max_false_alarm_rate=0.2,
+        )
 
 
 def test_shift_calibration_reports_power_and_censored_delay() -> None:
@@ -187,6 +274,8 @@ def test_null_certificate_requires_its_conservative_bound_to_pass() -> None:
     assert not rejected.approved
     assert approved.identity != rejected.identity
     assert approved.to_dict()["approved"] is True
+    assert approved.to_dict()["version"] == 2
+    assert approved.to_dict()["selection_identity"] is None
 
 
 def test_certificate_rejects_rates_or_intervals_inconsistent_with_trial_count() -> None:

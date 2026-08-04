@@ -13,7 +13,8 @@ from __future__ import annotations
 import hashlib
 import json
 import math
-from dataclasses import dataclass
+from collections.abc import Sequence
+from dataclasses import dataclass, replace
 from typing import Any, Callable
 
 from .promotion import EProcess, PromotionGate, geometric_alpha_allocation, validate_eta
@@ -33,6 +34,8 @@ MAX_CALIBRATION_FEATURES = 256
 MAX_CALIBRATION_SOURCE_ROWS = 100_000
 MAX_CALIBRATION_CHALLENGERS = 64
 MAX_CALIBRATION_EPOCHS = 64
+MAX_CALIBRATION_THRESHOLDS = 64
+CALIBRATION_CERTIFICATE_VERSION = 2
 _WILSON_Z_95 = 1.959963984540054
 _WILSON_CONFIDENCE_95 = 0.95
 
@@ -509,6 +512,7 @@ class CalibrationCertificate:
     false_alarm_ci_high: float
     max_false_alarm_rate: float
     confidence: float = _WILSON_CONFIDENCE_95
+    selection_identity: str | None = None
 
     def __post_init__(self) -> None:
         for name in ("detector_identity", "null_config_identity"):
@@ -548,6 +552,11 @@ class CalibrationCertificate:
             confidence, _WILSON_CONFIDENCE_95, rel_tol=0.0, abs_tol=1.0e-12
         ):
             raise ValueError("certificate confidence must match the Wilson 95% interval")
+        if self.selection_identity is not None and (
+            not isinstance(self.selection_identity, str)
+            or not self.selection_identity.strip()
+        ):
+            raise ValueError("selection_identity must be a non-empty string when set")
         object.__setattr__(self, "trials", trials)
         object.__setattr__(self, "horizon", horizon)
         object.__setattr__(self, "false_alarm_count", false_count)
@@ -566,7 +575,7 @@ class CalibrationCertificate:
     def identity(self) -> str:
         payload = {
             "schema": "topology_gate.calibration_certificate",
-            "version": 1,
+            "version": CALIBRATION_CERTIFICATE_VERSION,
             "detector_identity": self.detector_identity,
             "null_config_identity": self.null_config_identity,
             "trials": self.trials,
@@ -576,6 +585,7 @@ class CalibrationCertificate:
             "false_alarm_ci_high": self.false_alarm_ci_high,
             "max_false_alarm_rate": self.max_false_alarm_rate,
             "confidence": self.confidence,
+            "selection_identity": self.selection_identity,
             "approved": self.approved,
         }
         return hashlib.sha256(
@@ -585,7 +595,7 @@ class CalibrationCertificate:
     def to_dict(self) -> dict[str, Any]:
         return {
             "schema": "topology_gate.calibration_certificate",
-            "version": 1,
+            "version": CALIBRATION_CERTIFICATE_VERSION,
             "detector_identity": self.detector_identity,
             "null_config_identity": self.null_config_identity,
             "trials": self.trials,
@@ -595,6 +605,193 @@ class CalibrationCertificate:
             "false_alarm_ci_high": self.false_alarm_ci_high,
             "max_false_alarm_rate": self.max_false_alarm_rate,
             "confidence": self.confidence,
+            "selection_identity": self.selection_identity,
+            "approved": self.approved,
+            "identity": self.identity,
+        }
+
+
+@dataclass(frozen=True, slots=True)
+class ThresholdCalibrationResult:
+    """Independent threshold-selection and evaluation evidence.
+
+    Candidate thresholds are selected only from the calibration split.  The
+    evaluation result is generated with a distinct predeclared seed and is
+    the only result eligible to authorize detector-driven acceleration.
+    """
+
+    detector_family_identity: str
+    detector_factory_identity: str
+    observation_identity: str
+    candidate_thresholds: tuple[float, ...]
+    selected_threshold: float
+    max_false_alarm_rate: float
+    calibration_results: tuple[NullCalibrationResult, ...]
+    evaluation_result: NullCalibrationResult
+
+    def __post_init__(self) -> None:
+        for name in (
+            "detector_family_identity",
+            "detector_factory_identity",
+            "observation_identity",
+        ):
+            value = getattr(self, name)
+            if not isinstance(value, str) or not value.strip():
+                raise ValueError(f"{name} must be a non-empty string")
+        raw_thresholds = tuple(self.candidate_thresholds)
+        if not raw_thresholds or len(raw_thresholds) > MAX_CALIBRATION_THRESHOLDS:
+            raise ValueError(
+                "candidate_thresholds must contain between one and "
+                f"{MAX_CALIBRATION_THRESHOLDS} values"
+            )
+        thresholds = tuple(float(value) for value in raw_thresholds)
+        if not all(math.isfinite(value) and value > 0.0 for value in thresholds):
+            raise ValueError("candidate_thresholds must be finite and positive")
+        if tuple(sorted(thresholds)) != thresholds:
+            raise ValueError("candidate_thresholds must be sorted")
+        if len(set(thresholds)) != len(thresholds):
+            raise ValueError("candidate_thresholds must be unique")
+        selected = float(self.selected_threshold)
+        if not math.isfinite(selected) or selected not in thresholds:
+            raise ValueError("selected_threshold must be one of candidate_thresholds")
+        max_rate = _finite_probability(
+            "max_false_alarm_rate", self.max_false_alarm_rate
+        )
+        results = tuple(self.calibration_results)
+        if len(results) != len(thresholds) or not all(
+            isinstance(item, NullCalibrationResult) for item in results
+        ):
+            raise ValueError(
+                "calibration_results must align with candidate_thresholds"
+            )
+        if not isinstance(self.evaluation_result, NullCalibrationResult):
+            raise ValueError("evaluation_result must be NullCalibrationResult")
+        if any(item.observation_identity != self.observation_identity for item in results):
+            raise ValueError("calibration observation identity does not match")
+        if self.evaluation_result.observation_identity != self.observation_identity:
+            raise ValueError("evaluation observation identity does not match")
+        reference = results[0]
+        reference_shape = (
+            reference.trials,
+            reference.horizon,
+            reference.n_features,
+            reference.alpha,
+            reference.seed,
+        )
+        if any(
+            (
+                item.trials,
+                item.horizon,
+                item.n_features,
+                item.alpha,
+                item.seed,
+            )
+            != reference_shape
+            for item in results
+        ):
+            raise ValueError(
+                "calibration results must share one independent split configuration"
+            )
+        evaluation_shape = (
+            self.evaluation_result.trials,
+            self.evaluation_result.horizon,
+            self.evaluation_result.n_features,
+            self.evaluation_result.alpha,
+        )
+        if evaluation_shape != reference_shape[:4]:
+            raise ValueError(
+                "evaluation result must share horizon, feature count, and alpha"
+            )
+        if self.evaluation_result.seed == reference.seed:
+            raise ValueError("evaluation result must use a distinct split seed")
+        detector_identities = tuple(item.detector_identity for item in results)
+        if len(set(detector_identities)) != len(detector_identities):
+            raise ValueError(
+                "candidate detector identities must be unique and threshold-bound"
+            )
+        selected_index = thresholds.index(selected)
+        approved_indices = tuple(
+            index
+            for index, item in enumerate(results)
+            if item.false_alarm_ci_high <= max_rate
+        )
+        if not approved_indices:
+            raise ValueError(
+                "no candidate threshold satisfies the calibration false-alarm budget"
+            )
+        if selected_index != approved_indices[0]:
+            raise ValueError(
+                "selected_threshold must be the smallest calibration-approved candidate"
+            )
+        if (
+            self.evaluation_result.detector_identity
+            != results[selected_index].detector_identity
+        ):
+            raise ValueError(
+                "evaluation detector identity does not match selected threshold"
+            )
+        object.__setattr__(self, "candidate_thresholds", thresholds)
+        object.__setattr__(self, "selected_threshold", selected)
+        object.__setattr__(self, "max_false_alarm_rate", max_rate)
+        object.__setattr__(self, "calibration_results", results)
+
+    @property
+    def selected_index(self) -> int:
+        return self.candidate_thresholds.index(self.selected_threshold)
+
+    @property
+    def approved(self) -> bool:
+        """Whether the untouched evaluation split passes the declared budget."""
+
+        return self.evaluation_result.false_alarm_ci_high <= self.max_false_alarm_rate
+
+    @property
+    def identity(self) -> str:
+        payload = {
+            "schema": "topology_gate.threshold_calibration",
+            "version": 1,
+            "detector_family_identity": self.detector_family_identity,
+            "detector_factory_identity": self.detector_factory_identity,
+            "observation_identity": self.observation_identity,
+            "candidate_thresholds": list(self.candidate_thresholds),
+            "selected_threshold": self.selected_threshold,
+            "max_false_alarm_rate": self.max_false_alarm_rate,
+            "calibration_config_identities": [
+                item.config_identity for item in self.calibration_results
+            ],
+            "evaluation_config_identity": self.evaluation_result.config_identity,
+            "approved": self.approved,
+        }
+        return hashlib.sha256(
+            json.dumps(payload, sort_keys=True, separators=(",", ":")).encode()
+        ).hexdigest()
+
+    def to_certificate(self) -> CalibrationCertificate:
+        """Authorize only the selected detector after evaluation approval."""
+
+        if not self.approved:
+            raise ValueError(
+                "evaluation false-alarm bound does not satisfy the declared budget"
+            )
+        certificate = self.evaluation_result.to_certificate(
+            max_false_alarm_rate=self.max_false_alarm_rate
+        )
+        return replace(certificate, selection_identity=self.identity)
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "kind": "threshold_calibration",
+            "schema": "topology_gate.threshold_calibration",
+            "version": 1,
+            "detector_family_identity": self.detector_family_identity,
+            "detector_factory_identity": self.detector_factory_identity,
+            "observation_identity": self.observation_identity,
+            "candidate_thresholds": list(self.candidate_thresholds),
+            "selected_threshold": self.selected_threshold,
+            "selected_index": self.selected_index,
+            "max_false_alarm_rate": self.max_false_alarm_rate,
+            "calibration_results": [item.to_dict() for item in self.calibration_results],
+            "evaluation_result": self.evaluation_result.to_dict(),
             "approved": self.approved,
             "identity": self.identity,
         }
@@ -1281,6 +1478,119 @@ def calibrate_null(
     )
 
 
+def calibrate_threshold(
+    detector_factory: Callable[[float], Any],
+    observation_factory: ObservationFactory,
+    *,
+    detector_family_identity: str,
+    candidate_thresholds: Sequence[float],
+    calibration_config: CalibrationConfig,
+    evaluation_config: CalibrationConfig,
+    max_false_alarm_rate: float,
+) -> ThresholdCalibrationResult:
+    """Select a threshold on one null split and evaluate it on another.
+
+    The candidate list and selection rule are fixed before either split is
+    consumed.  The smallest candidate whose calibration Wilson upper bound is
+    within ``max_false_alarm_rate`` is selected.  Only the independent
+    evaluation result can produce an acceleration certificate.
+    """
+
+    if not callable(detector_factory):
+        raise ValueError("detector_factory must be callable")
+    if not isinstance(detector_family_identity, str) or not detector_family_identity.strip():
+        raise ValueError("detector_family_identity must be a non-empty string")
+    if not isinstance(calibration_config, CalibrationConfig):
+        raise TypeError("calibration_config must be CalibrationConfig")
+    if not isinstance(evaluation_config, CalibrationConfig):
+        raise TypeError("evaluation_config must be CalibrationConfig")
+    if (
+        calibration_config.horizon != evaluation_config.horizon
+        or calibration_config.n_features != evaluation_config.n_features
+        or not math.isclose(
+            calibration_config.alpha,
+            evaluation_config.alpha,
+            rel_tol=0.0,
+            abs_tol=1.0e-12,
+        )
+    ):
+        raise ValueError(
+            "calibration and evaluation configs must share horizon, feature count, and alpha"
+        )
+    if calibration_config.seed == evaluation_config.seed:
+        raise ValueError("calibration and evaluation configs require distinct seeds")
+    max_rate = _finite_probability("max_false_alarm_rate", max_false_alarm_rate)
+    try:
+        raw_thresholds = tuple(candidate_thresholds)
+    except TypeError as exc:
+        raise ValueError("candidate_thresholds must be a sequence") from exc
+    if isinstance(candidate_thresholds, (str, bytes, bytearray)):
+        raise ValueError("candidate_thresholds must be a numeric sequence")
+    thresholds = tuple(float(value) for value in raw_thresholds)
+    if not thresholds or len(thresholds) > MAX_CALIBRATION_THRESHOLDS:
+        raise ValueError(
+            "candidate_thresholds must contain between one and "
+            f"{MAX_CALIBRATION_THRESHOLDS} values"
+        )
+    if not all(math.isfinite(value) and value > 0.0 for value in thresholds):
+        raise ValueError("candidate_thresholds must be finite and positive")
+    if tuple(sorted(thresholds)) != thresholds:
+        raise ValueError("candidate_thresholds must be sorted")
+    if len(set(thresholds)) != len(thresholds):
+        raise ValueError("candidate_thresholds must be unique")
+
+    detector_factory_identity = _factory_identity(detector_factory)
+    observation_identity = _factory_identity(observation_factory)
+    calibration_results: list[NullCalibrationResult] = []
+    for threshold in thresholds:
+        def candidate_factory(value: float = threshold) -> Any:
+            return detector_factory(value)
+
+        result = calibrate_null(
+            candidate_factory,
+            observation_factory,
+            config=calibration_config,
+        )
+        calibration_results.append(result)
+
+    passing = tuple(
+        index
+        for index, result in enumerate(calibration_results)
+        if result.false_alarm_ci_high <= max_rate
+    )
+    if not passing:
+        raise ValueError(
+            "no candidate threshold satisfies the calibration false-alarm budget"
+        )
+    selected_index = passing[0]
+    selected_threshold = thresholds[selected_index]
+
+    def selected_factory(value: float = selected_threshold) -> Any:
+        return detector_factory(value)
+
+    evaluation_result = calibrate_null(
+        selected_factory,
+        observation_factory,
+        config=evaluation_config,
+    )
+    if any(
+        result.observation_identity != observation_identity
+        for result in (*calibration_results, evaluation_result)
+    ):
+        raise ValueError("calibration factory identity changed across the split")
+
+    return ThresholdCalibrationResult(
+        detector_family_identity=detector_family_identity,
+        detector_factory_identity=detector_factory_identity,
+        observation_identity=observation_identity,
+        candidate_thresholds=thresholds,
+        selected_threshold=selected_threshold,
+        max_false_alarm_rate=max_rate,
+        calibration_results=tuple(calibration_results),
+        evaluation_result=evaluation_result,
+    )
+
+
 def calibrate_shift(
     detector_factory: DetectorFactory,
     observation_factory: ObservationFactory,
@@ -1339,6 +1649,7 @@ __all__ = [
     "MAX_CALIBRATION_FEATURES",
     "MAX_CALIBRATION_HORIZON",
     "MAX_CALIBRATION_SOURCE_ROWS",
+    "MAX_CALIBRATION_THRESHOLDS",
     "MAX_CALIBRATION_TRIALS",
     "NullCalibrationResult",
     "PromotionCalibrationConfig",
@@ -1346,8 +1657,10 @@ __all__ = [
     "PromotionScoreFactory",
     "StationaryBlockBootstrap",
     "ShiftCalibrationResult",
+    "ThresholdCalibrationResult",
     "calibrate_null",
     "calibrate_eprocess_null",
     "calibrate_promotion_null",
+    "calibrate_threshold",
     "calibrate_shift",
 ]

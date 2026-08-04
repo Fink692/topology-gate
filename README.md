@@ -256,14 +256,18 @@ cost/capacity evidence, and a sealed holdout.
 
 Use [`docs/calibration.md`](docs/calibration.md) and the bounded
 `calibrate_null`/`calibrate_shift` helpers before interpreting detector alarms,
-forgetting changes, or shift delays. They produce finite-horizon Wilson
-intervals and censored run-length evidence; they do not establish universal
-market or optional-stopping guarantees. `NullCalibrationResult.to_certificate`
-is the explicit authorization boundary for the numerical adapter: without a
-matching approved finite-null certificate, topology-driven forgetting remains
-at its neutral maximum. Use `StationaryBlockBootstrap` when the declared null
-must preserve local serial dependence; its source and bootstrap specification
-are included in the calibration identity.
+forgetting changes, or shift delays. Use `calibrate_threshold` when a threshold
+must be selected: it separates predeclared candidate selection from an
+independent evaluation split and only the latter can produce a certificate.
+These helpers produce finite-horizon Wilson intervals and censored run-length
+evidence; they do not establish universal market or optional-stopping
+guarantees. `NullCalibrationResult.to_certificate` and
+`ThresholdCalibrationResult.to_certificate` are the explicit authorization
+boundaries for the numerical adapter: without a matching approved finite-null
+certificate, topology-driven forgetting remains at its neutral maximum. Use
+`StationaryBlockBootstrap` when the declared null must preserve local serial
+dependence; its source and bootstrap specification are included in the
+calibration identity.
 
 Use `calibrate_eprocess_null` for the paired-promotion control layer. It
 simulates bounded score paths under optional stopping with a predeclared
