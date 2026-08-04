@@ -5,20 +5,20 @@ Interpreter: CPython 3.12.10
 Scope: bounded research/control layer only; no live-data or execution claim
 
 Supported-interpreter matrix: CPython 3.10.11, 3.11.15, and 3.12.10 each
-passed the current 261-test suite; the 3.11 run used an isolated `uv`
+passed the current 267-test suite; the 3.11 run used an isolated `uv`
 environment. The CPython 3.12 release gate also passed Ruff, mypy, and
 compileall. Coverage is reported from CPython 3.12 only.
 
 ## Reproducible engineering checks
 
-- Full suite: **261 passed**.
-- Configured coverage run: **80.67%** total coverage.
+- Full suite: **267 passed**.
+- Configured coverage run: **80.65%** total coverage.
 - Ruff: passed on `src` and `tests`.
 - Mypy: passed on all 23 source modules.
 - Dependency-light root import: passed without NumPy site packages.
 - Wheel build and isolated target-directory smoke: passed; SHA-256
-  `FD2EEB03333FB37EC3A425932CCEC69CF0D20FBE2D4D857FDF1D5FC3F2B17A37`;
-  source commit `7774f5f` supplied `SOURCE_DATE_EPOCH=1785862260`; two
+  `366CE69F4F9D3856E67E4EC3B6E9EB35330D7E4590935B451AED3A5C50E40EE3`;
+  source commit `6db1057` supplied `SOURCE_DATE_EPOCH=1785862260`; two
   consecutive builds under the same source date produced the same digest;
   the smoke exercised canonical `StudySourcePackage` serialization/restoration,
   exact raw source-artifact ID-set and byte/size verification, strict
@@ -93,7 +93,9 @@ compileall. Coverage is reported from CPython 3.12 only.
   selected-eta enforcement, internal state consistency, and learner/gate
   rollback on failed updates, state-pure prediction enforcement, utility-scale
   binding, external gate-reset/evidence injection detection, stable learner
-  identity binding, checkpointed missingness/quality budgets, fail-closed
+  identity binding, checkpointed missingness/quality budgets, explicit
+  predictable-missingness declaration, raw-label declared score-spec settlement,
+  fail-closed
   blocked-state continuation, and next-boundary activation receipts;
   instrument-labelled promotion evidence carries the canonical panel digest.
 - Legacy online authorization tests: passed for neutral forgetting without a
