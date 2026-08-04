@@ -19,8 +19,8 @@ compileall. Coverage is reported from CPython 3.12 only.
 - Mypy: passed on all 24 source modules.
 - Dependency-light root import: passed without NumPy site packages.
 - Wheel build and isolated target-directory smoke: passed; SHA-256
-  `366CE69F4F9D3856E67E4EC3B6E9EB35330D7E4590935B451AED3A5C50E40EE3`;
-  source commit `662ada5` supplied `SOURCE_DATE_EPOCH=1785862260`; two
+  `86DFD50C6A5677D6AA2B043213AC4912DC239EC3AD6E11011D3C2781FD5CB09A`;
+  source commit `db60416` supplied `SOURCE_DATE_EPOCH=1785871618`; two
   consecutive builds under the same source date produced the same digest.
   The smoke verified a dependency-free root import under `python -S` and
   optional worker exports in the numeric environment. CI now repeats the
