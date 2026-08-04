@@ -63,9 +63,14 @@ from .evidence import (
 from .manifest import (
     MANIFEST_SCHEMA,
     MANIFEST_VERSION,
+    STUDY_SCHEMA,
+    STUDY_VERSION,
     ManifestValidationError,
     RunManifest,
     RunSpec,
+    StudyManifest,
+    StudySpec,
+    StudyWindow,
 )
 from .replay import (
     MAX_REPLAY_DECISIONS,
@@ -348,6 +353,11 @@ __all__ = [
     "RealizedReturn",
     "RunManifest",
     "RunSpec",
+    "STUDY_SCHEMA",
+    "STUDY_VERSION",
+    "StudyManifest",
+    "StudySpec",
+    "StudyWindow",
     "RollingTopologyDetector",
     "Scalar",
     "ShiftCalibrationResult",

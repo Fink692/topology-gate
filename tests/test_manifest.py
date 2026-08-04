@@ -14,6 +14,9 @@ from topology_gate.manifest import (
     ManifestValidationError,
     RunManifest,
     RunSpec,
+    StudyManifest,
+    StudySpec,
+    StudyWindow,
 )
 
 
@@ -30,6 +33,22 @@ def _spec(**overrides: object) -> RunSpec:
     }
     values.update(overrides)
     return RunSpec(**values)
+
+
+def _study(**overrides: object) -> StudySpec:
+    values: dict[str, object] = {
+        "run_spec": _spec(),
+        "feature_schema_id": "features:v1",
+        "label_spec_id": "labels:h1",
+        "economic_spec_id": "costs:v1",
+        "calibration_window": StudyWindow("calibration", 0, 100),
+        "tuning_window": StudyWindow("tuning", 105, 200),
+        "validation_window": StudyWindow("validation", 205, 300),
+        "holdout_window": StudyWindow("holdout", 305, 400),
+        "embargo_steps": 5,
+    }
+    values.update(overrides)
+    return StudySpec(**values)
 
 
 def test_manifest_is_immutable_and_has_explicit_contract() -> None:
@@ -141,3 +160,57 @@ def test_metadata_rejects_missing_blank_nonfinite_and_non_json_values(
 ) -> None:
     with pytest.raises(ManifestValidationError):
         RunManifest(_spec(), metadata=metadata)
+
+
+def test_study_manifest_freezes_ordered_splits_and_embargo_identity() -> None:
+    study = _study()
+    manifest = StudyManifest(study, metadata={"purpose": "pre-registered"})
+
+    assert study.digest
+    assert manifest.holdout_is_sealed
+    manifest.require_holdout_sealed()
+    assert manifest.to_dict()["spec"]["holdout_window"] == {
+        "name": "holdout",
+        "start": 305,
+        "end": 400,
+    }
+    assert manifest.digest == StudyManifest(
+        _study(), metadata={"purpose": "pre-registered"}
+    ).digest
+
+
+def test_study_manifest_rejects_overlap_or_insufficient_embargo() -> None:
+    with pytest.raises(ManifestValidationError, match="embargo"):
+        _study(
+            tuning_window=StudyWindow("tuning", 103, 200),
+        )
+    with pytest.raises(ManifestValidationError, match="unique"):
+        _study(
+            holdout_window=StudyWindow("validation", 305, 400),
+        )
+    with pytest.raises(ManifestValidationError, match="end"):
+        StudyWindow("bad", 3, 3)
+
+
+def test_study_manifest_holdout_release_is_explicit_and_irreversible() -> None:
+    sealed = StudyManifest(_study())
+    with pytest.raises(ManifestValidationError, match="release ID"):
+        sealed.open_holdout(" ")
+
+    opened = sealed.open_holdout("release-2026-08-04")
+    assert not opened.holdout_is_sealed
+    assert opened.holdout_release_id == "release-2026-08-04"
+    assert opened.digest != sealed.digest
+    with pytest.raises(ManifestValidationError, match="already opened"):
+        opened.require_holdout_sealed()
+    with pytest.raises(ManifestValidationError, match="already opened"):
+        opened.open_holdout("second-release")
+
+
+def test_study_manifest_rejects_unknown_status_or_schema_version() -> None:
+    with pytest.raises(ManifestValidationError, match="holdout_status"):
+        StudyManifest(_study(), holdout_status="peeked")
+    with pytest.raises(ManifestValidationError, match="schema"):
+        StudyManifest(_study(), schema="wrong.study")
+    with pytest.raises(ManifestValidationError, match="version"):
+        StudyManifest(_study(), version=2)

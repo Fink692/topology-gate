@@ -470,6 +470,15 @@ RunSpec and RunManifest record:
 - algorithm/backend versions, resource limits, numerical tolerances, and feature/topology schemas;
 - code revision and checkpoint lineage.
 
+`StudySpec` specializes that identity for a time-dependent research claim. It
+binds feature, label, and economic specification identities to ordered
+calibration, tuning, validation, and holdout windows with a declared
+purge/embargo gap. `StudyManifest` begins with the holdout sealed; opening it
+is an explicit immutable state transition carrying a release ID and a new
+manifest digest. The contract makes selection chronology auditable, but the
+caller must still provide a trustworthy vendor vintage, membership history,
+and sealed data-access process.
+
 The root seed is never consumed directly by multiple components. A deterministic SHA-256-derived child seed is assigned by stable component name and run ID; Python's process-salted hash() and ambient random state are forbidden.
 
 ### 7.2 Canonical computation

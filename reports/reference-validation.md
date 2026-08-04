@@ -6,8 +6,8 @@ Scope: bounded research/control layer only; no live-data or execution claim
 
 ## Reproducible engineering checks
 
-- Full suite: **190 passed**.
-- Configured coverage run: **79.99%** total coverage.
+- Full suite: **194 passed**.
+- Configured coverage run: **80.09%** total coverage.
 - Ruff: passed on `src` and `tests`.
 - Mypy: passed on all 20 source modules.
 - Dependency-light root import: passed without NumPy site packages.
@@ -17,6 +17,9 @@ Scope: bounded research/control layer only; no live-data or execution claim
   wheel.
 - Authenticated checkpoint, manifest digest, promotion/evidence state, and
   detached restore tests: passed.
+- Study-manifest tests: passed for canonical split identity, ordered
+  calibration/tuning/validation/holdout windows, embargo enforcement, and
+  explicit immutable holdout release state.
 - Causal replay prediction-before-label, future-prefix invariance, explicit
   missing/invalid status, chained-record tamper detection, and model-state
   restore tests: passed.
@@ -85,12 +88,12 @@ therefore fail-closed.
 
 | Gate | Disposition | Evidence |
 |---|---|---|
-| G0 identity/claim freeze | Partial | `RunSpec`, `RunManifest`, evidence config, as-of records, and authenticated checkpoint identities exist; no full vendor input manifest or shared event engine yet. |
+| G0 identity/claim freeze | Partial/pass for the declared protocol | `RunSpec`, `RunManifest`, `StudySpec`, sealed/opened `StudyManifest`, evidence config, as-of records, and authenticated checkpoint identities exist; no full vendor input manifest or shared event engine yet. |
 | G1 exact persistent MVP | Pass for bounded reference scope | `persistent.py` plus hand-built and algebraic invariants; only the declared finite VR/F2/q/pair construction is covered. |
 | G2 calibrated forgetting | Fail for a calibrated claim | Harness exists and caught a false-alarm failure; no independent market/dependence calibration artifact authorizes accelerated forgetting. |
 | G3 recursive transactional state | Partial/pass for the migrated path | `CausalReplay` drives numerical detector/RLS plus paired challenger/`PromotionGate` state with prediction-time factor/utility capture, model-state rollback, and detached restore; legacy workers and the generic evidence-ledger path are not all one transaction. |
 | G4 causal replay/recovery | Partial/pass for the migrated path | `AsOfBook`, `PointInTimePanel`, `CausalReplay`, `CausalRLSModel`, paired promotion, delayed-label ledger, chunk state, HMAC restore, prefix invariance, future append acceptance, consumed-prefix revision rejection, canonical panel identity, and terminal pending cleanup are tested; legacy row adapters remain compatibility paths. |
-| G5 economic validation | Contract pass; market evidence not evaluated | `economic.py` is fail-closed for separate returns/costs and explicit abstention accounting, but no point-in-time vendor data, capacity, delistings, or sealed final holdout are present. |
+| G5 economic validation | Contract pass; market evidence not evaluated | `economic.py` is fail-closed for separate returns/costs and explicit abstention accounting, and `StudyManifest` records a sealed holdout boundary, but no point-in-time vendor data, capacity, delistings, or opened final holdout evidence are present. |
 
 The package remains research/alpha. The evidence needed to upgrade the two
 remaining scientific claims is explicit: a pre-registered dependence-aware

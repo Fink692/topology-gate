@@ -10,7 +10,7 @@ from __future__ import annotations
 import json
 import math
 from collections.abc import Mapping
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from hashlib import sha256
 from typing import Any, Final, TypeAlias
 
@@ -160,6 +160,174 @@ class RunSpec:
 
 
 @dataclass(frozen=True, slots=True)
+class StudyWindow:
+    """Half-open, non-empty index window in a predeclared study timeline."""
+
+    name: str
+    start: int
+    end: int
+
+    def __post_init__(self) -> None:
+        if type(self.name) is not str or not self.name.strip():
+            raise ManifestValidationError("study window name must be non-blank")
+        if isinstance(self.start, bool) or not isinstance(self.start, int) or self.start < 0:
+            raise ManifestValidationError("study window start must be a non-negative integer")
+        if isinstance(self.end, bool) or not isinstance(self.end, int) or self.end <= self.start:
+            raise ManifestValidationError("study window end must exceed start")
+
+    def to_dict(self) -> dict[str, JsonValue]:
+        return {"name": self.name, "start": self.start, "end": self.end}
+
+
+@dataclass(frozen=True, slots=True)
+class StudySpec:
+    """Pre-registered data and split identity for a walk-forward study.
+
+    Window boundaries are timeline indices supplied by the caller's
+    point-in-time event source.  The manifest enforces ordering and an optional
+    purge/embargo gap, but it does not claim that those indices are market
+    timestamps or that the source is survivorship-free.
+    """
+
+    run_spec: RunSpec
+    feature_schema_id: str
+    label_spec_id: str
+    economic_spec_id: str
+    calibration_window: StudyWindow
+    tuning_window: StudyWindow
+    validation_window: StudyWindow
+    holdout_window: StudyWindow
+    embargo_steps: int = 0
+
+    def __post_init__(self) -> None:
+        if not isinstance(self.run_spec, RunSpec):
+            raise ManifestValidationError("study run_spec must be a RunSpec")
+        for name in ("feature_schema_id", "label_spec_id", "economic_spec_id"):
+            value = getattr(self, name)
+            if type(value) is not str or not value.strip():
+                raise ManifestValidationError(f"{name} must be a non-blank string")
+        windows = (
+            self.calibration_window,
+            self.tuning_window,
+            self.validation_window,
+            self.holdout_window,
+        )
+        if not all(isinstance(window, StudyWindow) for window in windows):
+            raise ManifestValidationError("study windows must be StudyWindow values")
+        names = [window.name for window in windows]
+        if len(set(names)) != len(names):
+            raise ManifestValidationError("study window names must be unique")
+        if (
+            isinstance(self.embargo_steps, bool)
+            or not isinstance(self.embargo_steps, int)
+            or self.embargo_steps < 0
+        ):
+            raise ManifestValidationError("embargo_steps must be a non-negative integer")
+        for previous, current in zip(windows, windows[1:]):
+            if previous.end + self.embargo_steps > current.start:
+                raise ManifestValidationError(
+                    "study windows overlap or violate the embargo boundary"
+                )
+
+    def to_dict(self) -> dict[str, JsonValue]:
+        return {
+            "run_spec": self.run_spec.to_dict(),
+            "feature_schema_id": self.feature_schema_id,
+            "label_spec_id": self.label_spec_id,
+            "economic_spec_id": self.economic_spec_id,
+            "calibration_window": self.calibration_window.to_dict(),
+            "tuning_window": self.tuning_window.to_dict(),
+            "validation_window": self.validation_window.to_dict(),
+            "holdout_window": self.holdout_window.to_dict(),
+            "embargo_steps": self.embargo_steps,
+        }
+
+    def to_json(self) -> str:
+        return _canonical_json(self.to_dict())
+
+    @property
+    def digest(self) -> str:
+        return sha256(self.to_json().encode("utf-8")).hexdigest()
+
+
+STUDY_SCHEMA: Final[str] = "topology-gate.study-manifest"
+STUDY_VERSION: Final[int] = 1
+
+
+@dataclass(frozen=True, slots=True)
+class StudyManifest:
+    """Immutable study identity with an auditable sealed-holdout transition."""
+
+    spec: StudySpec
+    metadata: Any = field(default_factory=dict)
+    holdout_status: str = "sealed"
+    holdout_release_id: str | None = None
+    schema: str = STUDY_SCHEMA
+    version: int = STUDY_VERSION
+
+    def __post_init__(self) -> None:
+        if not isinstance(self.spec, StudySpec):
+            raise ManifestValidationError("study manifest spec must be a StudySpec")
+        if type(self.schema) is not str or self.schema != STUDY_SCHEMA:
+            raise ManifestValidationError(f"schema must be exactly {STUDY_SCHEMA!r}")
+        if type(self.version) is not int or self.version != STUDY_VERSION:
+            raise ManifestValidationError(f"version must be exactly {STUDY_VERSION}")
+        if not isinstance(self.metadata, Mapping):
+            raise ManifestValidationError("metadata must be a JSON object")
+        status = self.holdout_status
+        if status not in {"sealed", "opened"}:
+            raise ManifestValidationError("holdout_status must be sealed or opened")
+        if status == "sealed" and self.holdout_release_id is not None:
+            raise ManifestValidationError("sealed holdouts cannot have a release ID")
+        if status == "opened":
+            if type(self.holdout_release_id) is not str or not self.holdout_release_id.strip():
+                raise ManifestValidationError(
+                    "opened holdouts require a non-blank release ID"
+                )
+        object.__setattr__(self, "metadata", _freeze_json(self.metadata, ("metadata",)))
+
+    @property
+    def digest(self) -> str:
+        return sha256(self.to_json().encode("utf-8")).hexdigest()
+
+    @property
+    def holdout_is_sealed(self) -> bool:
+        return self.holdout_status == "sealed"
+
+    def require_holdout_sealed(self) -> None:
+        """Raise if a caller attempts a pre-release read after opening holdout."""
+
+        if not self.holdout_is_sealed:
+            raise ManifestValidationError("study holdout is already opened")
+
+    def open_holdout(self, release_id: str) -> "StudyManifest":
+        """Return a new manifest recording the explicit holdout release event."""
+
+        self.require_holdout_sealed()
+        if type(release_id) is not str or not release_id.strip():
+            raise ManifestValidationError("release ID must be a non-blank string")
+        return replace(
+            self,
+            metadata=_thaw_json(self.metadata),
+            holdout_status="opened",
+            holdout_release_id=release_id,
+        )
+
+    def to_dict(self) -> dict[str, JsonValue]:
+        return {
+            "schema": self.schema,
+            "version": self.version,
+            "spec": self.spec.to_dict(),
+            "metadata": _thaw_json(self.metadata),
+            "holdout_status": self.holdout_status,
+            "holdout_release_id": self.holdout_release_id,
+        }
+
+    def to_json(self) -> str:
+        return _canonical_json(self.to_dict())
+
+
+@dataclass(frozen=True, slots=True)
 class RunManifest:
     """Immutable, canonically serializable identity for a complete run."""
 
@@ -224,4 +392,9 @@ __all__ = [
     "ManifestValidationError",
     "RunManifest",
     "RunSpec",
+    "STUDY_SCHEMA",
+    "STUDY_VERSION",
+    "StudyManifest",
+    "StudySpec",
+    "StudyWindow",
 ]

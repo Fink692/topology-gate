@@ -168,7 +168,8 @@ utility or pay for data-dependent model selection.
 Any paper or deployment claiming calibrated change detection, anytime-valid
 promotion, or dynamic-regret guarantees should attach:
 
-1. a point-in-time data and expected-return definition;
+1. a point-in-time data and expected-return definition plus a `StudyManifest`
+   whose calibration/tuning/validation/holdout windows and embargo are frozen;
 2. a feasible comparator and explicit cost convention;
 3. independent null simulations or block-bootstrap calibration with uncertainty;
 4. optional-stopping and selection-budget tests for promotion;
