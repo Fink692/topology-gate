@@ -5,16 +5,16 @@ Interpreter: CPython 3.12.10
 Scope: bounded research/control layer only; no live-data or execution claim
 
 Supported-interpreter matrix: CPython 3.10.11, 3.11.15, and 3.12.10 each
-passed the current 318-test suite; the 3.10 and 3.11 runs used isolated `uv`
+passed the current 320-test suite; the 3.10 and 3.11 runs used isolated `uv`
 environment. The CPython 3.12 release gate also passed Ruff, mypy, and
-compileall. Coverage is reported from CPython 3.10 only for this local run.
+compileall. Coverage is reported from CPython 3.12 for this local run.
 
 ## Reproducible engineering checks
 
-- Full suite: **318 passed**.
-- Configured coverage run: **81.25%** total coverage.
-- Coverage enforcement: configured floor **80%**; the current CPython 3.10
-  run clears it at **81.25%** total.
+- Full suite: **320 passed**.
+- Configured coverage run: **81.24%** total coverage.
+- Coverage enforcement: configured floor **80%**; the current CPython 3.12
+  run clears it at **81.24%** total.
 - Ruff: passed on `src`, `tests`, and `examples`.
 - Mypy: passed on all 31 source modules.
 - Dependency-light root import: passed without NumPy site packages.
@@ -274,6 +274,12 @@ therefore fail-closed.
   see [`docs/public-market-diagnostic.md`](../docs/public-market-diagnostic.md)
   and [`reports/public-market-diagnostic.json`](public-market-diagnostic.json).
 
+- The single-package phase-selection path was exercised on one full synthetic
+  timeline: calibration, tuning, and validation each selected two declared
+  rows, while the sealed holdout remained unread. The six required source
+  roles were byte-verified through the filesystem intake; the receipt is
+  [`reports/synthetic-market-handoff.json`](synthetic-market-handoff.json).
+
 ## Acceptance disposition
 
 | Gate | Disposition | Evidence |
@@ -292,6 +298,7 @@ Wasserstein surrogate, adaptive signature memory, and finite stress bridge are
 complete as bounded research artifacts. The remaining upgrade path is
 external: a point-in-time cross-asset source bundle, an audited
 dependence-aware market calibration split, and a sealed final test. The
-repository now contains the handoff request, canonical package builder, and
-fail-closed pre-holdout audit; it cannot manufacture the licensed vendor data
+repository now contains the handoff request, canonical package builder,
+phase-aware package audit, synthetic end-to-end intake receipt, and fail-closed
+pre-holdout audit; it cannot manufacture the licensed vendor data
 or certify its point-in-time claims.

@@ -1,0 +1,33 @@
+{
+  "artifact_ids": [
+    "synthetic-delistings.jsonl",
+    "synthetic-execution-costs.jsonl",
+    "synthetic-labels.jsonl",
+    "synthetic-market-observations.jsonl",
+    "synthetic-realized-returns.jsonl",
+    "synthetic-universe-membership.jsonl"
+  ],
+  "artifact_roles": [
+    "delistings",
+    "execution-costs",
+    "labels",
+    "market-observations",
+    "realized-returns",
+    "universe-membership"
+  ],
+  "audited_phases": [
+    "calibration",
+    "tuning",
+    "validation"
+  ],
+  "evidence_class": "synthetic_protocol_only",
+  "holdout_opened": false,
+  "market_claim_authorized": false,
+  "package_digest": "3e000619d1404f238ad9b379ed18cb82b6dcacb13f3f6dfaf2e27a5721e93f7e",
+  "provenance_digest": "b924d44b8e3d34e563425924006a782f2e10c2ccf734ea3c78371ad03483e997",
+  "source_audit_digests": {
+    "calibration": "2fd8fa6e7fa7e0ad1fb87ce3fd1a420b45694fdde80f55ab6b2659a9c6fc94a3",
+    "tuning": "878ffdce6801e5c5f25dcf2d13e06927280c33ade36233ac14d31c032cd399a6",
+    "validation": "1df007e335f29e59971b7746d158322ac60aaa5e98ff78316724da8e8d44d011"
+  }
+}

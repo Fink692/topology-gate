@@ -226,6 +226,44 @@ def test_timeline_normalizes_dynamic_universe_rows_and_binds_identity() -> None:
     ).digest
 
 
+def test_one_bundle_selects_each_pre_holdout_phase_from_full_timeline() -> None:
+    timeline = StudyTimeline(
+        decision_times=(1, 2, 3, 4, 5, 6),
+        target_ids=("t1", "t2", "t3", "t4", "t5", "t6"),
+        decision_indices=(0, 1, 2, 3, 4, 5),
+        expected_instrument_ids=(("ES",),) * 6,
+    )
+    bundle = _bundle(timeline, economic_evidence=_economic_evidence(with_capacity=True))
+
+    calibration = bundle.audit(
+        "calibration",
+        require_complete_universe=True,
+        require_observed_economic_evidence=True,
+        require_capacity_evidence=True,
+    )
+    tuning = bundle.audit(
+        "tuning",
+        require_complete_universe=True,
+        require_observed_economic_evidence=True,
+        require_capacity_evidence=True,
+    )
+    validation = bundle.audit(
+        "validation",
+        require_complete_universe=True,
+        require_observed_economic_evidence=True,
+        require_capacity_evidence=True,
+    )
+
+    assert [audit.decision_count for audit in (calibration, tuning, validation)] == [
+        2,
+        2,
+        2,
+    ]
+    assert len({audit.timeline_digest for audit in (calibration, tuning, validation)}) == 3
+    with pytest.raises(StudyInputError, match="sealed study holdout"):
+        bundle.audit("holdout")
+
+
 @pytest.mark.parametrize(
     "kwargs",
     [

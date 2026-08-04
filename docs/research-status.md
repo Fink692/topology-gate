@@ -23,6 +23,12 @@ and its receipt
 It is still synthetic evidence and does not satisfy the external market-data
 gate below.
 
+The source-boundary workflow is exercised end-to-end by
+[`synthetic_market_handoff.py`](../examples/synthetic_market_handoff.py) and
+[`synthetic-market-handoff.json`](../reports/synthetic-market-handoff.json).
+That receipt proves the six-role byte verification and phase selection path,
+not the validity of a market vendor's data.
+
 ## What still requires external data
 
 The repository cannot create the missing licensed source evidence. Before a

@@ -447,6 +447,49 @@ class StudyInputBundle:
             ),
         }
 
+    def _timeline_for_phase(self, phase: str) -> StudyTimeline:
+        """Return the declared timeline rows belonging to ``phase``.
+
+        A source package normally carries one complete pre-registered timeline.
+        Audits and replays, however, operate one phase at a time.  Selecting
+        the rows here lets the same sealed package pass calibration, tuning,
+        and validation in order while preserving the full bundle digest.
+        """
+
+        phase_name = _text(phase, "study phase")
+        try:
+            window = self.study_manifest.spec.window_for_phase(phase_name)
+        except ManifestValidationError as exc:
+            raise StudyInputError(str(exc)) from exc
+        if phase_name == "holdout" and self.study_manifest.holdout_is_sealed:
+            raise StudyInputError("sealed study holdout cannot be read")
+
+        positions = [
+            position
+            for position, decision_index in enumerate(self.timeline.decision_indices)
+            if window.start <= decision_index < window.end
+        ]
+        if not positions:
+            raise StudyInputError(
+                f"study timeline has no decisions in the {phase_name} window"
+            )
+        selected_indices = tuple(self.timeline.decision_indices[position] for position in positions)
+        try:
+            self.study_manifest.assert_indices_allowed(selected_indices, phase_name)
+        except ManifestValidationError as exc:
+            raise StudyInputError(str(exc)) from exc
+        expected = self.timeline.expected_instrument_ids
+        return StudyTimeline(
+            decision_times=tuple(self.timeline.decision_times[position] for position in positions),
+            target_ids=tuple(self.timeline.target_ids[position] for position in positions),
+            decision_indices=selected_indices,
+            expected_instrument_ids=(
+                None
+                if expected is None
+                else tuple(expected[position] for position in positions)
+            ),
+        )
+
     @property
     def digest(self) -> str:
         return _digest(self.to_dict())
@@ -478,21 +521,16 @@ class StudyInputBundle:
         if require_capacity_evidence:
             require_economic_evidence = True
 
-        try:
-            self.study_manifest.assert_indices_allowed(
-                tuple(self.timeline.decision_indices), phase_name
-            )
-        except ManifestValidationError as exc:
-            raise StudyInputError(str(exc)) from exc
+        phase_timeline = self._timeline_for_phase(phase_name)
 
-        expected_rows = self.timeline.expected_instrument_ids
+        expected_rows = phase_timeline.expected_instrument_ids
         if require_complete_universe and expected_rows is None:
             raise StudyInputError(
                 "complete-universe validation requires expected_instrument_ids"
             )
         expected_complete = expected_rows is not None
         for position, (decision_time, target_id) in enumerate(
-            zip(self.timeline.decision_times, self.timeline.target_ids)
+            zip(phase_timeline.decision_times, phase_timeline.target_ids)
         ):
             try:
                 snapshot = self.as_of_book.materialize(decision_time)
@@ -533,7 +571,7 @@ class StudyInputBundle:
             non_observed = []
             missing_capacity = []
             for target_id, decision_time in zip(
-                self.timeline.target_ids, self.timeline.decision_times
+                phase_timeline.target_ids, phase_timeline.decision_times
             ):
                 return_item = returns.get(target_id)
                 cost_item = costs.get(target_id)
@@ -567,8 +605,8 @@ class StudyInputBundle:
         return StudyInputAudit(
             bundle_digest=self.digest,
             phase=phase_name,
-            decision_count=len(self.timeline.decision_times),
-            timeline_digest=self.timeline.digest,
+            decision_count=len(phase_timeline.decision_times),
+            timeline_digest=phase_timeline.digest,
             as_of_book_digest=self.as_of_book.digest,
             economic_evidence_digest=(
                 None
@@ -671,10 +709,11 @@ def run_causal_rls_study(
         require_observed_economic_evidence=require_observed_economic_evidence,
         require_capacity_evidence=require_capacity_evidence,
     )
+    phase_timeline = bundle._timeline_for_phase(phase)
     result = run_causal_rls_replay(
         bundle.as_of_book,
-        bundle.timeline.decision_times,
-        bundle.timeline.target_ids,
+        phase_timeline.decision_times,
+        phase_timeline.target_ids,
         plan=plan,
         learner=learner,
         detector=detector,
@@ -685,7 +724,7 @@ def run_causal_rls_study(
         initial_state=initial_state,
         study_manifest=bundle.study_manifest,
         study_phase=phase,
-        decision_indices=bundle.timeline.decision_indices,
+        decision_indices=phase_timeline.decision_indices,
     )
     return StudyRLSRunResult(audit=audit, replay=result)
 
@@ -718,10 +757,11 @@ def run_causal_promotion_study(
         require_observed_economic_evidence=require_observed_economic_evidence,
         require_capacity_evidence=require_capacity_evidence,
     )
+    phase_timeline = bundle._timeline_for_phase(phase)
     result = run_causal_promotion_replay(
         bundle.as_of_book,
-        bundle.timeline.decision_times,
-        bundle.timeline.target_ids,
+        phase_timeline.decision_times,
+        phase_timeline.target_ids,
         plan=plan,
         challenger=challenger,
         incumbent=incumbent,
@@ -732,7 +772,7 @@ def run_causal_promotion_study(
         initial_state=initial_state,
         study_manifest=bundle.study_manifest,
         study_phase=phase,
-        decision_indices=bundle.timeline.decision_indices,
+        decision_indices=phase_timeline.decision_indices,
     )
     return StudyPromotionRunResult(audit=audit, replay=result)
 

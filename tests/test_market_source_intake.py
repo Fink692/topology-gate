@@ -13,6 +13,7 @@ from examples.market_source_intake import (
     collect_raw_payloads,
     run_all_pre_holdout_intake,
 )
+from examples.synthetic_market_handoff import build_synthetic_package
 from topology_gate import (
     AsOfBook,
     EconomicEvidence,
@@ -263,3 +264,16 @@ def test_all_pre_holdout_intake_audits_three_phases_and_never_opens_holdout(
         "tuning-source-audit.json",
         "validation-source-audit.json",
     ]
+
+
+def test_synthetic_handoff_passes_all_real_pre_holdout_phase_audits() -> None:
+    package, payloads = build_synthetic_package()
+
+    audits = [
+        package.audit_market(phase, payloads)
+        for phase in ("calibration", "tuning", "validation")
+    ]
+
+    assert [audit.input_audit.decision_count for audit in audits] == [2, 2, 2]
+    assert all(audit.input_audit.capacity_evidence_complete for audit in audits)
+    assert all(audit.input_audit.holdout_status == "sealed" for audit in audits)
