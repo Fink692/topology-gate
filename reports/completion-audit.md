@@ -1,7 +1,7 @@
 # Completion audit
 
-**Audit date:** 2026-08-04  
-**Scope:** topology-gated recursive quant-model research program  
+**Audit date:** 2026-08-04
+**Scope:** topology-gated recursive quant-model research program
 **Disposition:** research implementation complete; market-evidence gate pending
 
 ## Requirement evidence
