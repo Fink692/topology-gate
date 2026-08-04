@@ -257,8 +257,9 @@ cost/capacity evidence, and a sealed holdout.
 Use [`docs/calibration.md`](docs/calibration.md) and the bounded
 `calibrate_null`/`calibrate_shift` helpers before interpreting detector alarms,
 forgetting changes, or shift delays. Use `calibrate_threshold` when a threshold
-must be selected: it separates predeclared candidate selection from an
-independent evaluation split and only the latter can produce a certificate.
+must be selected: it requires distinct declared calibration and evaluation
+observation factories, separates predeclared candidate selection from an
+independent evaluation split, and only the latter can produce a certificate.
 These helpers produce finite-horizon Wilson intervals and censored run-length
 evidence; they do not establish universal market or optional-stopping
 guarantees. `NullCalibrationResult.to_certificate` and

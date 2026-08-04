@@ -41,6 +41,17 @@ class _ParameterizedThresholdDetector:
         return SimpleNamespace(alarms=alarms)
 
 
+class _ConstantPointFactory:
+    def __init__(self, split: str) -> None:
+        self.identity = f"constant-point:{split}:v1"
+
+    def __call__(
+        self, rng: np.random.Generator, horizon: int, n_features: int
+    ) -> np.ndarray:
+        del rng
+        return np.full((horizon, n_features), 0.75, dtype=float)
+
+
 class _RademacherScores:
     identity = "rademacher-score-null:v1"
 
@@ -119,13 +130,6 @@ def _shifted(rng: np.random.Generator, horizon: int, n_features: int) -> np.ndar
     return values
 
 
-def _constant_point(
-    rng: np.random.Generator, horizon: int, n_features: int
-) -> np.ndarray:
-    del rng
-    return np.full((horizon, n_features), 0.75, dtype=float)
-
-
 def _parameterized_threshold_factory(
     threshold: float,
 ) -> _ParameterizedThresholdDetector:
@@ -149,9 +153,12 @@ def test_null_calibration_is_deterministic_and_uncertainty_is_explicit() -> None
 def test_threshold_calibration_selects_on_calibration_and_certifies_evaluation() -> None:
     calibration = CalibrationConfig(trials=32, horizon=16, n_features=1, seed=11)
     evaluation = CalibrationConfig(trials=32, horizon=16, n_features=1, seed=12)
+    calibration_factory = _ConstantPointFactory("calibration")
+    evaluation_factory = _ConstantPointFactory("evaluation")
     first = calibrate_threshold(
         _parameterized_threshold_factory,
-        _constant_point,
+        calibration_factory,
+        evaluation_factory,
         detector_family_identity="parameterized-threshold-family:v1",
         candidate_thresholds=(0.5, 1.0),
         calibration_config=calibration,
@@ -160,7 +167,8 @@ def test_threshold_calibration_selects_on_calibration_and_certifies_evaluation()
     )
     second = calibrate_threshold(
         _parameterized_threshold_factory,
-        _constant_point,
+        calibration_factory,
+        evaluation_factory,
         detector_family_identity="parameterized-threshold-family:v1",
         candidate_thresholds=(0.5, 1.0),
         calibration_config=calibration,
@@ -174,11 +182,14 @@ def test_threshold_calibration_selects_on_calibration_and_certifies_evaluation()
     assert first.selected_index == 1
     assert first.calibration_results[0].false_alarm_rate == 1.0
     assert first.calibration_results[1].false_alarm_rate == 0.0
+    assert first.calibration_observation_identity == calibration_factory.identity
+    assert first.evaluation_observation_identity == evaluation_factory.identity
     assert first.evaluation_result.seed == evaluation.seed
     assert first.approved
     certificate = first.to_certificate()
     assert certificate.approved
     assert certificate.selection_identity == first.identity
+    assert first.to_dict()["version"] == 2
     assert first.to_dict()["identity"] == first.identity
 
 
@@ -187,7 +198,8 @@ def test_threshold_calibration_rejects_unapproved_selection_or_reused_seed() -> 
     with pytest.raises(ValueError, match="no candidate threshold"):
         calibrate_threshold(
             _parameterized_threshold_factory,
-            _constant_point,
+            _ConstantPointFactory("calibration"),
+            _ConstantPointFactory("evaluation"),
             detector_family_identity="parameterized-threshold-family:v1",
             candidate_thresholds=(0.5,),
             calibration_config=config,
@@ -199,11 +211,26 @@ def test_threshold_calibration_rejects_unapproved_selection_or_reused_seed() -> 
     with pytest.raises(ValueError, match="distinct seeds"):
         calibrate_threshold(
             _parameterized_threshold_factory,
-            _constant_point,
+            _ConstantPointFactory("calibration"),
+            _ConstantPointFactory("evaluation"),
             detector_family_identity="parameterized-threshold-family:v1",
             candidate_thresholds=(1.0,),
             calibration_config=config,
             evaluation_config=config,
+            max_false_alarm_rate=0.2,
+        )
+    factory = _ConstantPointFactory("same")
+    with pytest.raises(ValueError, match="distinct observation factories"):
+        calibrate_threshold(
+            _parameterized_threshold_factory,
+            factory,
+            factory,
+            detector_family_identity="parameterized-threshold-family:v1",
+            candidate_thresholds=(1.0,),
+            calibration_config=config,
+            evaluation_config=CalibrationConfig(
+                trials=16, horizon=8, n_features=1, seed=12
+            ),
             max_false_alarm_rate=0.2,
         )
 

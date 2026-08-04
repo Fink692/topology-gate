@@ -17,12 +17,14 @@ state is checkpointed.
 
 Threshold selection must not inspect the final null evaluation split. Use
 `calibrate_threshold(...)` with a predeclared, sorted candidate list,
-distinct `CalibrationConfig.seed` values, and the exact detector factory:
+distinct observation factories, distinct `CalibrationConfig.seed` values, and
+the exact detector factory:
 
 ```python
 result = calibrate_threshold(
     detector_factory,
-    observation_factory,
+    calibration_observation_factory,
+    evaluation_observation_factory,
     detector_family_identity="pl-cusum-family:v1",
     candidate_thresholds=(2.0, 4.0, 8.0),
     calibration_config=calibration_config,
@@ -36,9 +38,11 @@ if result.approved:
 The smallest candidate whose calibration-split Wilson upper bound passes the
 budget is selected. The selected threshold is then run once on the untouched
 evaluation split; only that result can produce a certificate. The result
-records every candidate calibration identity, both split seeds, the detector
-factory identity, and the selection identity. It is still evidence for the
-declared finite null and not market calibration.
+records every candidate calibration identity, both observation-factory
+identities, both split seeds, the detector factory identity, and the selection
+identity. Passing a new seed to the same factory is rejected because it does
+not prove that a time or source split was declared. It is still evidence for
+the declared finite null and not market calibration.
 
 The current finite persistent-CUSUM surrogate record, including a stricter
 budget rejection, is maintained in
