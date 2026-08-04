@@ -10,6 +10,12 @@ The adapter is an evidence-control contract, not a market study.  Its
 absolute-error utility is deliberately explicit and bounded so callers must
 choose a utility scale before looking at labels.
 
+Prediction workers are required to be pure by default: a successful
+``predict`` call may not change checkpointed learner state.  The paired gate's
+registration, alpha/score scales, eta rules, and epochs are also fingerprinted
+at construction and checked at every replay boundary, so an external reset or
+late family mutation fails closed.
+
 ``CausalPromotionConfig.minimum_labels`` provides an explicit burn-in boundary:
 observed labels can update both learners before they become eligible to
 advance the promotion e-process.  The count is checkpointed and is part of the
@@ -42,10 +48,10 @@ CAUSAL_PROMOTION_SCHEMA = "topology_gate.causal_promotion"
 # Pending comparisons now carry the canonical panel identity used to produce
 # their paired predictions.  Older promotion checkpoints must not resume
 # without that provenance.
-# The registration-seal requirement is part of the certified controller
-# contract, so older checkpoints cannot silently resume under the stronger
-# pre-registration interpretation.
-CAUSAL_PROMOTION_VERSION = 5
+# The registration-seal requirement and pure-prediction/gate-binding checks
+# are part of the certified controller contract, so older checkpoints cannot
+# silently resume under the stronger interpretation.
+CAUSAL_PROMOTION_VERSION = 6
 MAX_CAUSAL_PROMOTION_PENDING = 8_192
 
 
@@ -148,6 +154,61 @@ def _optional_panel_digest(value: Any, name: str) -> str | None:
     return digest.lower()
 
 
+def _gate_binding_state(gate_state: Mapping[str, Any]) -> dict[str, Any]:
+    """Extract gate choices that must not change during one replay family.
+
+    Wealth, score history, status, and audit records are intentionally not in
+    this binding: those are the evidence produced by the family.  Registration
+    order, alpha/score scales, eta rules, and epochs are control choices and
+    therefore are bound separately from the mutable evidence state.
+    """
+
+    raw_challengers = gate_state.get("challengers")
+    if isinstance(raw_challengers, (str, bytes, bytearray)) or not isinstance(
+        raw_challengers, Sequence
+    ):
+        raise CausalPromotionError("promotion gate challenger binding is invalid")
+    challengers: list[dict[str, Any]] = []
+    for entry in raw_challengers:
+        if not isinstance(entry, Mapping):
+            raise CausalPromotionError("promotion gate challenger binding is invalid")
+        machine = entry.get("state")
+        if not isinstance(machine, Mapping):
+            raise CausalPromotionError("promotion gate challenger binding is invalid")
+        process = machine.get("process")
+        if not isinstance(process, Mapping):
+            raise CausalPromotionError("promotion gate process binding is invalid")
+        challengers.append(
+            {
+                "index": entry.get("index"),
+                "challenger_id": machine.get("challenger_id"),
+                "incumbent_id": machine.get("incumbent_id"),
+                "process": {
+                    "alpha": process.get("alpha"),
+                    "score_bound": process.get("score_bound"),
+                    "initial_wealth": process.get("initial_wealth"),
+                    "epoch": process.get("epoch"),
+                    "challenger_id": process.get("challenger_id"),
+                    "eta": process.get("eta"),
+                },
+            }
+        )
+    return {
+        "incumbent_id": gate_state.get("incumbent_id"),
+        "global_alpha": gate_state.get("global_alpha"),
+        "score_bound": gate_state.get("score_bound"),
+        "initial_wealth": gate_state.get("initial_wealth"),
+        "epoch": gate_state.get("epoch"),
+        "registration_sealed": gate_state.get("registration_sealed"),
+        "eta": gate_state.get("eta"),
+        "challengers": challengers,
+    }
+
+
+def _gate_binding_digest(gate_state: Mapping[str, Any]) -> str:
+    return _digest(_gate_binding_state(gate_state), "promotion gate binding")
+
+
 @dataclass(frozen=True, slots=True)
 class CausalPromotionConfig:
     """Immutable control choices for one paired promotion family."""
@@ -160,6 +221,7 @@ class CausalPromotionConfig:
     minimum_labels: int = 1
     max_pending: int = MAX_CAUSAL_PROMOTION_PENDING
     require_sealed_registration: bool = True
+    require_pure_predictions: bool = True
 
     def __post_init__(self) -> None:
         for name in ("promotion_id", "challenger_id", "incumbent_id"):
@@ -187,6 +249,8 @@ class CausalPromotionConfig:
             raise CausalPromotionError("max_pending exceeds the resource limit")
         if not isinstance(self.require_sealed_registration, bool):
             raise CausalPromotionError("require_sealed_registration must be boolean")
+        if not isinstance(self.require_pure_predictions, bool):
+            raise CausalPromotionError("require_pure_predictions must be boolean")
 
     @property
     def identity(self) -> str:
@@ -201,6 +265,7 @@ class CausalPromotionConfig:
             "minimum_labels": self.minimum_labels,
             "max_pending": self.max_pending,
             "require_sealed_registration": self.require_sealed_registration,
+            "require_pure_predictions": self.require_pure_predictions,
         }
         return _digest(payload, "promotion configuration")
 
@@ -269,6 +334,7 @@ class CausalPromotionModel:
         if len(dimensions) > 1:
             raise CausalPromotionError("paired learners must use one feature dimension")
         self._validate_gate(gate)
+        self._gate_binding_identity = _gate_binding_digest(gate.state_dict())
         self._pending: dict[str, _PendingComparison] = {}
         self._prediction_count = 0
         self._observed_label_count = 0
@@ -291,6 +357,16 @@ class CausalPromotionModel:
         if self.config.challenger_id not in gate.challenger_ids:
             raise CausalPromotionError("promotion challenger is not registered with gate")
         state = gate.state_dict()
+        score_bound = _finite(state.get("score_bound"), "gate score bound")
+        if not math.isclose(
+            score_bound,
+            self.config.utility_cap,
+            rel_tol=0.0,
+            abs_tol=1.0e-15,
+        ):
+            raise CausalPromotionError(
+                "promotion utility_cap must match the gate score bound"
+            )
         eta_state = state.get("eta")
         if not isinstance(eta_state, Mapping) or eta_state.get("kind") != "constant":
             raise CausalPromotionError(
@@ -300,18 +376,32 @@ class CausalPromotionModel:
         if not math.isclose(gate_eta, self.config.eta, rel_tol=0.0, abs_tol=1.0e-15):
             raise CausalPromotionError("promotion config eta does not match gate eta")
         selected_process: Mapping[str, Any] | None = None
-        for entry in state.get("challengers", ()):
+        challengers = state.get("challengers", ())
+        if isinstance(challengers, (str, bytes, bytearray)) or not isinstance(
+            challengers, Sequence
+        ):
+            raise CausalPromotionError("promotion gate challenger state is invalid")
+        for entry in challengers:
             if not isinstance(entry, Mapping):
-                continue
+                raise CausalPromotionError("promotion gate challenger state is invalid")
             machine_state = entry.get("state")
             if not isinstance(machine_state, Mapping):
-                continue
-            if machine_state.get("challenger_id") != self.config.challenger_id:
-                continue
+                raise CausalPromotionError("promotion gate challenger state is invalid")
             process_state = machine_state.get("process")
-            if isinstance(process_state, Mapping):
+            if not isinstance(process_state, Mapping):
+                raise CausalPromotionError("promotion gate process state is missing")
+            candidate_eta_state = process_state.get("eta")
+            if (
+                not isinstance(candidate_eta_state, Mapping)
+                or candidate_eta_state.get("kind") != "constant"
+            ):
+                raise CausalPromotionError(
+                    "causal promotion requires a constant eta for every "
+                    "registered challenger; selected challenger eta must be "
+                    "constant"
+                )
+            if machine_state.get("challenger_id") == self.config.challenger_id:
                 selected_process = process_state
-            break
         if selected_process is None:
             raise CausalPromotionError("promotion challenger state is missing")
         selected_eta_state = selected_process.get("eta")
@@ -331,6 +421,14 @@ class CausalPromotionModel:
         ):
             raise CausalPromotionError(
                 "promotion config eta does not match selected challenger eta"
+            )
+
+    def _assert_gate_binding(self) -> None:
+        current = _gate_binding_digest(self.gate.state_dict())
+        if current != self._gate_binding_identity:
+            raise CausalPromotionError(
+                "promotion gate registration, scale, eta, or epoch changed "
+                "during the replay family"
             )
 
     @property
@@ -375,6 +473,7 @@ class CausalPromotionModel:
         self._steps = list(steps)
 
     def predict(self, snapshot: AsOfSnapshot, target_id: str) -> float | None:
+        self._assert_gate_binding()
         target = _text(target_id, "target_id")
         if self.promoted:
             # Once the gate has promoted a challenger, no new comparison is
@@ -401,9 +500,20 @@ class CausalPromotionModel:
             challenger_prediction = _scalar_prediction(
                 self.challenger.predict(features), "challenger prediction"
             )
+            if self.config.require_pure_predictions:
+                if _component_state(self.challenger, "challenger") != challenger_before:
+                    raise CausalPromotionError(
+                        "challenger predict mutated checkpointed state"
+                    )
             incumbent_prediction = _scalar_prediction(
                 self.incumbent.predict(features), "incumbent prediction"
             )
+            if self.config.require_pure_predictions:
+                if _component_state(self.incumbent, "incumbent") != incumbent_before:
+                    raise CausalPromotionError(
+                        "incumbent predict mutated checkpointed state"
+                    )
+            self._assert_gate_binding()
             if (
                 challenger_prediction is None
                 or incumbent_prediction is None
@@ -464,6 +574,7 @@ class CausalPromotionModel:
         self, prediction: ReplayPrediction, label: Any, score: float | None
     ) -> None:
         del score
+        self._assert_gate_binding()
         if prediction.status is not ReplayStatus.PREDICTED:
             return
         if getattr(label, "status", None) != "observed":
@@ -473,6 +584,11 @@ class CausalPromotionModel:
             raise CausalPromotionError(
                 f"no frozen promotion context exists for {prediction.target_id!r}"
             )
+        if prediction.value != pending.challenger_prediction:
+            raise CausalPromotionError("promotion prediction value was not frozen")
+        label_target = getattr(label, "target_id", None)
+        if label_target is not None and label_target != pending.target_id:
+            raise CausalPromotionError("promotion label target does not match prediction")
         target = _finite(getattr(label, "value", None), "label value")
         challenger_before = _component_state(self.challenger, "challenger")
         incumbent_before = _component_state(self.incumbent, "incumbent")
@@ -506,6 +622,7 @@ class CausalPromotionModel:
                         "incumbent_state_digest": pending.incumbent_state_digest,
                     },
                 )
+            self._assert_gate_binding()
         except Exception:
             self._rollback(
                 challenger_before,
@@ -521,7 +638,19 @@ class CausalPromotionModel:
     def on_resolution(
         self, prediction: ReplayPrediction, label: Any | None, status: ReplayStatus
     ) -> None:
-        del label, status
+        self._assert_gate_binding()
+        if prediction.status is not ReplayStatus.PREDICTED:
+            return
+        pending = self._pending.get(prediction.target_id)
+        if pending is None:
+            raise CausalPromotionError(
+                f"no unresolved promotion context exists for {prediction.target_id!r}"
+            )
+        if status is ReplayStatus.OBSERVED:
+            if label is None or getattr(label, "status", None) != "observed":
+                raise CausalPromotionError("observed promotion resolution is missing its label")
+        elif label is not None and getattr(label, "target_id", pending.target_id) != pending.target_id:
+            raise CausalPromotionError("promotion resolution label target does not match")
         self._pending.pop(prediction.target_id, None)
 
     def state_dict(self) -> dict[str, Any]:
@@ -532,6 +661,7 @@ class CausalPromotionModel:
             "config_identity": self.config.identity,
             "plan_identity": self.plan.identity,
             "study_manifest_digest": self._study_manifest_digest,
+            "gate_binding_identity": self._gate_binding_identity,
             "challenger": _component_state(self.challenger, "challenger"),
             "incumbent": _component_state(self.incumbent, "incumbent"),
             "gate": self.gate.state_dict(),
@@ -563,6 +693,7 @@ class CausalPromotionModel:
             "config_identity",
             "plan_identity",
             "study_manifest_digest",
+            "gate_binding_identity",
             "challenger",
             "incumbent",
             "gate",
@@ -585,6 +716,8 @@ class CausalPromotionModel:
             raise CausalPromotionError("causal promotion feature plan mismatch")
         if state.get("study_manifest_digest") != self._study_manifest_digest:
             raise CausalPromotionError("causal promotion study manifest mismatch")
+        if state.get("gate_binding_identity") != self._gate_binding_identity:
+            raise CausalPromotionError("causal promotion gate binding mismatch")
         challenger_state = state.get("challenger")
         incumbent_state = state.get("incumbent")
         gate_state = state.get("gate")
@@ -601,6 +734,8 @@ class CausalPromotionModel:
         except (TypeError, ValueError) as exc:
             raise CausalPromotionError("causal promotion gate state is invalid") from exc
         self._validate_gate(candidate_gate)
+        if _gate_binding_digest(gate_state) != self._gate_binding_identity:
+            raise CausalPromotionError("causal promotion gate binding mismatch")
         raw_pending = state.get("pending", {})
         if not isinstance(raw_pending, Mapping):
             raise CausalPromotionError("causal promotion pending state must be a mapping")

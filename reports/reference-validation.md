@@ -5,13 +5,13 @@ Interpreter: CPython 3.12.10
 Scope: bounded research/control layer only; no live-data or execution claim
 
 Supported-interpreter matrix: CPython 3.10.11 and 3.11.15 each passed the
-current 252-test suite in isolated `uv` environments. The CPython 3.12 release
+current 254-test suite in isolated `uv` environments. The CPython 3.12 release
 gate also passed Ruff, mypy, and compileall. Coverage is reported from CPython
 3.12 only.
 
 ## Reproducible engineering checks
 
-- Full suite: **252 passed**.
+- Full suite: **254 passed**.
 - Configured coverage run: **80.52%** total coverage.
 - Ruff: passed on `src` and `tests`.
 - Mypy: passed on all 23 source modules.
@@ -91,7 +91,8 @@ gate also passed Ruff, mypy, and compileall. Coverage is reported from CPython
   resumed state equivalence, constant-eta enforcement, checkpointed
   minimum-label burn-in across chunked restore, sealed challenger-family and
   selected-eta enforcement, internal state consistency, and learner/gate
-  rollback on failed updates;
+  rollback on failed updates, state-pure prediction enforcement, utility-scale
+  binding, and external gate-reset detection;
   instrument-labelled promotion evidence carries the canonical panel digest.
 - Legacy online authorization tests: passed for neutral forgetting without a
   certificate, approved identity-matched acceleration, authorization telemetry,

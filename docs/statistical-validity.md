@@ -191,6 +191,13 @@ evidence still require a pre-registered study. When configured, burn-in labels
 update the learners but remain outside the e-process until the declared count
 is met; that count is checkpointed and identity-bound.
 
+The certified paired path also requires successful prediction calls to be
+state-pure and binds the gate's registration order, alpha and score scales,
+eta rules, and epoch. A caller-side gate reset or family mutation is rejected
+at the next boundary, and the binding is carried in the checkpoint. This
+closes a state-integrity failure mode; it does not supply the missing
+operational readiness checks or a market-valid conditional-null argument.
+
 `calibrate_eprocess_null` provides a finite optional-stopping simulation for
 that bounded score primitive. It uses a predeclared constant eta, stops each
 path at the first e-value threshold crossing, and reports a Wilson interval for

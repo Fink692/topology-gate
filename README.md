@@ -249,7 +249,12 @@ absolute-error utility scale. Register every candidate and call
 registration is rejected and the seal is checkpointed. Its
 checkpointed `minimum_labels` policy can burn in learner updates without
 advancing the e-process; it does not turn a synthetic or unbound run into a
-certified promotion claim.
+certified promotion claim. The adapter requires prediction workers to leave
+their checkpointed state unchanged during `predict` and fingerprints the
+sealed gate family, alpha/score scales, eta rules, and epoch; an external gate
+reset or family mutation therefore fails closed. Set
+`require_pure_predictions=False` only for explicitly diagnostic, non-certified
+experiments.
 
 The external data acceptance checklist is in
 [`docs/vendor-data-gate.md`](docs/vendor-data-gate.md). It explicitly requires

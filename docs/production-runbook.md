@@ -109,6 +109,10 @@ Set `CausalPromotionConfig.minimum_labels` to the pre-registered burn-in
 count when a challenger must accumulate learner evidence before promotion
 testing. Those observed labels may update the paired learners, but they do not
 advance the gate; the count is checkpointed as part of the promotion identity.
+The certified adapter also requires learner `predict` calls to be state-pure,
+matches `utility_cap` to the gate score bound, and rejects any external gate
+reset, registration change, eta change, or epoch change during the replay.
+Keep `require_pure_predictions=False` confined to diagnostic runs.
 
 Before a multi-challenger study, run `calibrate_promotion_null` with the exact
 bounded score factory, constant eta, challenger count, and global alpha used

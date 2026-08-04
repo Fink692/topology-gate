@@ -16,6 +16,7 @@ from topology_gate.causal_numeric import CausalFeaturePlan, FeatureBinding
 from topology_gate.causal_promotion import (
     CausalPromotionConfig,
     CausalPromotionError,
+    CausalPromotionModel,
     run_causal_promotion_replay,
 )
 from topology_gate.manifest import RunSpec, StudyManifest, StudySpec, StudyWindow
@@ -50,6 +51,14 @@ class FixedLearner:
             raise ValueError("invalid fixed learner state")
         self.prediction = float(state["prediction"])
         self.updates = int(state["updates"])
+
+
+class MutatingPredictLearner(FixedLearner):
+    """Adversarial learner that changes checkpointed state during prediction."""
+
+    def predict(self, features: tuple[float, ...]) -> float:
+        self.updates += 1
+        return super().predict(features)
 
 
 def binding_plan() -> CausalFeaturePlan:
@@ -348,6 +357,52 @@ def test_paired_update_and_gate_transition_roll_back_together() -> None:
     assert challenger.state_dict() == before_challenger
     assert incumbent.state_dict() == before_incumbent
     assert gate.state_dict() == before_gate
+
+
+def test_paired_promotion_rejects_predictor_state_mutation_transactionally() -> None:
+    challenger = MutatingPredictLearner(0.0)
+    gate = make_gate()
+    before_challenger = challenger.state_dict()
+    before_gate = gate.state_dict()
+
+    with pytest.raises(CausalPromotionError, match="predict mutated"):
+        run(
+            (1,),
+            ("t1",),
+            challenger=challenger,
+            gate=gate,
+            replay_config=replay_settings(finalize_unresolved=False),
+        )
+
+    assert challenger.state_dict() == before_challenger
+    assert gate.state_dict() == before_gate
+
+
+def test_paired_promotion_binds_utility_scale_and_gate_family() -> None:
+    mismatched_scale = PromotionGate(
+        "incumbent", alpha=0.9, eta=0.5, score_bound=0.5
+    )
+    mismatched_scale.register_challenger("challenger")
+    mismatched_scale.seal_registration()
+    with pytest.raises(CausalPromotionError, match="utility_cap"):
+        run(
+            (1,),
+            ("t1",),
+            gate=mismatched_scale,
+            replay_config=replay_settings(finalize_unresolved=False),
+        )
+
+    gate = make_gate()
+    model = CausalPromotionModel(
+        FixedLearner(0.0),
+        FixedLearner(1.0),
+        binding_plan(),
+        gate,
+        config=config(),
+    )
+    gate.reset_epoch(reason="unexpected external reset")
+    with pytest.raises(CausalPromotionError, match="gate registration"):
+        model.predict(observation_book().materialize(1), "t1")
 
 
 def test_state_identity_and_constant_eta_contract_are_fail_closed() -> None:
