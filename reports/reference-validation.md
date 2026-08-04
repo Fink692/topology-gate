@@ -16,9 +16,9 @@ is reported from CPython 3.12 only.
 - Mypy: passed on all 21 source modules.
 - Dependency-light root import: passed without NumPy site packages.
 - Wheel build and isolated target-directory smoke: passed; SHA-256
-  `30b7c6dd5a9366996553cf4ffedc0f6fb4f17656af5119ea7aeb90503c8e6ec2`;
-  the build sets `SOURCE_DATE_EPOCH` from the commit timestamp; two consecutive
-  builds under the same source date produced the same digest;
+  `9a4046d92bbc4ede6c39f66b87dff409ebdd1cdc5b7ca8b6296e7d947e03995f`;
+  the build sets `SOURCE_DATE_EPOCH` from the latest package-source commit;
+  two consecutive builds under the same source date produced the same digest;
   the smoke exercised strict online-state/checkpoint restore, strict
   `RunManifest`/`StudyManifest` restore, canonical `AsOfBook` source restore,
   digest-bound `EconomicEvidence` selection/evaluation with cutoff provenance,
