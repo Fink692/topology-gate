@@ -1,11 +1,14 @@
-# Remediation status
+# Historical remediation status (superseded)
 
 Date: 2026-08-04
 
-The historical review counts below are superseded by the current reproducible
-record in [`reference-validation.md`](reference-validation.md), which includes
-the later causal-checkpoint hardening, 222-test release gate, and Python
-3.10/3.11 compatibility matrix.
+This is the historical remediation baseline. Its counts and “remaining work”
+language are superseded by the current reproducible record in
+[`reference-validation.md`](reference-validation.md), which includes the later
+exact persistent backend, causal-checkpoint hardening, role-bound split
+calibration protocol, 249-test release gate, coverage, wheel digest, and
+Python 3.10/3.11 compatibility matrix. Read that record for current release
+disposition; this file is retained to preserve the review history.
 
 ## Release posture
 
