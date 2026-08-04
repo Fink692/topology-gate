@@ -20,8 +20,9 @@ compileall. Coverage is reported from CPython 3.10 only for this local run.
 - Dependency-light root import: passed without NumPy site packages.
 - Wheel build and isolated target-directory smoke: passed; SHA-256
   `9850CF4B29E1FDB86A15D4908062BDCDC7EF1B28AD8A389F540229EB9F2DC94E`;
-  source commit `10cdaae` supplied `SOURCE_DATE_EPOCH=1785873897`; two
-  consecutive builds under the same source date produced the same digest.
+  `SOURCE_DATE_EPOCH=1785873897`; two consecutive builds under the same source
+  date produced the same digest. The current source revision is recorded in
+  the repository history alongside this validation record.
   The smoke verified a dependency-free root import under `python -S` and
   optional worker exports in the numeric environment. CI now repeats the
   deterministic-build and root-import checks in the CPython 3.12 release lane.
