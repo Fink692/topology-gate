@@ -1,0 +1,10 @@
+{
+  "kind": "endogenous_wasserstein_synthetic",
+  "steps": 160,
+  "shift": 100,
+  "stable_radius": 0.028,
+  "shift_radius": 0.22,
+  "mean_absolute_loss": 0.25197759904143247,
+  "coefficients": [0.46023422413102544, 1.751365249951851],
+  "note": "bounded-loss control diagnostic; not market evidence"
+}

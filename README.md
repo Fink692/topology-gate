@@ -159,6 +159,11 @@ updates only the declared shifted mechanisms and freezes the others; it does
 not infer causal structure from observational data. See
 [`docs/mechanism-localized-continual-learning.md`](docs/mechanism-localized-continual-learning.md).
 
+The remaining proposal directions are also available as bounded research
+prototypes: endogenous Wasserstein robustness, adaptive path-signature memory,
+and finite martingale stress bridging. Their scope and evidence status are
+listed in [`docs/research-status.md`](docs/research-status.md).
+
 Set `require_realized_returns=True` in the worker backtest or online config for
 economic evaluation. The compatibility default still permits target outcomes
 to stand in for realized returns, but that path is diagnostic and must not be

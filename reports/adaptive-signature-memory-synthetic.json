@@ -1,0 +1,10 @@
+{
+  "kind": "adaptive_signature_memory_synthetic",
+  "steps": 180,
+  "change": 90,
+  "candidate_depths": [1, 2, 3],
+  "initial_depth": 1,
+  "final_depth": 1,
+  "depth_counts": {"1": 172, "2": 8, "3": 0},
+  "note": "rough-path memory control diagnostic; not market evidence"
+}

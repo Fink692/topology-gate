@@ -1,0 +1,24 @@
+{
+  "kind": "finite_martingale_stress_bridge_synthetic",
+  "converged": true,
+  "iterations": 1,
+  "entropy": 0.08228287850505171,
+  "weights": [
+    ["down", 0.35],
+    ["up", 0.3499999999999999],
+    ["stay", 0.15000000000000002],
+    ["rise", 0.15]
+  ],
+  "terminal_masses": [
+    [-1.0, 0.35, 0.35],
+    [0.0, 0.15000000000000002, 0.15],
+    [1.0, 0.3499999999999999, 0.35],
+    [2.0, 0.15, 0.15]
+  ],
+  "drift_residuals": [
+    [0.0, -7.930164461608261e-17],
+    [1.0, -9.25185853854297e-17]
+  ],
+  "digest": "232a1761bc4f09e0e544b3819c61bbec607a311d14abbda02ecb415e39c7c4b2",
+  "note": "finite stress-training diagnostic; not a continuous-time bridge or market evidence"
+}

@@ -5,22 +5,22 @@ Interpreter: CPython 3.12.10
 Scope: bounded research/control layer only; no live-data or execution claim
 
 Supported-interpreter matrix: CPython 3.10.11, 3.11.15, and 3.12.10 each
-passed the current 304-test suite; the 3.10 and 3.11 runs used isolated `uv`
+passed the current 318-test suite; the 3.10 and 3.11 runs used isolated `uv`
 environment. The CPython 3.12 release gate also passed Ruff, mypy, and
 compileall. Coverage is reported from CPython 3.10 only for this local run.
 
 ## Reproducible engineering checks
 
-- Full suite: **304 passed**.
-- Configured coverage run: **80.99%** total coverage.
+- Full suite: **318 passed**.
+- Configured coverage run: **81.25%** total coverage.
 - Coverage enforcement: configured floor **80%**; the current CPython 3.10
-  run clears it at **80.99%** total.
+  run clears it at **81.25%** total.
 - Ruff: passed on `src`, `tests`, and `examples`.
-- Mypy: passed on all 28 source modules.
+- Mypy: passed on all 31 source modules.
 - Dependency-light root import: passed without NumPy site packages.
 - Wheel build and isolated target-directory smoke: passed; SHA-256
-  `7C08CEC6C60411DBE243BA7BE2A78C50F2E07BA2465174766696A5C8B7F13F1F`;
-  source commit `98eaffa` supplied `SOURCE_DATE_EPOCH=1785873897`; two
+  `9850CF4B29E1FDB86A15D4908062BDCDC7EF1B28AD8A389F540229EB9F2DC94E`;
+  source commit `10cdaae` supplied `SOURCE_DATE_EPOCH=1785873897`; two
   consecutive builds under the same source date produced the same digest.
   The smoke verified a dependency-free root import under `python -S` and
   optional worker exports in the numeric environment. CI now repeats the
@@ -109,6 +109,28 @@ compileall. Coverage is reported from CPython 3.10 only for this local run.
   this is a control-layer result, not causal market evidence. See
   [`docs/mechanism-localized-continual-learning.md`](../docs/mechanism-localized-continual-learning.md)
   and [`reports/mechanism-localized-continuous-learning.json`](mechanism-localized-continuous-learning.json).
+- Endogenous Wasserstein tests: passed for prediction-time radius mapping,
+  bounded absolute-loss robust updates, gradient clipping, strict input
+  validation, public import, and digest-bound state round-trip. The synthetic
+  shift diagnostic increased the declared radius from `0.028` to `0.22`; it is
+  a bounded-loss control result, not market robustness evidence. See
+  [`docs/endogenous-wasserstein-robustness.md`](../docs/endogenous-wasserstein-robustness.md)
+  and [`reports/endogenous-wasserstein-synthetic.json`](endogenous-wasserstein-synthetic.json).
+- Adaptive signature-memory tests: passed for truncated Chen signatures,
+  ordered-path behavior, prefix causality, full-information candidate updates,
+  depth selection, public import, strict input validation, and digest-bound
+  state round-trip. The declared synthetic run selected depths `1`, `2`, and
+  `3` for `172`, `8`, and `0` transitions respectively; this is a memory
+  diagnostic, not an economic result. See
+  [`docs/adaptive-signature-memory.md`](../docs/adaptive-signature-memory.md)
+  and [`reports/adaptive-signature-memory-synthetic.json`](adaptive-signature-memory-synthetic.json).
+- Finite martingale stress-bridge tests: passed for terminal-marginal
+  projection, zero and nonzero conditional drift constraints, infeasibility
+  rejection, public import, and deterministic result diagnostics. The
+  synthetic bridge converged in one iteration with relative entropy
+  `0.0822828785`; it is not a continuous-time bridge or pricing-measure claim.
+  See [`docs/martingale-stress-bridge.md`](../docs/martingale-stress-bridge.md)
+  and [`reports/martingale-stress-bridge-synthetic.json`](martingale-stress-bridge-synthetic.json).
 - Stationary block-bootstrap tests: passed for seeded reproducibility, source
   identity binding, feature-dimension rejection, and result-level factory
   identity recording.
@@ -247,10 +269,11 @@ therefore fail-closed.
 
 The package remains research/alpha. The local protocol, selection controls,
 finite null calibration, synthetic strict walk-forward, causal transport
-prototype, heavy-tail allocator, and mechanism-localized control are complete
-as bounded research artifacts. The remaining upgrade path is external: a
-point-in-time cross-asset source bundle, an audited dependence-aware market
-calibration split, and a sealed final test. The repository now contains the
-handoff request, canonical package builder, and fail-closed pre-holdout audit;
-it cannot manufacture the licensed vendor data or certify its point-in-time
-claims.
+prototype, heavy-tail allocator, mechanism-localized control, endogenous
+Wasserstein surrogate, adaptive signature memory, and finite stress bridge are
+complete as bounded research artifacts. The remaining upgrade path is
+external: a point-in-time cross-asset source bundle, an audited
+dependence-aware market calibration split, and a sealed final test. The
+repository now contains the handoff request, canonical package builder, and
+fail-closed pre-holdout audit; it cannot manufacture the licensed vendor data
+or certify its point-in-time claims.
