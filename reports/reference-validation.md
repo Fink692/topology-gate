@@ -4,20 +4,21 @@ Date: 2026-08-04
 Interpreter: CPython 3.12.10
 Scope: bounded research/control layer only; no live-data or execution claim
 
-Supported-interpreter matrix: CPython 3.10.11 and 3.11.15 also passed the full
-242-test suite, Ruff, mypy, and compileall in isolated environments. Coverage
-is reported from CPython 3.12 only.
+Supported-interpreter matrix: CPython 3.10.11 and 3.11.15 passed the full
+242-test suite, Ruff, mypy, and compileall in isolated environments before the
+final cross-run manifest guard; the current CPython 3.12 gate includes 243
+tests. Coverage is reported from CPython 3.12 only.
 
 ## Reproducible engineering checks
 
-- Full suite: **242 passed**.
+- Full suite: **243 passed**.
 - Configured coverage run: **80.62%** total coverage.
 - Ruff: passed on `src` and `tests`.
 - Mypy: passed on all 22 source modules.
 - Dependency-light root import: passed without NumPy site packages.
 - Wheel build and isolated target-directory smoke: passed; SHA-256
-  `5a0f1385aaafefbd215d5fc3edab6f7fa7a610e60ffa8a1c0e80dee93f4776e6`;
-  source commit `8f53ae0` supplied `SOURCE_DATE_EPOCH=1785859390`; two
+  `78196717890185268120586f8febe6f9d363a392addc92ac389536f8faee83ca`;
+  source commit `c896003` supplied `SOURCE_DATE_EPOCH=1785859778`; two
   consecutive builds under the same source date produced the same digest;
   the smoke exercised strict online-state/checkpoint restore, strict
   `RunManifest`/`StudyManifest` restore, canonical `AsOfBook` source restore,
@@ -40,8 +41,9 @@ is reported from CPython 3.12 only.
   dynamic expected-universe preflight, target-label visibility rejection,
   sealed-holdout enforcement, economic evidence completeness, causal RLS
   wrapper receipts/economic-decision conversion, and paired promotion wrapper
-  receipts. This binds normalized source artifacts before replay but does not
-  validate a vendor source itself.
+  receipts, and mismatched run/study-manifest identity rejection. This binds
+  normalized source artifacts before replay but does not validate a vendor
+  source itself.
 - Causal replay prediction-before-label, future-prefix invariance, explicit
   missing/invalid status, chained-record tamper detection, and model-state
   restore tests: passed; composite causal numerical and paired-promotion
