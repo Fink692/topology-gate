@@ -6,15 +6,15 @@ Scope: bounded research/control layer only; no live-data or execution claim
 
 ## Reproducible engineering checks
 
-- Full suite: **201 passed**.
+- Full suite: **202 passed**.
 - Configured coverage run: **80.19%** total coverage.
 - Ruff: passed on `src` and `tests`.
 - Mypy: passed on all 20 source modules.
 - Dependency-light root import: passed without NumPy site packages.
 - Wheel build and isolated target-directory smoke: passed; SHA-256
-  `b6de5434a0b7720c94944bb6e9815944fe4ae4c70275d59e129fe5141712f705`;
-  the smoke also exercised the public promotion-calibration API from the
-  wheel.
+  `926e8dd4d1ccb9542f1c468fa84f484835c0f1b5bddd448b51b262f53f025465`;
+  the smoke exercised the public promotion-calibration epoch API and the
+  sealed-study phase API from the wheel.
 - Authenticated checkpoint, manifest digest, promotion/evidence state, and
   detached restore tests: passed.
 - Study-manifest tests: passed for canonical split identity, ordered
@@ -39,8 +39,9 @@ Scope: bounded research/control layer only; no live-data or execution claim
   bounds, malformed factory output, and identity recording.
 - Complete promotion-gate null harness tests: passed for pre-registered
   multi-challenger streams, geometric per-slot alpha allocation, fixed
-  registration-order tie handling, first-promotion stopping, reproducibility,
-  negative-null closure, and malformed score dimensions.
+  registration-order tie handling, first-promotion stopping, repeated-epoch
+  alpha spending, reproducibility, negative-null closure, and malformed score
+  dimensions.
 - Stationary block-bootstrap tests: passed for seeded reproducibility, source
   identity binding, feature-dimension rejection, and result-level factory
   identity recording.

@@ -54,9 +54,11 @@ audit.
 returns one bounded stream per registered challenger. Candidates are
 pre-registered before observations, their geometric alpha allocations are
 recorded, and each path stops at the first gate promotion in registration
-order. This makes multi-challenger selection visible in the evidence. It
-still only tests the supplied finite score factory; it cannot prove the
-conditional-mean null, market validity, or behavior across future epochs.
+order. A run may also declare repeated gate epochs; paths without a promotion
+reset the gate and spend the next preallocated geometric alpha slice. This
+makes multi-challenger selection and repeated-testing spending visible in the
+evidence. It still only tests the supplied finite score factory; it cannot
+prove the conditional-mean null or market validity.
 
 Minimum protocol for a research release:
 
@@ -73,6 +75,7 @@ Minimum protocol for a research release:
 6. Run an optional-stopping e-process null simulation with the exact bounded
    utility and predictable eta rule used by the causal promotion path; report
    it as empirical evidence, not as a theorem or market guarantee.
-7. When more than one challenger can compete, run the complete promotion-gate
-   harness and report the challenger count, per-slot alpha allocations, first
-   promoted candidate, and the selection rule alongside the crossing interval.
+7. When more than one challenger or gate epoch can compete, run the complete
+   promotion-gate harness and report the challenger count, epoch count,
+   per-slot alpha schedule, first promoted candidate, and selection rule
+   alongside the crossing interval.

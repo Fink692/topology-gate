@@ -95,9 +95,10 @@ deployment checks pass.
 
 Before a multi-challenger study, run `calibrate_promotion_null` with the exact
 bounded score factory, constant eta, challenger count, and global alpha used
-by the gate. Keep its per-slot allocation and first-promotion evidence beside
-the study manifest; it is a finite selection-budget diagnostic, not a market
-promotion certificate.
+by the gate. If the gate can reset, declare the epoch count and retain the
+entire per-epoch alpha schedule. Keep the allocation and first-promotion
+evidence beside the study manifest; it is a finite selection-budget diagnostic,
+not a market promotion certificate.
 
 ## Metric and claim conventions
 

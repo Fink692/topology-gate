@@ -78,6 +78,24 @@ class _AllNegativePromotionScores:
         return -np.ones((horizon, challengers), dtype=float)
 
 
+class _SecondEpochPositivePromotionScores:
+    identity = "second-epoch-positive-promotion-score:v1"
+
+    def __call__(
+        self,
+        rng: np.random.Generator,
+        horizon: int,
+        challengers: int,
+    ) -> np.ndarray:
+        del rng
+        return np.stack(
+            (
+                -np.ones((horizon, challengers), dtype=float),
+                np.ones((horizon, challengers), dtype=float),
+            )
+        )
+
+
 def _zeros(rng: np.random.Generator, horizon: int, n_features: int) -> np.ndarray:
     del rng
     return np.zeros((horizon, n_features), dtype=float)
@@ -263,6 +281,7 @@ def test_promotion_null_calibration_binds_gate_allocation_and_selection_order() 
     result = calibrate_promotion_null(_AllPositivePromotionScores(), config=config)
 
     assert result.threshold_crossing_count == config.trials
+    assert result.first_promotion_epochs == (0,) * config.trials
     assert result.first_promotion_steps == (10,) * config.trials
     assert result.first_promoted_challenger_indices == (0,) * config.trials
     assert result.challenger_alpha_allocations == pytest.approx(
@@ -292,6 +311,7 @@ def test_promotion_null_calibration_is_reproducible_and_negative_null_stays_clos
     assert len(first.first_promotion_steps) == config.trials
     assert first.threshold_crossing_count <= config.trials
     assert negative.threshold_crossing_count == 0
+    assert negative.first_promotion_epochs == (1,) * config.trials
     assert negative.first_promotion_steps == (config.horizon,) * config.trials
     assert negative.first_promoted_challenger_indices == (-1,) * config.trials
 
@@ -309,6 +329,28 @@ def test_promotion_null_calibration_rejects_wrong_dimensions_and_limits() -> Non
         )
     with pytest.raises(ValueError, match="challengers"):
         PromotionCalibrationConfig(challengers=0)
+
+
+def test_promotion_null_calibration_spends_a_new_epoch_alpha_share_after_reset() -> None:
+    result = calibrate_promotion_null(
+        _SecondEpochPositivePromotionScores(),
+        config=PromotionCalibrationConfig(
+            trials=4,
+            horizon=16,
+            challengers=2,
+            epochs=2,
+            alpha=0.05,
+            eta=0.5,
+            seed=37,
+        ),
+    )
+
+    assert result.threshold_crossing_count == 4
+    assert result.first_promotion_epochs == (1, 1, 1, 1)
+    assert result.first_promotion_steps == (12, 12, 12, 12)
+    assert result.first_promoted_challenger_indices == (0, 0, 0, 0)
+    assert result.challenger_alpha_schedule[0] == pytest.approx((0.0125, 0.00625))
+    assert result.challenger_alpha_schedule[1] == pytest.approx((0.00625, 0.003125))
 
 
 def test_calibration_result_records_observation_factory_identity() -> None:

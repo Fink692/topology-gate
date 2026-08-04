@@ -212,9 +212,11 @@ conditional-mean assumption or a market-selection audit.
 
 Use `calibrate_promotion_null` when several challengers can compete. It runs
 the complete `PromotionGate`, records the geometric per-slot alpha allocation,
-and stops each path at the first selected promotion. This makes the finite
-selection boundary observable; it remains a declared-score simulation rather
-than a market-calibrated promotion certificate.
+and stops each path at the first selected promotion. It can also exercise a
+predeclared sequence of gate epochs, including the alpha spent after resets.
+This makes the finite selection boundary observable; it remains a
+declared-score simulation rather than a market-calibrated promotion
+certificate.
 
 ## Tests and typing
 

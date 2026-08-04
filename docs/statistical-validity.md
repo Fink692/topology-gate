@@ -168,8 +168,8 @@ multi-challenger `PromotionGate`: challenger slots are registered before the
 stream is observed, geometric alpha allocations are recorded, and each path
 stops at its first selected promotion. This makes the selection boundary
 testable in a finite simulation. It remains empirical evidence for the
-declared score factory and one gate epoch, not a conditional-mean theorem or
-market-calibrated promotion certificate.
+declared score factory and predeclared epoch schedule, not a conditional-mean
+theorem or market-calibrated promotion certificate.
 
 When a `StudyManifest` is supplied, both causal replay adapters validate the
 phase and timeline index before prediction and carry the manifest digest in
