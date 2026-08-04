@@ -50,6 +50,21 @@ volume = data.sel(field="vol")
 membership = data.sel(field="is_liquid")
 ```
 
+The checked-in private runner reuses the repository's baseline comparison and
+control-layer code after loading this panel. It writes only an aggregate
+receipt to the path you choose:
+
+```powershell
+$env:PYTHONPATH = 'src;examples'
+$env:API_KEY = '<your free Quantiacs API key>'
+python examples\quantiacs_private_diagnostic.py `
+  --output "$env:TEMP\topology-gate-quantiacs-private.json"
+```
+
+The runner fails closed when `API_KEY` is absent, keeps the Quantiacs cache
+outside this repository, and does not commit the resulting receipt. Its
+implementation is [`quantiacs_private_diagnostic.py`](../examples/quantiacs_private_diagnostic.py).
+
 Keep this environment and its downloaded cache local. Do not copy the raw
 arrays into this repository. If you create a local diagnostic receipt, store
 only the experiment configuration, code revision, source retrieval timestamp,
