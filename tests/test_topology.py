@@ -260,6 +260,11 @@ def test_configured_exact_persistent_backend_is_causal_and_checkpointable():
     assert detector.backend_identity == backend.identity
     assert _as_values(short.features) == _as_values(long.features)[:10]
     assert _as_values(short.scores) == _as_values(long.scores)[:10]
+    short_digests = list(short.backend_evidence_digests)
+    long_digests = list(long.backend_evidence_digests)
+    assert short_digests == long_digests[:10]
+    assert short_digests[-1] is not None
+    assert all(value is None or len(value) == 64 for value in short_digests)
 
     streaming = RollingTopologyDetector(config)
     for value in values[:7]:
@@ -271,6 +276,25 @@ def test_configured_exact_persistent_backend_is_causal_and_checkpointable():
     restored.load_stream_state_dict(snapshot)
     actual = [restored.observe([value]) for value in values[7:]]
     assert expected == actual
+
+
+def test_persistent_backend_rejects_malformed_evidence_digest():
+    class MalformedEvidenceBackend:
+        def __call__(self, cloud, n_eigenvalues):
+            del cloud, n_eigenvalues
+            return type(
+                "MalformedResult",
+                (),
+                {"eigenvalues": (0.0, 1.0), "evidence_digest": "not-a-digest"},
+            )()
+
+    with pytest.raises(ValueError, match="evidence digest"):
+        spectral_summary(
+            [[0.0], [1.0], [2.0]],
+            n_eigenvalues=2,
+            graph_neighbors=2,
+            persistent_laplacian_backend=MalformedEvidenceBackend(),
+        )
 
 
 def test_configured_exact_backend_rejects_incompatible_detector_budgets():

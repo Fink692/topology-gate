@@ -6,13 +6,14 @@ Scope: bounded research/control layer only; no live-data or execution claim
 
 ## Reproducible engineering checks
 
-- Full suite: **178 passed**.
-- Configured coverage run: **79.95%** total coverage.
+- Full suite: **181 passed**.
+- Configured coverage run: **80.03%** total coverage.
 - Ruff: passed on `src` and `tests`.
 - Mypy: passed on all 20 source modules.
 - Dependency-light root import: passed without NumPy site packages.
 - Wheel build and isolated target-directory smoke: passed; SHA-256
-  `089f77fa00f471fb86b908a8aa1740b220214b9825e3838296aeb404e4e9e238`.
+  `adf2377da1fdbf3a21ea183d80a62ff7db96e488966ed3e50b7b8123b5c43dd9`;
+  the smoke also recovered an exact topology evidence digest from the wheel.
 - Authenticated checkpoint, manifest digest, promotion/evidence state, and
   detached restore tests: passed.
 - Causal replay prediction-before-label, future-prefix invariance, explicit
@@ -38,8 +39,8 @@ Scope: bounded research/control layer only; no live-data or execution claim
   digest, and resource-cap invariants: passed.
 - Configured exact-backend tests: passed for complete evidence return, stable
   filtration/solver identity, cloud/spectrum-width compatibility, causal
-  prefix equivalence, checkpoint replay, and transactional stream rollback on
-  backend failure.
+  prefix equivalence, checkpoint replay, transactional stream rollback on
+  backend failure, content-digest propagation, and malformed-digest rejection.
 
 ## Exact reference backend timing
 

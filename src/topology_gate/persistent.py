@@ -278,6 +278,14 @@ class PersistentLaplacianResult:
             json.dumps(payload, sort_keys=True, separators=(",", ":")).encode()
         ).hexdigest()
 
+    @property
+    def evidence_digest(self) -> str:
+        """Content digest of the complete finite topology evidence artifact."""
+
+        return hashlib.sha256(
+            json.dumps(self.to_dict(), sort_keys=True, separators=(",", ":")).encode()
+        ).hexdigest()
+
     def to_dict(self) -> dict[str, Any]:
         return {
             "kind": "finite_vr_persistent_laplacian",

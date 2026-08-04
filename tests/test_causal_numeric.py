@@ -21,6 +21,10 @@ from topology_gate.causal_numeric import (
     FeatureBinding,
     run_causal_rls_replay,
 )
+from topology_gate.persistent import (
+    PersistentLaplacianBackend,
+    PersistentLaplacianConfig,
+)
 from topology_gate.replay import ReplayStatus
 from topology_gate.rls import RLS, RLSConfig
 from topology_gate.topology import RollingTopologyDetector, TopologyConfig
@@ -91,6 +95,29 @@ def detector() -> RollingTopologyDetector:
     )
 
 
+def exact_detector() -> RollingTopologyDetector:
+    backend = PersistentLaplacianBackend(
+        PersistentLaplacianConfig(
+            max_vertices=4,
+            max_simplices=100,
+            q=0,
+            n_eigenvalues=2,
+        )
+    )
+    return RollingTopologyDetector(
+        TopologyConfig(
+            embedding_dim=1,
+            cloud_window=4,
+            graph_neighbors=2,
+            n_eigenvalues=2,
+            min_points=3,
+            calibration_window=6,
+            calibration_min_periods=2,
+            persistent_laplacian_backend=backend,
+        )
+    )
+
+
 class ReadyDetector:
     config_identity = "ready-detector:v1"
     config = SimpleNamespace(forgetting_lambda_max=0.99)
@@ -119,6 +146,13 @@ class ReadyDetector:
 
     def load_stream_state_dict(self, state: dict[str, object]) -> None:
         self.calls = int(state["calls"])
+
+
+class MalformedDigestDetector(ReadyDetector):
+    def observe(self, state_features: np.ndarray) -> SimpleNamespace:
+        result = super().observe(state_features)
+        result.backend_evidence_digest = "bad"
+        return result
 
 
 def make_book(*, missing: bool = False) -> AsOfBook:
@@ -174,6 +208,23 @@ def test_timestamped_detector_rls_path_is_causal_and_freezes_factor() -> None:
     assert result.replay.resolutions[0].settlement_time == 4
     assert result.pending_target_ids == ("t2", "t3")
     assert all(0.8 <= value <= 0.99 for value in result.forgetting_factors)
+
+
+def test_exact_topology_artifact_digest_reaches_causal_step_telemetry() -> None:
+    result = run_causal_rls_replay(
+        make_book(),
+        (1, 2, 4),
+        ("t1", "t2", "t3"),
+        plan=plan(),
+        learner=make_learner(),
+        detector=exact_detector(),
+        model_config=CausalRLSConfig(model_id="exact-telemetry"),
+    )
+
+    assert result.topology_evidence_digests[:2] == (None, None)
+    assert result.topology_evidence_digests[2] is not None
+    assert len(result.topology_evidence_digests[2]) == 64
+    assert result.steps[-1].topology_evidence_digest == result.topology_evidence_digests[2]
 
 
 def test_chunked_timestamped_replay_matches_one_shot_after_state_restore() -> None:
@@ -307,6 +358,19 @@ def test_detector_forgetting_acceleration_requires_an_approved_certificate() -> 
                 max_false_alarm_rate=0.05,
             ),
             model_config=CausalRLSConfig(model_id="wrong"),
+        )
+
+
+def test_causal_telemetry_rejects_a_malformed_topology_digest() -> None:
+    with pytest.raises(CausalNumericError, match="topology evidence digest"):
+        run_causal_rls_replay(
+            make_book(),
+            (1,),
+            ("t1",),
+            plan=plan(),
+            learner=make_learner(),
+            detector=MalformedDigestDetector(),
+            model_config=CausalRLSConfig(model_id="bad-digest"),
         )
 
 

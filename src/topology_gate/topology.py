@@ -328,6 +328,7 @@ class SpectralSummary:
     distance_scale: float
     method: str = _METHOD
     backend_name: Optional[str] = None
+    backend_evidence_digest: Optional[str] = None
 
     @property
     def is_approximation(self) -> bool:
@@ -395,6 +396,7 @@ class TopologyResult:
     method: str
     calibration_location: Any
     calibration_scale: Any
+    backend_evidence_digests: Any = None
 
     @property
     def cusum_scores(self) -> Any:
@@ -420,6 +422,7 @@ class StreamingTopologyResult:
     method: str
     raw_features: Tuple[float, ...]
     whitened_features: Tuple[float, ...]
+    backend_evidence_digest: Optional[str] = None
 
 
 def _feature_names(n_eigenvalues: int) -> Tuple[str, ...]:
@@ -884,6 +887,7 @@ def _normalized_graph_laplacian(points: Sequence[Sequence[float]], graph_neighbo
 def _spectral_descriptors(eigenvalues: Sequence[float], requested: int,
                           distance_scale: float, method: str,
                           backend_name: Optional[str] = None,
+                          backend_evidence_digest: Optional[str] = None,
                           full_count: Optional[int] = None,
                           normalized_spectrum: bool = True) -> SpectralSummary:
     clean = []
@@ -923,6 +927,14 @@ def _spectral_descriptors(eigenvalues: Sequence[float], requested: int,
         entropy = max(0.0, min(1.0, entropy))
     divisor = float(full_count if full_count is not None else len(clean))
     trace = sum(clean) / max(1.0, divisor)
+    if backend_evidence_digest is not None:
+        if (
+            not isinstance(backend_evidence_digest, str)
+            or len(backend_evidence_digest) != 64
+            or any(value not in "0123456789abcdefABCDEF" for value in backend_evidence_digest)
+        ):
+            raise ValueError("persistent backend evidence digest must be 64 hex characters")
+        backend_evidence_digest = backend_evidence_digest.lower()
     return SpectralSummary(
         eigenvalues=tuple(float(value) for value in padded),
         spectral_gap=float(spectral_gap),
@@ -932,11 +944,29 @@ def _spectral_descriptors(eigenvalues: Sequence[float], requested: int,
         distance_scale=float(max(0.0, distance_scale)),
         method=method,
         backend_name=backend_name,
+        backend_evidence_digest=backend_evidence_digest,
     )
 
 
 def _backend_name(backend: Callable[..., Any]) -> str:
     return getattr(backend, "__qualname__", getattr(backend, "__name__", type(backend).__name__))
+
+
+def _backend_evidence_digest(result: Any) -> Optional[str]:
+    digest = getattr(result, "evidence_digest", None)
+    if callable(digest):
+        digest = digest()
+    if digest is None:
+        return None
+    if (
+        not isinstance(digest, str)
+        or len(digest) != 64
+        or any(value not in "0123456789abcdefABCDEF" for value in digest)
+    ):
+        raise ValueError(
+            "persistent backend evidence digest must be 64 hex characters"
+        )
+    return digest.lower()
 
 
 def _backend_eigenvalues(result: Any) -> Sequence[float]:
@@ -1005,6 +1035,7 @@ def spectral_summary(point_cloud: Any, *, n_eigenvalues: int = 4,
         canonical_cloud = tuple(sorted(tuple(row) for row in normalized))
         result = backend(canonical_cloud, n_eigenvalues)
         values = _backend_eigenvalues(result)
+        evidence_digest = _backend_evidence_digest(result)
         backend_label = _backend_name(backend)
         return _spectral_descriptors(
             values,
@@ -1012,6 +1043,7 @@ def spectral_summary(point_cloud: Any, *, n_eigenvalues: int = 4,
             scale_floor,
             "persistent_laplacian_backend",
             backend_name=backend_label,
+            backend_evidence_digest=evidence_digest,
             full_count=len(values),
             normalized_spectrum=False,
         )
@@ -1396,6 +1428,7 @@ class RollingTopologyDetector:
         feature_names = _feature_names(cfg.n_eigenvalues)
         feature_count = len(feature_names)
         raw_features: list[list[float]] = []
+        backend_evidence_digests: list[Optional[str]] = [None] * count
         point_counts: list[int] = []
         valid: list[bool] = []
         methods: set[str] = set()
@@ -1425,6 +1458,7 @@ class RollingTopologyDetector:
                 persistent_laplacian_backend=cfg.persistent_laplacian_backend,
             )
             raw_features.append(list(extracted.values))
+            backend_evidence_digests[end_index] = extracted.spectral.backend_evidence_digest
             methods.add(extracted.spectral.method)
 
         if not methods:
@@ -1495,6 +1529,7 @@ class RollingTopologyDetector:
             method=method,
             calibration_location=_to_matrix_output(calibration_location, feature_count),
             calibration_scale=_to_matrix_output(calibration_scale, feature_count),
+            backend_evidence_digests=tuple(backend_evidence_digests),
         )
         self._last_result = result
         return result
@@ -1563,6 +1598,11 @@ class RollingTopologyDetector:
             method=result.method,
             raw_features=tuple(float(value) for value in raw),
             whitened_features=tuple(float(value) for value in whitened),
+            backend_evidence_digest=(
+                None
+                if result.backend_evidence_digests is None
+                else result.backend_evidence_digests[index]
+            ),
         )
 
     def reset_stream(self) -> None:

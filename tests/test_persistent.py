@@ -100,6 +100,8 @@ def test_configured_backend_returns_complete_evidence_with_stable_identity() -> 
     assert result.status is PersistentStatus.VALID
     assert result.config_identity == config.identity
     assert len(result.spectrum.eigenvalues) == 3
+    assert len(result.evidence_digest) == 64
+    assert result.evidence_digest == result.evidence_digest
     assert backend.identity.startswith("topology_gate.persistent_backend:v1:")
     with pytest.raises(ValueError, match="requires n_eigenvalues=3"):
         backend([[0.0], [1.0], [2.0]], n_eigenvalues=2)

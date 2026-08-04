@@ -284,11 +284,21 @@ class CausalStep:
     forgetting_factor: float
     position: float
     method: str
+    topology_evidence_digest: str | None = None
 
 
 def _digest_row(values: Sequence[float]) -> str:
     payload = json.dumps([_finite(value, "row value") for value in values], separators=(",", ":"))
     return hashlib.sha256(payload.encode("utf-8")).hexdigest()
+
+
+def _optional_digest(value: Any, name: str) -> str | None:
+    if value is None:
+        return None
+    digest = _text(value, name)
+    if len(digest) != 64 or any(item not in "0123456789abcdefABCDEF" for item in digest):
+        raise CausalNumericError(f"{name} must be a 64-character hexadecimal digest")
+    return digest.lower()
 
 
 class CausalRLSModel:
@@ -429,6 +439,7 @@ class CausalRLSModel:
         alarm = False
         ready = True
         method = "none"
+        topology_evidence_digest: str | None = None
         if self.detector is not None:
             detection = self.detector.observe(np.asarray(state_features, dtype=float))
             score = _finite(detection.score, "detector score")
@@ -446,8 +457,12 @@ class CausalRLSModel:
             else:
                 factor = self._validate_forgetting_factor(
                     reported_factor, "forgetting factor"
-                )
+            )
             method = _text(detection.method, "detector method")
+            topology_evidence_digest = _optional_digest(
+                getattr(detection, "backend_evidence_digest", None),
+                "topology evidence digest",
+            )
         else:
             factor = self._default_factor()
             acceleration_authorized = True
@@ -481,6 +496,7 @@ class CausalRLSModel:
                 forgetting_factor=factor,
                 position=position,
                 method=method,
+                topology_evidence_digest=topology_evidence_digest,
             )
         )
         if math.isfinite(prediction):
@@ -648,6 +664,12 @@ class CausalRLSReplayResult:
     @property
     def forgetting_factors(self) -> np.ndarray[Any, Any]:
         return np.asarray([item.forgetting_factor for item in self.steps], dtype=float)
+
+    @property
+    def topology_evidence_digests(self) -> tuple[str | None, ...]:
+        """Return the exact-backend artifact digest captured per step."""
+
+        return tuple(item.topology_evidence_digest for item in self.steps)
 
     @property
     def pending_target_ids(self) -> tuple[str, ...]:

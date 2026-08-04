@@ -158,7 +158,9 @@ learner run behind the shared transition, and the prediction-time forgetting
 factor is retained until label settlement. It returns no tradable PnL by
 design. Use `evaluate_economic_path` only with separately sourced
 `RealizedReturn` and `ExecutionCost` records; missing returns and costs fail
-closed, and abstentions remain visible.
+closed, and abstentions remain visible. When the configured topology backend
+produces an exact finite artifact, its 64-character content digest is carried
+into the per-step causal telemetry; malformed digests fail closed.
 
 `run_causal_promotion_replay` composes the same transition with paired
 challenger/incumbent learners and the existing alpha-spending promotion gate.

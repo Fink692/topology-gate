@@ -87,7 +87,10 @@ resource limits; it does not establish rolling-market calibration. The
 `PersistentLaplacianBackend` adapter makes the configuration, spectrum width,
 and vertex budget part of the detector identity. `TopologyConfig` rejects a
 rolling cloud larger than that exact budget, and a runtime backend failure
-rolls back the stream step instead of emitting a shift signal.
+rolls back the stream step instead of emitting a shift signal. Valid exact
+artifacts also emit a content digest through `StreamingTopologyResult` and
+`CausalStep`, so a prediction can be linked to the finite topology evidence
+without treating the derived feature vector as the artifact itself.
 
 The default reflected CUSUM-like score, topology alarm, score-to-forgetting
 map, and challenger promotion statistics are exploratory unless an independent
