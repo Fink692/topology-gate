@@ -357,6 +357,38 @@ def _max_drawdown(returns: np.ndarray[Any, Any]) -> float:
     return float(np.max(np.where(peak > 0.0, (peak - equity) / peak, 0.0)))
 
 
+def _detector_telemetry(result: Any) -> dict[str, float | int | None]:
+    """Summarize the control signal so over-forgetting is observable."""
+
+    scores = np.asarray(result.detector_scores, dtype=float)
+    factors = np.asarray(result.forgetting_factors, dtype=float)
+    authorized = np.asarray(result.acceleration_authorized, dtype=bool)
+    finite_scores = scores[np.isfinite(scores)]
+    finite_factors = factors[np.isfinite(factors)]
+
+    def _quantile(values: np.ndarray[Any, Any], level: float) -> float | None:
+        return None if values.size == 0 else float(np.quantile(values, level))
+
+    return {
+        "score_positive_fraction": float(np.mean(scores > 0.0)),
+        "score_p50": _quantile(finite_scores, 0.50),
+        "score_p90": _quantile(finite_scores, 0.90),
+        "score_p99": _quantile(finite_scores, 0.99),
+        "score_max": None if finite_scores.size == 0 else float(np.max(finite_scores)),
+        "forgetting_factor_p01": _quantile(finite_factors, 0.01),
+        "forgetting_factor_p50": _quantile(finite_factors, 0.50),
+        "forgetting_factor_p99": _quantile(finite_factors, 0.99),
+        "forgetting_factor_min": (
+            None if finite_factors.size == 0 else float(np.min(finite_factors))
+        ),
+        "forgetting_factor_max": (
+            None if finite_factors.size == 0 else float(np.max(finite_factors))
+        ),
+        "ready_or_authorized_rows": int(np.count_nonzero(authorized)),
+        "ready_or_authorized_fraction": float(np.mean(authorized)),
+    }
+
+
 def _promotion_state_summary(gate: PromotionGate) -> dict[str, Any]:
     """Keep terminal gate facts and digest the verbose row-level audit."""
 
@@ -565,6 +597,7 @@ def run(*, cache_dir: Path, output: Path | None, refresh: bool) -> dict[str, Any
             "accelerated_forgetting_count": int(result.metrics["accelerated_forgetting_count"]),
             "alarm_count": int(np.count_nonzero(result.alarms)),
             "authorized_acceleration_count": int(np.count_nonzero(result.acceleration_authorized)),
+            "detector_telemetry": _detector_telemetry(result),
         }
         systems[name]["_result"] = result
     static_result = systems["static-rls"].pop("_result")

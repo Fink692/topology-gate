@@ -273,6 +273,16 @@ therefore fail-closed.
   public-final-history diagnostic evidence, not point-in-time market evidence;
   see [`docs/public-market-diagnostic.md`](../docs/public-market-diagnostic.md)
   and [`reports/public-market-diagnostic.json`](public-market-diagnostic.json).
+- The zero-cost PL-RLS sensitivity diagnostic independently calibrated three
+  default-scale drift cells and five fixed-scale sensitivity cells. Default
+  scale was constant (`score_p50=0`, factor `0.99`); fixed scale
+  (`scale_s=2`, `scale_t=20`) selected threshold `128`, activated the score,
+  and improved certified PL-RLS holdout Sharpe to `-0.2094`, but remained
+  below static RLS (`0.0943`) and did not promote. Lower sensitivities
+  `0.0001` and `0.00001` produced Sharpe `-0.9728` and `-1.7570`.
+  This is public-final-history sensitivity evidence only; see
+  [`docs/public-market-sensitivity.md`](../docs/public-market-sensitivity.md)
+  and [`reports/public-market-sensitivity.json`](public-market-sensitivity.json).
 
 - The single-package phase-selection path was exercised on one full synthetic
   timeline: calibration, tuning, and validation each selected two declared

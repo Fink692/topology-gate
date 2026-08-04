@@ -57,3 +57,11 @@ authorized for a market claim.
 For a zero-cost path, run the public ETF diagnostic described in
 [`free-public-track.md`](free-public-track.md). It answers the control-layer
 hypothesis but deliberately does not upgrade the market-data gate.
+
+The follow-up public sensitivity receipt is documented in
+[`public-market-sensitivity.md`](public-market-sensitivity.md). It found that
+the default public filtration produced a constant persistent state, while a
+fixed-scale exploratory filtration activated topology but saturated the
+forgetting map and still failed the e-process promotion gate. The next
+mathematical task is score-to-memory normalization on a calibration split,
+with fresh holdout evaluation.

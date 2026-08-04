@@ -28,3 +28,8 @@ source is final adjusted ETF history, not a point-in-time security master, and
 there is no sourced delisting, historical-membership, capacity, or execution-
 cost evidence. The full receipt is
 [`public-market-diagnostic.json`](../reports/public-market-diagnostic.json).
+
+The follow-up filtration and forgetting-parameter sweep is documented in
+[`public-market-sensitivity.md`](public-market-sensitivity.md), with its
+receipt in
+[`public-market-sensitivity.json`](../reports/public-market-sensitivity.json).
