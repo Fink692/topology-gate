@@ -12,6 +12,7 @@ from topology_gate.checkpoint import (
 )
 from topology_gate.evidence import EvidenceLedger, PromotionEvidenceConfig
 from topology_gate.promotion import PromotionGate
+from topology_gate.selection import SelectionBudget
 
 
 def _config() -> PromotionEvidenceConfig:
@@ -31,6 +32,7 @@ def _config() -> PromotionEvidenceConfig:
         score_bound=1.0,
         certified=True,
         missingness_predictable=True,
+        selection_budget=SelectionBudget("selection-001", 0.1),
     )
 
 
@@ -311,6 +313,14 @@ def test_certified_evidence_rejects_placeholder_policy_identities() -> None:
         replace(
             _config(),
             missingness_predictable=False,
+        )
+
+
+def test_certified_evidence_requires_allocated_selection_alpha() -> None:
+    with pytest.raises(ValueError, match="selected budget allocation"):
+        replace(
+            _config(),
+            selection_budget=SelectionBudget("selection-002", 0.2),
         )
 
 

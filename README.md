@@ -312,6 +312,12 @@ This makes the finite selection boundary observable; it remains a
 declared-score simulation rather than a market-calibrated promotion
 certificate.
 
+Use `calibrate_selection_null` for the broader pre-registered model/feature/eta
+family. It charges every Cartesian selection cell an equal parent-alpha share,
+simulates optional stopping across all cells, and records the first family
+crossing. This is finite null evidence for the declared selection boundary; it
+does not establish the conditional-mean assumption for market scores.
+
 ## Tests and typing
 
 Run the configured test suite with:

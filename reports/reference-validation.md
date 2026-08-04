@@ -5,18 +5,18 @@ Interpreter: CPython 3.12.10
 Scope: bounded research/control layer only; no live-data or execution claim
 
 Supported-interpreter matrix: CPython 3.10.11, 3.11.15, and 3.12.10 each
-passed the current 267-test suite; the 3.11 run used an isolated `uv`
+passed the current 279-test suite; the 3.10 and 3.11 runs used isolated `uv`
 environment. The CPython 3.12 release gate also passed Ruff, mypy, and
 compileall. Coverage is reported from CPython 3.12 only.
 
 ## Reproducible engineering checks
 
-- Full suite: **267 passed**.
-- Configured coverage run: **80.65%** total coverage.
+- Full suite: **279 passed**.
+- Configured coverage run: **80.76%** total coverage.
 - Coverage enforcement: configured floor **80%**; the current CPython 3.10,
-  3.11, and 3.12 runs each clear it at **80.65%** total.
+  3.11, and 3.12 runs each clear it at **80.76%** total.
 - Ruff: passed on `src` and `tests`.
-- Mypy: passed on all 23 source modules.
+- Mypy: passed on all 24 source modules.
 - Dependency-light root import: passed without NumPy site packages.
 - Wheel build and isolated target-directory smoke: passed; SHA-256
   `366CE69F4F9D3856E67E4EC3B6E9EB35330D7E4590935B451AED3A5C50E40EE3`;
@@ -76,6 +76,9 @@ compileall. Coverage is reported from CPython 3.12 only.
   restore, post-seal registration rejection, selected-eta consistency,
   first-promotion stopping, repeated-epoch alpha spending, reproducibility,
   negative-null closure, and malformed score dimensions.
+- Selection-budget tests: passed for exact model/feature/eta Cartesian-family
+  allocation, selected-cell binding, identity/tamper rejection, and finite
+  family-level optional-stopping calibration.
 - Stationary block-bootstrap tests: passed for seeded reproducibility, source
   identity binding, feature-dimension rejection, and result-level factory
   identity recording.
@@ -163,6 +166,19 @@ therefore fail-closed.
   evaluation observation identities. The full identities and negative-control
   boundary are in [`reports/detector-calibration.md`](detector-calibration.md).
   This is still not market or dependence-validity evidence.
+- The pre-registered 48-cell selection-family Rademacher null was run for
+  1,000 trials × 500 steps at parent alpha `0.05`. It produced 36 first family
+  crossings (rate `0.036`, Wilson 95% interval `[0.026116, 0.049436]`), below
+  the parent level in this finite simulation. The selection budget identity is
+  `84de04371da2096518decdd5c961872cbc3bd7a2251fc9b66def022540f5ac5c`; the
+  full record is in [`reports/selection-null-calibration.md`](selection-null-calibration.md).
+- The strict synthetic walk-forward suite used four seeds, three known shifts,
+  one-step delayed labels, separate detector calibration data, and a sealed
+  final regime. Static RLS mean MSE was `0.0404266`, exponential RLS at
+  `lambda=0.97` was `0.0408137`, and certified PL-RLS was `0.0404269`; the
+  certified path accelerated 245 updates but did not materially improve this
+  fixture. The result is a control-layer negative diagnostic, not market
+  evidence; see [`reports/synthetic-walk-forward.md`](synthetic-walk-forward.md).
 
 ## Acceptance disposition
 
@@ -170,12 +186,12 @@ therefore fail-closed.
 |---|---|---|
 | G0 identity/claim freeze | Partial/pass for the declared protocol | `RunSpec`, `RunManifest`, `StudySpec`, sealed/opened `StudyManifest`, strict `StudyInputBundle`/`StudyTimeline` preflight, digest-verified `StudySourcePackage`/provenance/raw-artifact fingerprints, strict `StudySourceAudit` market gate, `run_causal_rls_study`/`run_causal_promotion_study`, evidence config, as-of records, and authenticated checkpoint identities exist; no vendor-native adapter or source dataset is present. |
 | G1 exact persistent MVP | Pass for bounded reference scope | `persistent.py` plus hand-built and algebraic invariants, and the exploratory `PersistentLaplacianCUSUM` controller; only the declared finite VR/F2/q/pair construction is covered. |
-| G2 calibrated forgetting | Synthetic protocol pass; market claim fail | `calibrate_threshold` now binds predeclared candidate selection to distinct role-bound observation factories and an independent evaluation split, and carries the selection identity into the certificate. The surrogate record includes a stricter-budget rejection; no independent market/dependence calibration artifact authorizes accelerated forgetting. |
+| G2 calibrated forgetting | Synthetic protocol pass; market claim fail | `calibrate_threshold` binds predeclared candidate selection to distinct role-bound observation factories and an independent evaluation split; `SelectionBudget` binds model/feature/eta family allocation; and the finite family null is recorded. The surrogate record includes a stricter-budget rejection; no independent market/dependence calibration artifact authorizes accelerated forgetting. |
 | G3 recursive transactional state | Partial/pass for the migrated path | `CausalReplay` drives numerical detector/RLS plus paired challenger/`PromotionGate` state with prediction-time factor/utility capture, model-state rollback, and detached restore; legacy workers and the generic evidence-ledger path are not all one transaction. |
 | G4 causal replay/recovery | Partial/pass for the migrated path | `AsOfBook`, `PointInTimePanel`, `StudyInputBundle`, `StudyTimeline`, digest-verified `StudySourcePackage`, `StudyManifest` phase checks, the RLS and paired-promotion study wrappers, `CausalReplay`, `CausalRLSModel`, paired promotion, delayed-label ledger, chunk state, HMAC restore, prefix invariance, future append acceptance, consumed-prefix revision rejection, canonical panel identity, and terminal pending cleanup are tested; legacy row adapters remain compatibility paths. |
 | G5 economic validation | Contract pass; market evidence not evaluated | `economic.py` and `StudySourcePackage.audit_market` are fail-closed for separate returns/costs, explicit abstentions, required capacity evidence, and sealed holdout handling, but no point-in-time vendor data, capacity, delistings, or opened final holdout evidence are present. |
 
-The package remains research/alpha. The evidence needed to upgrade the two
-remaining scientific claims is explicit: a pre-registered dependence-aware
-calibration split and a point-in-time cross-asset walk-forward run with a
-sealed final test.
+The package remains research/alpha. The local protocol, selection controls,
+finite null calibration, and synthetic strict walk-forward are complete. The
+remaining upgrade path is external: a point-in-time cross-asset source bundle,
+an audited dependence-aware market calibration split, and a sealed final test.

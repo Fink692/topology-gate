@@ -18,6 +18,7 @@ from dataclasses import dataclass, replace
 from typing import Any, Callable
 
 from .promotion import EProcess, PromotionGate, geometric_alpha_allocation, validate_eta
+from .selection import SelectionBudget
 
 try:
     import numpy as np
@@ -43,6 +44,7 @@ ObservationFactory = Callable[[np.random.Generator, int, int], Any]
 DetectorFactory = Callable[[], Any]
 EProcessScoreFactory = Callable[[np.random.Generator, int], Any]
 PromotionScoreFactory = Callable[[np.random.Generator, int, int], Any]
+SelectionScoreFactory = Callable[[np.random.Generator, int, int], Any]
 
 
 def _bounded_int(name: str, value: Any, minimum: int, maximum: int) -> int:
@@ -187,6 +189,47 @@ class PromotionCalibrationConfig:
         object.__setattr__(self, "challengers", challengers)
         object.__setattr__(self, "epochs", epochs)
         object.__setattr__(self, "alpha", alpha)
+        object.__setattr__(self, "eta", eta)
+        object.__setattr__(self, "initial_wealth", initial_wealth)
+        object.__setattr__(self, "seed", seed)
+
+
+@dataclass(frozen=True, slots=True)
+class SelectionCalibrationConfig:
+    """Finite null-simulation settings for a pre-registered selection family."""
+
+    budget: SelectionBudget
+    trials: int = 1_000
+    horizon: int = 512
+    eta: float = 0.5
+    initial_wealth: float = 1.0
+    seed: int = 7
+
+    def __post_init__(self) -> None:
+        if not isinstance(self.budget, SelectionBudget):
+            raise TypeError("budget must be a SelectionBudget")
+        if self.budget.total_slots > MAX_CALIBRATION_CHALLENGERS:
+            raise ValueError(
+                "selection calibration exceeds the configured cell limit"
+            )
+        trials = _bounded_int("trials", self.trials, 1, MAX_CALIBRATION_TRIALS)
+        horizon = _bounded_int("horizon", self.horizon, 2, MAX_CALIBRATION_HORIZON)
+        eta = validate_eta(self.eta)
+        try:
+            initial_wealth = float(self.initial_wealth)
+        except (TypeError, ValueError, OverflowError) as exc:
+            raise ValueError("initial_wealth must be finite and positive") from exc
+        if not math.isfinite(initial_wealth) or initial_wealth <= 0.0:
+            raise ValueError("initial_wealth must be finite and positive")
+        if isinstance(self.seed, (bool, np.bool_)) or not isinstance(
+            self.seed, (int, np.integer)
+        ):
+            raise ValueError("seed must be an integer")
+        seed = int(self.seed)
+        if seed < 0:
+            raise ValueError("seed must be non-negative")
+        object.__setattr__(self, "trials", trials)
+        object.__setattr__(self, "horizon", horizon)
         object.__setattr__(self, "eta", eta)
         object.__setattr__(self, "initial_wealth", initial_wealth)
         object.__setattr__(self, "seed", seed)
@@ -1233,6 +1276,227 @@ class PromotionNullCalibrationResult:
         }
 
 
+@dataclass(frozen=True, slots=True)
+class SelectionNullCalibrationResult:
+    """Finite optional-stopping evidence across every selected family cell."""
+
+    score_factory_identity: str
+    selection_budget_identity: str
+    trials: int
+    horizon: int
+    cell_count: int
+    parent_alpha: float
+    cell_alpha: float
+    eta: float
+    initial_wealth: float
+    seed: int
+    family_crossing_count: int
+    family_crossing_rate: float
+    family_crossing_ci_low: float
+    family_crossing_ci_high: float
+    first_crossing_steps: tuple[int, ...]
+    first_crossing_cell_indices: tuple[int, ...]
+
+    def __post_init__(self) -> None:
+        if not isinstance(self.score_factory_identity, str) or not self.score_factory_identity:
+            raise ValueError("score_factory_identity must be a non-empty string")
+        if not isinstance(self.selection_budget_identity, str) or not self.selection_budget_identity:
+            raise ValueError("selection_budget_identity must be a non-empty string")
+        trials = _bounded_int("trials", self.trials, 1, MAX_CALIBRATION_TRIALS)
+        horizon = _bounded_int("horizon", self.horizon, 2, MAX_CALIBRATION_HORIZON)
+        cells = _bounded_int("cell_count", self.cell_count, 1, MAX_CALIBRATION_CHALLENGERS)
+        parent_alpha = _finite_probability("parent_alpha", self.parent_alpha)
+        cell_alpha = _finite_probability("cell_alpha", self.cell_alpha)
+        eta = validate_eta(self.eta)
+        try:
+            initial_wealth = float(self.initial_wealth)
+        except (TypeError, ValueError, OverflowError) as exc:
+            raise ValueError("initial_wealth must be finite and positive") from exc
+        if not math.isfinite(initial_wealth) or initial_wealth <= 0.0:
+            raise ValueError("initial_wealth must be finite and positive")
+        if isinstance(self.seed, (bool, np.bool_)) or not isinstance(
+            self.seed, (int, np.integer)
+        ) or int(self.seed) < 0:
+            raise ValueError("seed must be a non-negative integer")
+        if len(self.first_crossing_steps) != trials or len(self.first_crossing_cell_indices) != trials:
+            raise ValueError("selection crossing paths must have one entry per trial")
+        crossing_count = _bounded_int(
+            "family_crossing_count", self.family_crossing_count, 0, trials
+        )
+        if not math.isclose(
+            self.cell_alpha * cells,
+            parent_alpha,
+            rel_tol=0.0,
+            abs_tol=1.0e-15,
+        ):
+            raise ValueError("cell alpha does not exhaust the parent selection budget")
+        for step, cell in zip(self.first_crossing_steps, self.first_crossing_cell_indices):
+            if isinstance(step, (bool, np.bool_)) or not isinstance(step, (int, np.integer)):
+                raise ValueError("first crossing steps must be integers")
+            if isinstance(cell, (bool, np.bool_)) or not isinstance(cell, (int, np.integer)):
+                raise ValueError("first crossing cell indices must be integers")
+            normalized_step = int(step)
+            normalized_cell = int(cell)
+            if normalized_step == horizon:
+                if normalized_cell != -1:
+                    raise ValueError("no-crossing paths must use cell index -1")
+            elif not 0 <= normalized_step < horizon:
+                raise ValueError("first crossing step is outside the horizon")
+            elif not 0 <= normalized_cell < cells:
+                raise ValueError("first crossing cell index is out of range")
+        expected_rate = crossing_count / trials
+        if not math.isclose(
+            self.family_crossing_rate,
+            expected_rate,
+            rel_tol=0.0,
+            abs_tol=1.0e-12,
+        ):
+            raise ValueError("family crossing rate is inconsistent with its count")
+        if not 0.0 <= self.family_crossing_ci_low <= self.family_crossing_ci_high <= 1.0:
+            raise ValueError("family crossing interval is invalid")
+        if sum(step < horizon for step in self.first_crossing_steps) != crossing_count:
+            raise ValueError("family crossing count is inconsistent with crossing paths")
+        object.__setattr__(self, "trials", trials)
+        object.__setattr__(self, "horizon", horizon)
+        object.__setattr__(self, "cell_count", cells)
+        object.__setattr__(self, "parent_alpha", parent_alpha)
+        object.__setattr__(self, "cell_alpha", cell_alpha)
+        object.__setattr__(self, "eta", eta)
+        object.__setattr__(self, "initial_wealth", initial_wealth)
+        object.__setattr__(self, "seed", int(self.seed))
+        object.__setattr__(self, "family_crossing_count", crossing_count)
+
+    @property
+    def config_identity(self) -> str:
+        payload = {
+            "score_factory_identity": self.score_factory_identity,
+            "selection_budget_identity": self.selection_budget_identity,
+            "trials": self.trials,
+            "horizon": self.horizon,
+            "cell_count": self.cell_count,
+            "parent_alpha": self.parent_alpha,
+            "cell_alpha": self.cell_alpha,
+            "eta": self.eta,
+            "initial_wealth": self.initial_wealth,
+            "seed": self.seed,
+        }
+        return hashlib.sha256(
+            json.dumps(payload, sort_keys=True, separators=(",", ":")).encode()
+        ).hexdigest()
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "kind": "selection_null_calibration",
+            "score_factory_identity": self.score_factory_identity,
+            "selection_budget_identity": self.selection_budget_identity,
+            "trials": self.trials,
+            "horizon": self.horizon,
+            "cell_count": self.cell_count,
+            "parent_alpha": self.parent_alpha,
+            "cell_alpha": self.cell_alpha,
+            "eta": self.eta,
+            "initial_wealth": self.initial_wealth,
+            "seed": self.seed,
+            "family_crossing_count": self.family_crossing_count,
+            "family_crossing_rate": self.family_crossing_rate,
+            "family_crossing_ci_95": [
+                self.family_crossing_ci_low,
+                self.family_crossing_ci_high,
+            ],
+            "first_crossing_steps": list(self.first_crossing_steps),
+            "first_crossing_cell_indices": list(self.first_crossing_cell_indices),
+            "config_identity": self.config_identity,
+        }
+
+
+def calibrate_selection_null(
+    score_factory: SelectionScoreFactory,
+    *,
+    config: SelectionCalibrationConfig,
+) -> SelectionNullCalibrationResult:
+    """Simulate optional stopping across a pre-registered selection family.
+
+    The factory returns a ``(horizon, budget.total_slots)`` matrix.  Every
+    cell receives the equal parent-alpha share declared by ``SelectionBudget``
+    and the family stops at its first cell crossing.  This is a finite null
+    simulation of the complete selection boundary; it does not establish the
+    conditional-mean assumption for a market score stream.
+    """
+
+    if not callable(score_factory):
+        raise ValueError("score_factory must be callable")
+    settings = config
+    identity = _score_factory_identity(score_factory)
+    budget = settings.budget
+    first_steps: list[int] = []
+    first_cells: list[int] = []
+    rng = np.random.default_rng(settings.seed)
+    for _ in range(settings.trials):
+        try:
+            raw_scores = np.asarray(
+                score_factory(rng, settings.horizon, budget.total_slots),
+                dtype=float,
+            )
+        except (TypeError, ValueError, OverflowError) as exc:
+            raise ValueError(
+                "selection score_factory must return finite bounded scores"
+            ) from exc
+        if raw_scores.shape != (settings.horizon, budget.total_slots):
+            raise ValueError(
+                "selection score_factory must return scores shaped "
+                f"({settings.horizon}, {budget.total_slots})"
+            )
+        if not np.all(np.isfinite(raw_scores)) or np.any(raw_scores < -1.0) or np.any(
+            raw_scores > 1.0
+        ):
+            raise ValueError("selection score_factory returned scores outside [-1, 1]")
+        processes = [
+            EProcess(
+                alpha=budget.allocated_alpha,
+                eta=settings.eta,
+                initial_wealth=settings.initial_wealth,
+            )
+            for _ in range(budget.total_slots)
+        ]
+        first_step = settings.horizon
+        first_cell = -1
+        for step in range(settings.horizon):
+            for cell, process in enumerate(processes):
+                update = process.update(
+                    float(raw_scores[step, cell]), eta=settings.eta
+                )
+                if update.first_crossing:
+                    first_step = step
+                    first_cell = cell
+                    break
+            if first_cell >= 0:
+                break
+        first_steps.append(first_step)
+        first_cells.append(first_cell)
+
+    crossing_count = sum(step < settings.horizon for step in first_steps)
+    rate = crossing_count / settings.trials
+    low, high = _wilson_interval(crossing_count, settings.trials)
+    return SelectionNullCalibrationResult(
+        score_factory_identity=identity,
+        selection_budget_identity=budget.identity,
+        trials=settings.trials,
+        horizon=settings.horizon,
+        cell_count=budget.total_slots,
+        parent_alpha=budget.global_alpha,
+        cell_alpha=budget.allocated_alpha,
+        eta=settings.eta,
+        initial_wealth=settings.initial_wealth,
+        seed=settings.seed,
+        family_crossing_count=crossing_count,
+        family_crossing_rate=rate,
+        family_crossing_ci_low=low,
+        family_crossing_ci_high=high,
+        first_crossing_steps=tuple(first_steps),
+        first_crossing_cell_indices=tuple(first_cells),
+    )
+
+
 def calibrate_eprocess_null(
     score_factory: EProcessScoreFactory,
     *,
@@ -1704,12 +1968,16 @@ __all__ = [
     "PromotionCalibrationConfig",
     "PromotionNullCalibrationResult",
     "PromotionScoreFactory",
+    "SelectionCalibrationConfig",
+    "SelectionNullCalibrationResult",
+    "SelectionScoreFactory",
     "StationaryBlockBootstrap",
     "ShiftCalibrationResult",
     "ThresholdCalibrationResult",
     "calibrate_null",
     "calibrate_eprocess_null",
     "calibrate_promotion_null",
+    "calibrate_selection_null",
     "calibrate_threshold",
     "calibrate_shift",
 ]

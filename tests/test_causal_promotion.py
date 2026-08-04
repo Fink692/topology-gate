@@ -23,6 +23,7 @@ from topology_gate.causal_promotion import (
 from topology_gate.manifest import RunSpec, StudyManifest, StudySpec, StudyWindow
 from topology_gate.promotion import PromotionGate
 from topology_gate.replay import ReplayConfig, ReplayStatus
+from topology_gate.selection import SelectionBudget
 
 
 class FixedLearner:
@@ -128,7 +129,7 @@ def make_gate() -> PromotionGate:
     return gate
 
 
-def config(*, minimum_labels: int = 1) -> CausalPromotionConfig:
+def config(*, minimum_labels: int = 1, alpha: float = 0.9) -> CausalPromotionConfig:
     return CausalPromotionConfig(
         promotion_id="paired",
         challenger_id="challenger",
@@ -136,6 +137,7 @@ def config(*, minimum_labels: int = 1) -> CausalPromotionConfig:
         eta=0.5,
         utility_cap=1.0,
         minimum_labels=minimum_labels,
+        selection_budget=SelectionBudget("paired-selection:v1", alpha),
     )
 
 
@@ -231,7 +233,7 @@ def test_minimum_labels_burn_in_updates_learners_without_advancing_evidence() ->
     gate = PromotionGate("incumbent", alpha=0.99, eta=0.5)
     gate.register_challenger("challenger")
     gate.seal_registration()
-    promotion_config = config(minimum_labels=3)
+    promotion_config = config(minimum_labels=3, alpha=0.99)
     result = run(
         (1, 2, 3, 4, 5),
         ("t1", "t2", "t3", "t4", "t5"),
@@ -423,6 +425,7 @@ def test_explicit_missingness_budget_is_checkpointed_and_identity_bound() -> Non
         eta=1.0,
         utility_cap=1.0,
         max_non_observed_labels=1,
+        selection_budget=SelectionBudget("paired-selection:v1", 0.99),
     )
     gate = PromotionGate("incumbent", alpha=0.99, eta=1.0)
     gate.register_challenger("challenger")
@@ -593,6 +596,42 @@ def test_certified_causal_promotion_requires_a_sealed_challenger_family() -> Non
             (1,),
             ("t1",),
             gate=gate,
+            replay_config=replay_settings(finalize_unresolved=False),
+        )
+
+
+def test_certified_causal_promotion_requires_a_selection_budget() -> None:
+    gate = make_gate()
+
+    with pytest.raises(CausalPromotionError, match="selection budget"):
+        run(
+            (1,),
+            ("t1",),
+            gate=gate,
+            promotion_config=CausalPromotionConfig(),
+            replay_config=replay_settings(finalize_unresolved=False),
+        )
+
+
+def test_certified_causal_promotion_binds_selection_budget_to_gate_alpha() -> None:
+    gate = make_gate()
+    mismatched = config()
+    mismatched = CausalPromotionConfig(
+        promotion_id=mismatched.promotion_id,
+        challenger_id=mismatched.challenger_id,
+        incumbent_id=mismatched.incumbent_id,
+        eta=mismatched.eta,
+        utility_cap=mismatched.utility_cap,
+        minimum_labels=mismatched.minimum_labels,
+        selection_budget=SelectionBudget("paired-selection:v2", 0.9, model_slots=2),
+    )
+
+    with pytest.raises(CausalPromotionError, match="alpha"):
+        run(
+            (1,),
+            ("t1",),
+            gate=gate,
+            promotion_config=mismatched,
             replay_config=replay_settings(finalize_unresolved=False),
         )
 

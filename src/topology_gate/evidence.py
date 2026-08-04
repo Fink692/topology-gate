@@ -24,6 +24,7 @@ from .promotion import (
     PromotionStatus,
     validate_eta,
 )
+from .selection import SelectionBudget
 
 MAX_EVIDENCE_PENDING = 8_192
 MAX_EVIDENCE_RECORDS = 200_000
@@ -120,6 +121,7 @@ class PromotionEvidenceConfig:
     score_bound: float = 1.0
     certified: bool = False
     missingness_predictable: bool = False
+    selection_budget: SelectionBudget | None = None
 
     def __post_init__(self) -> None:
         for name in (
@@ -152,6 +154,17 @@ class PromotionEvidenceConfig:
         if not isinstance(self.missingness_predictable, bool):
             raise ValueError("missingness_predictable must be boolean")
         if self.certified:
+            if self.selection_budget is None:
+                raise ValueError("certified evidence requires a selection budget")
+            if not math.isclose(
+                self.selection_budget.allocated_alpha,
+                alpha,
+                rel_tol=0.0,
+                abs_tol=1.0e-15,
+            ):
+                raise ValueError(
+                    "certified evidence alpha must equal the selected budget allocation"
+                )
             non_placeholder = (
                 self.run_id,
                 self.family_id,
@@ -187,7 +200,7 @@ class PromotionEvidenceConfig:
 
     def state_dict(self, *, include_identity: bool = True) -> dict[str, Any]:
         result: dict[str, Any] = {
-            "version": 2,
+            "version": 3,
             "schema": "topology_gate.promotion_evidence_config",
             "run_id": self.run_id,
             "family_id": self.family_id,
@@ -207,6 +220,11 @@ class PromotionEvidenceConfig:
             "score_bound": self.score_bound,
             "certified": self.certified,
             "missingness_predictable": self.missingness_predictable,
+            "selection_budget": (
+                None
+                if self.selection_budget is None
+                else self.selection_budget.state_dict()
+            ),
         }
         if include_identity:
             result["identity"] = self.identity
@@ -216,8 +234,14 @@ class PromotionEvidenceConfig:
     def from_state_dict(cls, state: Mapping[str, Any]) -> "PromotionEvidenceConfig":
         if not isinstance(state, Mapping):
             raise ValueError("evidence config must be a mapping")
-        if state.get("version") not in {1, 2} or state.get("schema") != "topology_gate.promotion_evidence_config":
+        if state.get("version") not in {1, 2, 3} or state.get("schema") != "topology_gate.promotion_evidence_config":
             raise ValueError("unsupported evidence config version or schema")
+        selection_raw = state.get("selection_budget")
+        selection_budget = (
+            None
+            if selection_raw is None
+            else SelectionBudget.from_state_dict(selection_raw)
+        )
         candidate = cls(
             run_id=cast(str, state.get("run_id")),
             family_id=cast(str, state.get("family_id")),
@@ -237,9 +261,10 @@ class PromotionEvidenceConfig:
             score_bound=cast(float, state.get("score_bound", 1.0)),
             certified=state.get("certified", False),
             missingness_predictable=state.get("missingness_predictable", False),
+            selection_budget=selection_budget,
         )
         identity = state.get("identity")
-        if identity is not None and identity != candidate.identity:
+        if state.get("version") == 3 and identity is not None and identity != candidate.identity:
             raise ValueError("evidence config identity mismatch")
         return candidate
 

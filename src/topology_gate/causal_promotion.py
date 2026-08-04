@@ -44,6 +44,7 @@ from .replay import (
     ReplayStatus,
     run_causal_replay,
 )
+from .selection import SelectionBudget
 
 CAUSAL_PROMOTION_SCHEMA = "topology_gate.causal_promotion"
 # Pending comparisons now carry the canonical panel identity used to produce
@@ -290,6 +291,7 @@ class CausalPromotionConfig:
     max_invalid_predictions: int = 0
     require_sealed_registration: bool = True
     require_pure_predictions: bool = True
+    selection_budget: SelectionBudget | None = None
 
     def __post_init__(self) -> None:
         for name in ("promotion_id", "challenger_id", "incumbent_id"):
@@ -351,6 +353,11 @@ class CausalPromotionConfig:
             "max_invalid_predictions": self.max_invalid_predictions,
             "require_sealed_registration": self.require_sealed_registration,
             "require_pure_predictions": self.require_pure_predictions,
+            "selection_budget": (
+                None
+                if self.selection_budget is None
+                else self.selection_budget.state_dict()
+            ),
         }
         return _digest(payload, "promotion configuration")
 
@@ -565,6 +572,21 @@ class CausalPromotionModel:
             raise CausalPromotionError(
                 "promotion config eta does not match selected challenger eta"
             )
+        if self.config.require_sealed_registration:
+            budget = self.config.selection_budget
+            if budget is None:
+                raise CausalPromotionError(
+                    "certified causal promotion requires a selection budget"
+                )
+            if not math.isclose(
+                budget.allocated_alpha,
+                gate.global_alpha,
+                rel_tol=0.0,
+                abs_tol=1.0e-15,
+            ):
+                raise CausalPromotionError(
+                    "promotion gate alpha does not match the selected budget allocation"
+                )
 
     def _assert_gate_binding(self) -> None:
         current = _gate_binding_digest(self.gate.state_dict())

@@ -95,6 +95,12 @@ from .replay import (
     ReplayStatus,
     run_causal_replay,
 )
+from .selection import (
+    MAX_SELECTION_SLOTS,
+    SELECTION_BUDGET_SCHEMA,
+    SELECTION_BUDGET_VERSION,
+    SelectionBudget,
+)
 from .types import (
     ArrayLike,
     BacktestConfig,
@@ -206,6 +212,11 @@ _LAZY_EXPORTS: dict[str, tuple[str, str]] = {
         ".calibration",
         "PromotionNullCalibrationResult",
     ),
+    "SelectionCalibrationConfig": (".calibration", "SelectionCalibrationConfig"),
+    "SelectionNullCalibrationResult": (
+        ".calibration",
+        "SelectionNullCalibrationResult",
+    ),
     "ThresholdCalibrationResult": (
         ".calibration",
         "ThresholdCalibrationResult",
@@ -216,6 +227,7 @@ _LAZY_EXPORTS: dict[str, tuple[str, str]] = {
     "calibrate_null": (".calibration", "calibrate_null"),
     "calibrate_eprocess_null": (".calibration", "calibrate_eprocess_null"),
     "calibrate_promotion_null": (".calibration", "calibrate_promotion_null"),
+    "calibrate_selection_null": (".calibration", "calibrate_selection_null"),
     "calibrate_threshold": (".calibration", "calibrate_threshold"),
     "calibrate_shift": (".calibration", "calibrate_shift"),
     "PersistentLaplacianConfig": (".persistent", "PersistentLaplacianConfig"),
@@ -340,6 +352,8 @@ __all__ = [
     "EProcessNullCalibrationResult",
     "PromotionCalibrationConfig",
     "PromotionNullCalibrationResult",
+    "SelectionCalibrationConfig",
+    "SelectionNullCalibrationResult",
     "ThresholdCalibrationResult",
     "CausalFeaturePlan",
     "CausalNumericError",
@@ -470,6 +484,10 @@ __all__ = [
     "RollingTopologyDetector",
     "Scalar",
     "ShiftCalibrationResult",
+    "SelectionBudget",
+    "SELECTION_BUDGET_SCHEMA",
+    "SELECTION_BUDGET_VERSION",
+    "MAX_SELECTION_SLOTS",
     "StreamingTopologyResult",
     "SyntheticConfig",
     "SyntheticDataConfig",

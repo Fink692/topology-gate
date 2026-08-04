@@ -26,6 +26,7 @@ from topology_gate.manifest import (
 from topology_gate.promotion import PromotionGate
 from topology_gate.replay import ReplayConfig
 from topology_gate.rls import RLS, RLSConfig
+from topology_gate.selection import SelectionBudget
 from topology_gate.study import (
     StudyInputBundle,
     StudyInputError,
@@ -429,6 +430,7 @@ def test_promotion_study_wrapper_reuses_the_same_source_preflight() -> None:
             incumbent_id="incumbent",
             eta=0.5,
             utility_cap=1.0,
+            selection_budget=SelectionBudget("study-selection:v1", 0.9),
         ),
         replay_config=ReplayConfig(
             model_id="study-paired",

@@ -107,6 +107,14 @@ multi-challenger selection and repeated-testing spending visible in the
 evidence. It still only tests the supplied finite score factory; it cannot
 prove the conditional-mean null or market validity.
 
+`calibrate_selection_null` is the corresponding family-level harness for a
+pre-registered `SelectionBudget`. Its score factory returns one bounded stream
+per Cartesian model/feature/eta cell. Each cell receives its equal parent-alpha
+share, and the simulation records the first crossing across the entire family.
+This closes the finite optional-stopping simulation gap for declared selection
+choices; it still does not prove that a market score stream satisfies the
+conditional-mean null.
+
 Minimum protocol for a research release:
 
 1. Freeze detector configuration, source revision, dependency fingerprint, and
