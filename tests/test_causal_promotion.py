@@ -18,6 +18,7 @@ from topology_gate.causal_promotion import (
     CausalPromotionError,
     run_causal_promotion_replay,
 )
+from topology_gate.manifest import RunSpec, StudyManifest, StudySpec, StudyWindow
 from topology_gate.promotion import PromotionGate
 from topology_gate.replay import ReplayConfig, ReplayStatus
 
@@ -105,6 +106,30 @@ def config() -> CausalPromotionConfig:
         incumbent_id="incumbent",
         eta=0.5,
         utility_cap=1.0,
+    )
+
+
+def study_manifest() -> StudyManifest:
+    return StudyManifest(
+        StudySpec(
+            run_spec=RunSpec(
+                run_id="promotion-study",
+                input_vintage_id="vintage:v1",
+                universe_id="universe:v1",
+                config_id="config:v1",
+                backend_id="backend:v1",
+                dependency_id="deps:v1",
+                seed_id="seed:v1",
+                thread_id="thread:v1",
+            ),
+            feature_schema_id="features:v1",
+            label_spec_id="labels:v1",
+            economic_spec_id="economic:v1",
+            calibration_window=StudyWindow("calibration", 0, 2),
+            tuning_window=StudyWindow("tuning", 2, 4),
+            validation_window=StudyWindow("validation", 4, 6),
+            holdout_window=StudyWindow("holdout", 6, 8),
+        )
     )
 
 
@@ -238,4 +263,40 @@ def test_state_identity_and_constant_eta_contract_are_fail_closed() -> None:
             ("t1",),
             gate=dynamic_gate,
             replay_config=replay_settings(finalize_unresolved=False),
+        )
+
+
+def test_causal_promotion_binds_the_study_phase_and_manifest_identity() -> None:
+    manifest = study_manifest()
+    result = run_causal_promotion_replay(
+        observation_book(),
+        (1,),
+        ("t1",),
+        plan=binding_plan(),
+        challenger=FixedLearner(0.0),
+        incumbent=FixedLearner(1.0),
+        gate=make_gate(),
+        config=config(),
+        replay_config=replay_settings(finalize_unresolved=False),
+        study_manifest=manifest,
+        study_phase="calibration",
+        decision_indices=(0,),
+    )
+    assert result.study_manifest_digest == manifest.digest
+    assert result.state.model_state["study_manifest_digest"] == manifest.digest
+
+    with pytest.raises(CausalPromotionError, match="sealed study holdout"):
+        run_causal_promotion_replay(
+            observation_book(),
+            (1,),
+            ("t1",),
+            plan=binding_plan(),
+            challenger=FixedLearner(0.0),
+            incumbent=FixedLearner(1.0),
+            gate=make_gate(),
+            config=config(),
+            replay_config=replay_settings(finalize_unresolved=False),
+            study_manifest=manifest,
+            study_phase="holdout",
+            decision_indices=(6,),
         )

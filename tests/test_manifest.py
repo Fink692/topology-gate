@@ -207,6 +207,23 @@ def test_study_manifest_holdout_release_is_explicit_and_irreversible() -> None:
         opened.open_holdout("second-release")
 
 
+def test_study_manifest_phase_checks_reject_sealed_holdout_and_out_of_window_indices() -> None:
+    sealed = StudyManifest(_study())
+    assert sealed.spec.window_for_phase("tuning").name == "tuning"
+    sealed.assert_indices_allowed((105, 150, 199), "tuning")
+    with pytest.raises(ManifestValidationError, match="sealed study holdout"):
+        sealed.assert_index_allowed(305, "holdout")
+    with pytest.raises(ManifestValidationError, match="outside"):
+        sealed.assert_index_allowed(100, "tuning")
+    with pytest.raises(ManifestValidationError, match="strictly increasing"):
+        sealed.assert_indices_allowed((105, 105), "tuning")
+    with pytest.raises(ManifestValidationError, match="calibration, tuning"):
+        sealed.spec.window_for_phase("test")
+
+    opened = sealed.open_holdout("release")
+    opened.assert_indices_allowed((305, 350, 399), "holdout")
+
+
 def test_study_manifest_rejects_unknown_status_or_schema_version() -> None:
     with pytest.raises(ManifestValidationError, match="holdout_status"):
         StudyManifest(_study(), holdout_status="peeked")

@@ -21,6 +21,7 @@ from topology_gate.causal_numeric import (
     FeatureBinding,
     run_causal_rls_replay,
 )
+from topology_gate.manifest import RunSpec, StudyManifest, StudySpec, StudyWindow
 from topology_gate.persistent import (
     PersistentLaplacianBackend,
     PersistentLaplacianConfig,
@@ -177,6 +178,31 @@ def make_book(*, missing: bool = False) -> AsOfBook:
 
 def make_learner() -> RLS:
     return RLS(RLSConfig(n_features=1, lambda_min=0.8, lambda_max=1.0))
+
+
+def study_manifest() -> StudyManifest:
+    run_spec = RunSpec(
+        run_id="numeric-study",
+        input_vintage_id="vintage:v1",
+        universe_id="universe:v1",
+        config_id="config:v1",
+        backend_id="backend:v1",
+        dependency_id="deps:v1",
+        seed_id="seed:v1",
+        thread_id="thread:v1",
+    )
+    return StudyManifest(
+        StudySpec(
+            run_spec=run_spec,
+            feature_schema_id="features:v1",
+            label_spec_id="labels:v1",
+            economic_spec_id="economic:v1",
+            calibration_window=StudyWindow("calibration", 0, 2),
+            tuning_window=StudyWindow("tuning", 2, 4),
+            validation_window=StudyWindow("validation", 4, 6),
+            holdout_window=StudyWindow("holdout", 6, 8),
+        )
+    )
 
 
 def make_panel_learner() -> RLS:
@@ -457,6 +483,83 @@ def test_panel_plan_requires_one_fixed_field_schema() -> None:
             plan=plan_with_mismatched_fields,
             learner=make_panel_learner(),
             model_config=CausalRLSConfig(model_id="mismatched-panel-fields"),
+        )
+
+
+def test_causal_numeric_binds_study_phase_and_holdout_identity() -> None:
+    manifest = study_manifest()
+    result = run_causal_rls_replay(
+        make_book(),
+        (1,),
+        ("t1",),
+        plan=plan(),
+        learner=make_learner(),
+        model_config=CausalRLSConfig(model_id="study-boundary"),
+        study_manifest=manifest,
+        study_phase="calibration",
+        decision_indices=(0,),
+    )
+    assert result.study_manifest_digest == manifest.digest
+    assert result.state.model_state["study_manifest_digest"] == manifest.digest
+
+    with pytest.raises(CausalNumericError, match="sealed study holdout"):
+        run_causal_rls_replay(
+            make_book(),
+            (1,),
+            ("t1",),
+            plan=plan(),
+            learner=make_learner(),
+            model_config=CausalRLSConfig(model_id="sealed-holdout"),
+            study_manifest=manifest,
+            study_phase="holdout",
+            decision_indices=(6,),
+        )
+
+    opened = manifest.open_holdout("release-1")
+    opened_result = run_causal_rls_replay(
+        make_book(),
+        (1,),
+        ("t1",),
+        plan=plan(),
+        learner=make_learner(),
+        model_config=CausalRLSConfig(model_id="opened-holdout"),
+        study_manifest=opened,
+        study_phase="holdout",
+        decision_indices=(6,),
+    )
+    assert opened_result.study_manifest_digest == opened.digest
+
+
+def test_causal_numeric_resume_rejects_a_different_study_manifest() -> None:
+    manifest = study_manifest()
+    first = run_causal_rls_replay(
+        make_book(),
+        (1,),
+        ("t1",),
+        plan=plan(),
+        learner=make_learner(),
+        model_config=CausalRLSConfig(model_id="study-resume"),
+        study_manifest=manifest,
+        study_phase="calibration",
+        decision_indices=(0,),
+    )
+    different = StudyManifest(
+        manifest.spec,
+        metadata={"revision": "different"},
+    )
+    with pytest.raises(CausalNumericError, match="study manifest identity"):
+        run_causal_rls_replay(
+            make_book(),
+            (2,),
+            ("t2",),
+            plan=plan(),
+            learner=make_learner(),
+            model_config=CausalRLSConfig(model_id="study-resume"),
+            model_state=first.state.model_state,
+            initial_state=first.state,
+            study_manifest=different,
+            study_phase="calibration",
+            decision_indices=(1,),
         )
 
 

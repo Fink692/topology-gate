@@ -19,6 +19,7 @@ from typing import Any, cast
 import numpy as np
 
 from .asof import AsOfBook, AsOfSnapshot, PointInTimePanel
+from .manifest import ManifestValidationError, StudyManifest
 from .replay import (
     CausalReplayResult,
     ReplayConfig,
@@ -32,7 +33,7 @@ CAUSAL_NUMERIC_SCHEMA = "topology_gate.causal_numeric"
 # Version 2 makes instrument-labelled plans use the canonical panel ordering
 # and membership digest described by ``CausalFeaturePlan.extract_with_panel``.
 # Existing checkpoints must not silently resume under those changed semantics.
-CAUSAL_NUMERIC_VERSION = 2
+CAUSAL_NUMERIC_VERSION = 3
 MAX_CAUSAL_FEATURE_BINDINGS = 256
 MAX_CAUSAL_PENDING_CONTEXTS = 8_192
 
@@ -391,6 +392,7 @@ class CausalRLSModel:
         detector: Any | None = None,
         config: CausalRLSConfig | None = None,
         calibration: Any | None = None,
+        study_manifest_digest: str | None = None,
     ) -> None:
         if not callable(getattr(learner, "predict", None)) or not callable(
             getattr(learner, "update", None)
@@ -412,6 +414,9 @@ class CausalRLSModel:
         self.plan = plan
         self.detector = detector
         self.config = config or CausalRLSConfig()
+        self._study_manifest_digest = _optional_digest(
+            study_manifest_digest, "study manifest digest"
+        )
         if detector is None and calibration is not None:
             raise CausalNumericError(
                 "a calibration certificate requires a topology detector"
@@ -644,6 +649,7 @@ class CausalRLSModel:
             "plan_identity": self.plan.identity,
             "calibration_identity": self._calibration_identity,
             "calibration_authorized": self.calibration_authorized,
+            "study_manifest_digest": self._study_manifest_digest,
             "learner": self.learner.state_dict(),
             "detector_identity": detector_identity,
             "detector": detector_state,
@@ -666,6 +672,8 @@ class CausalRLSModel:
             raise CausalNumericError("causal feature plan identity mismatch")
         if state.get("calibration_identity") != self._calibration_identity:
             raise CausalNumericError("causal calibration identity mismatch")
+        if state.get("study_manifest_digest") != self._study_manifest_digest:
+            raise CausalNumericError("causal study manifest identity mismatch")
         if state.get("calibration_authorized", self.calibration_authorized) != self.calibration_authorized:
             raise CausalNumericError("causal calibration authorization mismatch")
         learner_state = state.get("learner")
@@ -731,6 +739,7 @@ class CausalRLSReplayResult:
     replay: CausalReplayResult
     steps: tuple[CausalStep, ...]
     prediction_start: int = 0
+    study_manifest_digest: str | None = None
 
     @property
     def all_predictions(self) -> tuple[ReplayPrediction, ...]:
@@ -808,8 +817,35 @@ def run_causal_rls_replay(
     replay_config: ReplayConfig | None = None,
     model_state: Mapping[str, Any] | None = None,
     initial_state: ReplayState | None = None,
+    study_manifest: StudyManifest | None = None,
+    study_phase: str | None = None,
+    decision_indices: Sequence[int] | None = None,
 ) -> CausalRLSReplayResult:
     """Run detector-gated RLS through the shared point-in-time transition."""
+
+    if study_manifest is None:
+        if study_phase is not None or decision_indices is not None:
+            raise CausalNumericError(
+                "study_phase and decision_indices require a study_manifest"
+            )
+        study_manifest_digest = None
+    else:
+        if not isinstance(study_manifest, StudyManifest):
+            raise CausalNumericError("study_manifest must be a StudyManifest")
+        if study_phase is None or decision_indices is None:
+            raise CausalNumericError(
+                "study_phase and decision_indices are required with a study_manifest"
+            )
+        indices = tuple(decision_indices)
+        if len(indices) != len(decision_times):
+            raise CausalNumericError(
+                "decision_indices must align with decision_times"
+            )
+        try:
+            study_manifest.assert_indices_allowed(indices, study_phase)
+        except ManifestValidationError as exc:
+            raise CausalNumericError(str(exc)) from exc
+        study_manifest_digest = study_manifest.digest
 
     numeric_config = model_config or CausalRLSConfig()
     model = CausalRLSModel(
@@ -818,6 +854,7 @@ def run_causal_rls_replay(
         detector=detector,
         config=numeric_config,
         calibration=calibration,
+        study_manifest_digest=study_manifest_digest,
     )
     if model_state is not None:
         model.load_state_dict(model_state)
@@ -844,7 +881,12 @@ def run_causal_rls_replay(
         initial_state=initial_state,
     )
     prediction_start = 0 if initial_state is None else len(initial_state.predictions)
-    return CausalRLSReplayResult(result, model.steps, prediction_start)
+    return CausalRLSReplayResult(
+        result,
+        model.steps,
+        prediction_start,
+        study_manifest_digest,
+    )
 
 
 __all__ = [

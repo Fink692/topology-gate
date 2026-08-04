@@ -249,6 +249,24 @@ class StudySpec:
     def digest(self) -> str:
         return sha256(self.to_json().encode("utf-8")).hexdigest()
 
+    def window_for_phase(self, phase: str) -> StudyWindow:
+        """Return the declared window for a study phase."""
+
+        if type(phase) is not str:
+            raise ManifestValidationError("study phase must be a non-blank string")
+        windows = {
+            "calibration": self.calibration_window,
+            "tuning": self.tuning_window,
+            "validation": self.validation_window,
+            "holdout": self.holdout_window,
+        }
+        try:
+            return windows[phase]
+        except KeyError as exc:
+            raise ManifestValidationError(
+                "study phase must be calibration, tuning, validation, or holdout"
+            ) from exc
+
 
 STUDY_SCHEMA: Final[str] = "topology-gate.study-manifest"
 STUDY_VERSION: Final[int] = 1
@@ -299,6 +317,33 @@ class StudyManifest:
 
         if not self.holdout_is_sealed:
             raise ManifestValidationError("study holdout is already opened")
+
+    def assert_index_allowed(self, index: int, phase: str) -> None:
+        """Check one timeline index against the declared phase boundary."""
+
+        if isinstance(index, bool) or not isinstance(index, int) or index < 0:
+            raise ManifestValidationError("study index must be a non-negative integer")
+        if phase == "holdout" and self.holdout_is_sealed:
+            raise ManifestValidationError("sealed study holdout cannot be read")
+        window = self.spec.window_for_phase(phase)
+        if not window.start <= index < window.end:
+            raise ManifestValidationError(
+                f"study index {index} is outside the {phase} window"
+            )
+
+    def assert_indices_allowed(self, indices: tuple[int, ...], phase: str) -> None:
+        """Check a complete ordered decision-index sequence for one phase."""
+
+        if not indices:
+            raise ManifestValidationError("study decision indices must not be empty")
+        previous = -1
+        for index in indices:
+            if index <= previous:
+                raise ManifestValidationError(
+                    "study decision indices must be strictly increasing"
+                )
+            self.assert_index_allowed(index, phase)
+            previous = index
 
     def open_holdout(self, release_id: str) -> "StudyManifest":
         """Return a new manifest recording the explicit holdout release event."""

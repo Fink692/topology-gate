@@ -477,7 +477,10 @@ purge/embargo gap. `StudyManifest` begins with the holdout sealed; opening it
 is an explicit immutable state transition carrying a release ID and a new
 manifest digest. The contract makes selection chronology auditable, but the
 caller must still provide a trustworthy vendor vintage, membership history,
-and sealed data-access process.
+and sealed data-access process. The causal numerical and paired-promotion
+replay adapters optionally require the manifest, phase, and strictly
+increasing timeline indices; the manifest digest is part of checkpointed model
+identity and a sealed holdout is rejected before prediction.
 
 The root seed is never consumed directly by multiple components. A deterministic SHA-256-derived child seed is assigned by stable component name and run ID; Python's process-salted hash() and ambient random state are forbidden.
 

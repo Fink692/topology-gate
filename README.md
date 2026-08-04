@@ -146,6 +146,11 @@ the holdout sealed and records a new digest and release ID only when
 protocol for a real source manifest, not proof that a supplied dataset is
 survivorship-free or economically complete.
 
+The causal numerical and promotion replay adapters can bind a study phase and
+strictly increasing timeline indices to that manifest. The manifest digest is
+stored in model state, so a resumed replay cannot silently switch source
+identity or open a sealed holdout under a different study context.
+
 The dependency-light `AsOfBook` is the corresponding data-boundary contract:
 observations, labels, and universe memberships carry event time, availability,
 source revision, and deterministic ingest order. Its snapshots exclude future

@@ -22,6 +22,7 @@ from typing import Any, cast
 
 from .asof import AsOfBook, AsOfSnapshot
 from .causal_numeric import CausalFeaturePlan
+from .manifest import ManifestValidationError, StudyManifest
 from .promotion import GateStatus, PromotionGate, validate_eta
 from .replay import (
     CausalReplayResult,
@@ -36,7 +37,7 @@ CAUSAL_PROMOTION_SCHEMA = "topology_gate.causal_promotion"
 # Pending comparisons now carry the canonical panel identity used to produce
 # their paired predictions.  Older promotion checkpoints must not resume
 # without that provenance.
-CAUSAL_PROMOTION_VERSION = 2
+CAUSAL_PROMOTION_VERSION = 3
 MAX_CAUSAL_PROMOTION_PENDING = 8_192
 
 
@@ -221,6 +222,7 @@ class CausalPromotionModel:
         gate: PromotionGate,
         *,
         config: CausalPromotionConfig | None = None,
+        study_manifest_digest: str | None = None,
     ) -> None:
         self._validate_learner(challenger, "challenger")
         self._validate_learner(incumbent, "incumbent")
@@ -233,6 +235,9 @@ class CausalPromotionModel:
         self.plan = plan
         self.gate = gate
         self.config = config or CausalPromotionConfig()
+        self._study_manifest_digest = _optional_panel_digest(
+            study_manifest_digest, "study manifest digest"
+        )
         dimensions = {
             int(value)
             for value in (
@@ -456,6 +461,7 @@ class CausalPromotionModel:
             "promotion_id": self.config.promotion_id,
             "config_identity": self.config.identity,
             "plan_identity": self.plan.identity,
+            "study_manifest_digest": self._study_manifest_digest,
             "challenger": _component_state(self.challenger, "challenger"),
             "incumbent": _component_state(self.incumbent, "incumbent"),
             "gate": self.gate.state_dict(),
@@ -490,6 +496,8 @@ class CausalPromotionModel:
             raise CausalPromotionError("causal promotion configuration mismatch")
         if state.get("plan_identity") != self.plan.identity:
             raise CausalPromotionError("causal promotion feature plan mismatch")
+        if state.get("study_manifest_digest") != self._study_manifest_digest:
+            raise CausalPromotionError("causal promotion study manifest mismatch")
         challenger_state = state.get("challenger")
         incumbent_state = state.get("incumbent")
         gate_state = state.get("gate")
@@ -606,6 +614,7 @@ class CausalPromotionReplayResult:
     replay: CausalReplayResult
     steps: tuple[CausalPromotionStep, ...]
     prediction_start: int = 0
+    study_manifest_digest: str | None = None
 
     @property
     def all_predictions(self) -> tuple[ReplayPrediction, ...]:
@@ -656,8 +665,35 @@ def run_causal_promotion_replay(
     replay_config: ReplayConfig | None = None,
     model_state: Mapping[str, Any] | None = None,
     initial_state: ReplayState | None = None,
+    study_manifest: StudyManifest | None = None,
+    study_phase: str | None = None,
+    decision_indices: Sequence[int] | None = None,
 ) -> CausalPromotionReplayResult:
     """Run paired challenger promotion behind the causal replay transition."""
+
+    if study_manifest is None:
+        if study_phase is not None or decision_indices is not None:
+            raise CausalPromotionError(
+                "study_phase and decision_indices require a study_manifest"
+            )
+        study_manifest_digest = None
+    else:
+        if not isinstance(study_manifest, StudyManifest):
+            raise CausalPromotionError("study_manifest must be a StudyManifest")
+        if study_phase is None or decision_indices is None:
+            raise CausalPromotionError(
+                "study_phase and decision_indices are required with a study_manifest"
+            )
+        indices = tuple(decision_indices)
+        if len(indices) != len(decision_times):
+            raise CausalPromotionError(
+                "decision_indices must align with decision_times"
+            )
+        try:
+            study_manifest.assert_indices_allowed(indices, study_phase)
+        except ManifestValidationError as exc:
+            raise CausalPromotionError(str(exc)) from exc
+        study_manifest_digest = study_manifest.digest
 
     settings_config = config or CausalPromotionConfig()
     model = CausalPromotionModel(
@@ -666,6 +702,7 @@ def run_causal_promotion_replay(
         plan,
         gate,
         config=settings_config,
+        study_manifest_digest=study_manifest_digest,
     )
     if model_state is not None:
         model.load_state_dict(model_state)
@@ -692,7 +729,12 @@ def run_causal_promotion_replay(
         initial_state=initial_state,
     )
     prediction_start = 0 if initial_state is None else len(initial_state.predictions)
-    return CausalPromotionReplayResult(result, model.steps, prediction_start)
+    return CausalPromotionReplayResult(
+        result,
+        model.steps,
+        prediction_start,
+        study_manifest_digest,
+    )
 
 
 __all__ = [

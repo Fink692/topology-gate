@@ -163,6 +163,12 @@ the crossing frequency. A Rademacher score stream is a useful algebraic null
 check; it does not verify the conditional-mean assumption for paired market
 utility or pay for data-dependent model selection.
 
+When a `StudyManifest` is supplied, both causal replay adapters validate the
+phase and timeline index before prediction and carry the manifest digest in
+model state. A sealed holdout therefore fails closed at the adapter boundary;
+opening it is a separate, auditable manifest transition. This still cannot
+make an untrusted vendor vintage or an incomplete membership history valid.
+
 ## Minimum evidence before a stronger claim
 
 Any paper or deployment claiming calibrated change detection, anytime-valid
