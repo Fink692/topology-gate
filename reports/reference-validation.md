@@ -5,13 +5,13 @@ Interpreter: CPython 3.12.10
 Scope: bounded research/control layer only; no live-data or execution claim
 
 Supported-interpreter matrix: CPython 3.10.11, 3.11.15, and 3.12.10 each
-passed the current 323-test suite; the 3.10 and 3.11 runs used isolated `uv`
+passed the current 324-test suite; the 3.10 and 3.11 runs used isolated `uv`
 environment. The CPython 3.12 release gate also passed Ruff, mypy, and
 compileall. Coverage is reported from CPython 3.12 for this local run.
 
 ## Reproducible engineering checks
 
-- Full suite: **323 passed**.
+- Full suite: **324 passed**.
 - Configured coverage run: **81.25%** total coverage.
 - Coverage enforcement: configured floor **80%**; the current CPython 3.12
   run clears it at **81.25%** total.

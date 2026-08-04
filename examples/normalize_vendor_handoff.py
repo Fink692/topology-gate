@@ -229,19 +229,52 @@ def _decode_record_times(
 
 
 def _validate_delistings(rows: tuple[dict[str, Any], ...]) -> None:
+    seen: set[tuple[str, Any, int]] = set()
     for index, row in enumerate(rows, 1):
-        _decode_record_times(
+        decoded = _decode_record_times(
             row,
             "delistings",
             index,
             ("event_time", "available_time", "delisting_time"),
         )
+        instrument_id = row["instrument_id"]
+        reason = row["delisting_reason"]
+        if not isinstance(instrument_id, str) or not instrument_id.strip():
+            raise VendorHandoffError(
+                f"delistings line {index} instrument_id must be non-empty"
+            )
+        if not isinstance(reason, str) or not reason.strip():
+            raise VendorHandoffError(
+                f"delistings line {index} delisting_reason must be non-empty"
+            )
         for name in ("source_revision", "ingest_sequence"):
             value = row[name]
             if isinstance(value, bool) or not isinstance(value, int) or value < 0:
                 raise VendorHandoffError(
                     f"delistings line {index} {name} must be a non-negative integer"
                 )
+        try:
+            if decoded["event_time"] > decoded["available_time"]:
+                raise VendorHandoffError(
+                    f"delistings line {index} event_time cannot follow available_time"
+                )
+            if (
+                decoded["delisting_time"] is not None
+                and decoded["delisting_time"] > decoded["available_time"]
+            ):
+                raise VendorHandoffError(
+                    f"delistings line {index} delisting_time cannot follow available_time"
+                )
+        except TypeError as exc:
+            raise VendorHandoffError(
+                f"delistings line {index} times use different domains"
+            ) from exc
+        key = (instrument_id, decoded["event_time"], row["source_revision"])
+        if key in seen:
+            raise VendorHandoffError(
+                f"delistings line {index} duplicates a source revision"
+            )
+        seen.add(key)
         _finite_or_none(row["delisting_return"], f"delistings line {index} delisting_return")
 
 

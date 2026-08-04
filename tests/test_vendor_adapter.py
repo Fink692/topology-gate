@@ -135,3 +135,21 @@ def test_normalize_handoff_rejects_extra_raw_files(tmp_path) -> None:
             economic_cutoff=10,
             output_path=tmp_path / "package.json",
         )
+
+
+def test_normalize_handoff_rejects_duplicate_delisting_revisions(tmp_path) -> None:
+    paths = _write_canonical_handoff(tmp_path)
+    path = paths[0] / "delistings.jsonl"
+    row = path.read_text(encoding="utf-8")
+    path.write_text(row + row, encoding="utf-8")
+
+    with pytest.raises(VendorHandoffError, match="duplicates a source revision"):
+        normalize_handoff(
+            raw_dir=paths[0],
+            run_manifest_path=paths[1],
+            study_manifest_path=paths[2],
+            timeline_path=paths[3],
+            provenance_path=paths[4],
+            economic_cutoff=10,
+            output_path=tmp_path / "package.json",
+        )
