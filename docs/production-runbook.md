@@ -173,6 +173,10 @@ When the vendor adapter produces a canonical `AsOfBook` export, retain its
 versioned JSON and digest beside the `StudyManifest`; restore it with
 `AsOfBook.from_json()` before replay so field, revision, and source-integrity
 failures stop the run at the data boundary.
+Restore the run/study manifest with `RunManifest.from_json()` or
+`StudyManifest.from_json()` and compare the resulting digest with the recorded
+run artifact before consuming any source rows; unknown or missing manifest
+fields are rejected.
 
 ## Release gates
 

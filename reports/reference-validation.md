@@ -6,21 +6,23 @@ Scope: bounded research/control layer only; no live-data or execution claim
 
 ## Reproducible engineering checks
 
-- Full suite: **218 passed**.
-- Configured coverage run: **80.32%** total coverage.
+- Full suite: **220 passed**.
+- Configured coverage run: **80.31%** total coverage.
 - Ruff: passed on `src` and `tests`.
 - Mypy: passed on all 20 source modules.
 - Dependency-light root import: passed without NumPy site packages.
 - Wheel build and isolated target-directory smoke: passed; SHA-256
-  `982f5e977460bf8cab9e3331b9f0a522ebfee4eb5ceea3f49b47767a104d1aae`;
-  the smoke exercised canonical `AsOfBook` source restore, digest-bound
-  `EconomicEvidence` selection/evaluation with cutoff provenance, and sealed
-  challenger registration from the wheel.
+  `d646b9c610fb52d2daf2d05c66200f930df863ca9a8b7c419bfbea9240d7a40a`;
+  the smoke exercised strict `RunManifest`/`StudyManifest` restore, canonical
+  `AsOfBook` source restore, digest-bound `EconomicEvidence`
+  selection/evaluation with cutoff provenance, and sealed challenger
+  registration from the wheel.
 - Authenticated checkpoint, manifest digest, promotion/evidence state, and
   detached restore tests: passed.
 - Study-manifest tests: passed for canonical split identity, ordered
   calibration/tuning/validation/holdout windows, embargo enforcement, and
-  explicit immutable holdout release state; causal numerical and paired
+  explicit immutable holdout release state, strict JSON round-trip, and
+  unknown-field rejection; causal numerical and paired
   promotion adapters reject sealed holdout reads and checkpoint identity
   changes.
 - Canonical as-of source tests: passed for deterministic event-order identity,

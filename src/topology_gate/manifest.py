@@ -98,6 +98,30 @@ def _required_identity(value: Any, name: str) -> _FrozenJsonValue:
     return frozen
 
 
+def _exact_mapping(
+    value: Any,
+    expected: set[str],
+    name: str,
+) -> Mapping[str, Any]:
+    if not isinstance(value, Mapping):
+        raise ManifestValidationError(f"{name} must be a JSON object")
+    if set(value) != expected:
+        raise ManifestValidationError(f"{name} contains unknown or missing fields")
+    return value
+
+
+def _json_mapping(payload: Any, name: str) -> Mapping[str, Any]:
+    if not isinstance(payload, str) or not payload.strip():
+        raise TypeError(f"{name} JSON must be a non-empty string")
+    try:
+        value = json.loads(payload)
+    except json.JSONDecodeError as exc:
+        raise ManifestValidationError(f"{name} JSON is invalid") from exc
+    if not isinstance(value, Mapping):
+        raise ManifestValidationError(f"{name} JSON must contain an object")
+    return value
+
+
 @dataclass(frozen=True, slots=True)
 class RunSpec:
     """Required point-in-time identities that define one research run.
@@ -152,6 +176,28 @@ class RunSpec:
 
         return _canonical_json(self.to_dict())
 
+    @classmethod
+    def from_dict(cls, value: Mapping[str, Any]) -> "RunSpec":
+        fields = {
+            "run_id",
+            "input_vintage_id",
+            "universe_id",
+            "config_id",
+            "backend_id",
+            "dependency_id",
+            "seed_id",
+            "thread_id",
+        }
+        state = _exact_mapping(value, fields, "run specification")
+        try:
+            return cls(**{field: state[field] for field in fields})
+        except (TypeError, ValueError) as exc:
+            raise ManifestValidationError("run specification is invalid") from exc
+
+    @classmethod
+    def from_json(cls, payload: str) -> "RunSpec":
+        return cls.from_dict(_json_mapping(payload, "run specification"))
+
     @property
     def digest(self) -> str:
         """Return the lowercase SHA-256 digest of the canonical specification."""
@@ -177,6 +223,14 @@ class StudyWindow:
 
     def to_dict(self) -> dict[str, JsonValue]:
         return {"name": self.name, "start": self.start, "end": self.end}
+
+    @classmethod
+    def from_dict(cls, value: Mapping[str, Any]) -> "StudyWindow":
+        state = _exact_mapping(value, {"name", "start", "end"}, "study window")
+        try:
+            return cls(name=state["name"], start=state["start"], end=state["end"])
+        except (TypeError, ValueError) as exc:
+            raise ManifestValidationError("study window is invalid") from exc
 
 
 @dataclass(frozen=True, slots=True)
@@ -244,6 +298,39 @@ class StudySpec:
 
     def to_json(self) -> str:
         return _canonical_json(self.to_dict())
+
+    @classmethod
+    def from_dict(cls, value: Mapping[str, Any]) -> "StudySpec":
+        fields = {
+            "run_spec",
+            "feature_schema_id",
+            "label_spec_id",
+            "economic_spec_id",
+            "calibration_window",
+            "tuning_window",
+            "validation_window",
+            "holdout_window",
+            "embargo_steps",
+        }
+        state = _exact_mapping(value, fields, "study specification")
+        try:
+            return cls(
+                run_spec=RunSpec.from_dict(state["run_spec"]),
+                feature_schema_id=state["feature_schema_id"],
+                label_spec_id=state["label_spec_id"],
+                economic_spec_id=state["economic_spec_id"],
+                calibration_window=StudyWindow.from_dict(state["calibration_window"]),
+                tuning_window=StudyWindow.from_dict(state["tuning_window"]),
+                validation_window=StudyWindow.from_dict(state["validation_window"]),
+                holdout_window=StudyWindow.from_dict(state["holdout_window"]),
+                embargo_steps=state["embargo_steps"],
+            )
+        except (TypeError, ValueError) as exc:
+            raise ManifestValidationError("study specification is invalid") from exc
+
+    @classmethod
+    def from_json(cls, payload: str) -> "StudySpec":
+        return cls.from_dict(_json_mapping(payload, "study specification"))
 
     @property
     def digest(self) -> str:
@@ -371,6 +458,33 @@ class StudyManifest:
     def to_json(self) -> str:
         return _canonical_json(self.to_dict())
 
+    @classmethod
+    def from_dict(cls, value: Mapping[str, Any]) -> "StudyManifest":
+        fields = {
+            "schema",
+            "version",
+            "spec",
+            "metadata",
+            "holdout_status",
+            "holdout_release_id",
+        }
+        state = _exact_mapping(value, fields, "study manifest")
+        try:
+            return cls(
+                spec=StudySpec.from_dict(state["spec"]),
+                metadata=state["metadata"],
+                holdout_status=state["holdout_status"],
+                holdout_release_id=state["holdout_release_id"],
+                schema=state["schema"],
+                version=state["version"],
+            )
+        except (TypeError, ValueError) as exc:
+            raise ManifestValidationError("study manifest is invalid") from exc
+
+    @classmethod
+    def from_json(cls, payload: str) -> "StudyManifest":
+        return cls.from_dict(_json_mapping(payload, "study manifest"))
+
 
 @dataclass(frozen=True, slots=True)
 class RunManifest:
@@ -410,6 +524,27 @@ class RunManifest:
         """Serialize the manifest using the digest's canonical JSON encoding."""
 
         return _canonical_json(self.to_dict())
+
+    @classmethod
+    def from_dict(cls, value: Mapping[str, Any]) -> "RunManifest":
+        state = _exact_mapping(
+            value,
+            {"schema", "version", "spec", "metadata"},
+            "run manifest",
+        )
+        try:
+            return cls(
+                spec=RunSpec.from_dict(state["spec"]),
+                metadata=state["metadata"],
+                schema=state["schema"],
+                version=state["version"],
+            )
+        except (TypeError, ValueError) as exc:
+            raise ManifestValidationError("run manifest is invalid") from exc
+
+    @classmethod
+    def from_json(cls, payload: str) -> "RunManifest":
+        return cls.from_dict(_json_mapping(payload, "run manifest"))
 
     @property
     def digest(self) -> str:

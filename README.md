@@ -150,7 +150,9 @@ holdout windows plus an explicit purge/embargo gap. `StudyManifest` starts with
 the holdout sealed and records a new digest and release ID only when
 `open_holdout(...)` is called. This makes the study boundary auditable; it is a
 protocol for a real source manifest, not proof that a supplied dataset is
-survivorship-free or economically complete.
+survivorship-free or economically complete. `RunManifest.from_json()` and
+`StudyManifest.from_json()` strictly restore these identities and reject
+unknown or missing fields.
 
 The causal numerical and promotion replay adapters can bind a study phase and
 strictly increasing timeline indices to that manifest. The manifest digest is

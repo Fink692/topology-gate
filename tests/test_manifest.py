@@ -103,6 +103,38 @@ def test_canonical_json_and_digest_are_order_independent() -> None:
     )
 
 
+def test_manifests_round_trip_through_strict_json_restore() -> None:
+    run = RunManifest(_spec(), metadata={"purpose": "walk-forward"})
+    restored_run = RunManifest.from_json(run.to_json())
+    assert restored_run == run
+    assert restored_run.digest == run.digest
+
+    sealed = StudyManifest(_study(), metadata={"purpose": "pre-registered"})
+    restored_sealed = StudyManifest.from_json(sealed.to_json())
+    assert restored_sealed == sealed
+    assert restored_sealed.digest == sealed.digest
+
+    opened = sealed.open_holdout("release-2026-08-04")
+    assert StudyManifest.from_dict(opened.to_dict()) == opened
+
+
+def test_manifest_restore_rejects_unknown_fields_and_invalid_json() -> None:
+    run_payload = RunManifest(_spec()).to_dict()
+    run_payload["unmodeled_field"] = "reject"
+    with pytest.raises(ManifestValidationError, match="unknown or missing"):
+        RunManifest.from_dict(run_payload)
+
+    study_payload = StudyManifest(_study()).to_dict()
+    study_payload["unmodeled_field"] = "reject"
+    with pytest.raises(ManifestValidationError, match="unknown or missing"):
+        StudyManifest.from_dict(study_payload)
+
+    with pytest.raises(ManifestValidationError, match="JSON is invalid"):
+        RunManifest.from_json("{not-json}")
+    with pytest.raises(ManifestValidationError, match="must contain an object"):
+        StudyManifest.from_json("[]")
+
+
 @pytest.mark.parametrize(
     ("field", "value"),
     [
