@@ -125,7 +125,9 @@ through the declared score specification; caller-supplied utility pairs remain
 diagnostic-only. Its checkpoint fingerprint also detects direct gate evidence
 injection or reset outside the ledger. `PromotionEvidenceConfig` makes the
 run/family, score, null, missingness, allocation, dependency, backend, and
-manifest identities explicit; without a certified configuration the ledger
+manifest identities explicit; certified configurations must also explicitly
+declare predictable missingness. That declaration records the required null
+assumption but does not prove it. Without a certified configuration the ledger
 reports a diagnostic claim only. This materially strengthens the audit
 contract, but the conditional null and the model/feature selection budget still
 require an independent pre-registered study.

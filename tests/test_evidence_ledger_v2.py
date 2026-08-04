@@ -30,6 +30,7 @@ def _config() -> PromotionEvidenceConfig:
         initial_wealth=1.0,
         score_bound=1.0,
         certified=True,
+        missingness_predictable=True,
     )
 
 
@@ -305,6 +306,11 @@ def test_certified_evidence_rejects_placeholder_policy_identities() -> None:
         replace(
             _config(),
             eta_policy_id="gate-default",
+        )
+    with pytest.raises(ValueError, match="predictable-missingness"):
+        replace(
+            _config(),
+            missingness_predictable=False,
         )
 
 

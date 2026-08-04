@@ -95,6 +95,9 @@ class PromotionEvidenceConfig:
     ``certified=False`` is intentional for compatibility callers that only
     want diagnostic e-values.  A certified claim requires non-placeholder run,
     source, code, backend, dependency, score, eta, and missingness identities.
+    ``missingness_predictable`` is an explicit declaration that terminal
+    missingness is determined without the unobserved label; it is a contract
+    boundary, not an empirical proof of that assumption.
     Changing any field changes :attr:`identity` and therefore starts a new
     evidence family rather than mutating an old one.
     """
@@ -116,6 +119,7 @@ class PromotionEvidenceConfig:
     initial_wealth: float = 1.0
     score_bound: float = 1.0
     certified: bool = False
+    missingness_predictable: bool = False
 
     def __post_init__(self) -> None:
         for name in (
@@ -145,6 +149,8 @@ class PromotionEvidenceConfig:
             raise ValueError("score_bound must be greater than zero")
         if not isinstance(self.certified, bool):
             raise ValueError("certified must be boolean")
+        if not isinstance(self.missingness_predictable, bool):
+            raise ValueError("missingness_predictable must be boolean")
         if self.certified:
             non_placeholder = (
                 self.run_id,
@@ -163,6 +169,10 @@ class PromotionEvidenceConfig:
             )
             if any(value in {"unbound", "gate-default", "diagnostic-missing.v1"} for value in non_placeholder):
                 raise ValueError("certified evidence requires non-placeholder identities")
+            if not self.missingness_predictable:
+                raise ValueError(
+                    "certified evidence requires an explicit predictable-missingness declaration"
+                )
         object.__setattr__(self, "global_alpha", alpha)
         object.__setattr__(self, "initial_wealth", wealth)
         object.__setattr__(self, "score_bound", bound)
@@ -177,7 +187,7 @@ class PromotionEvidenceConfig:
 
     def state_dict(self, *, include_identity: bool = True) -> dict[str, Any]:
         result: dict[str, Any] = {
-            "version": 1,
+            "version": 2,
             "schema": "topology_gate.promotion_evidence_config",
             "run_id": self.run_id,
             "family_id": self.family_id,
@@ -196,6 +206,7 @@ class PromotionEvidenceConfig:
             "initial_wealth": self.initial_wealth,
             "score_bound": self.score_bound,
             "certified": self.certified,
+            "missingness_predictable": self.missingness_predictable,
         }
         if include_identity:
             result["identity"] = self.identity
@@ -205,7 +216,7 @@ class PromotionEvidenceConfig:
     def from_state_dict(cls, state: Mapping[str, Any]) -> "PromotionEvidenceConfig":
         if not isinstance(state, Mapping):
             raise ValueError("evidence config must be a mapping")
-        if state.get("version") != 1 or state.get("schema") != "topology_gate.promotion_evidence_config":
+        if state.get("version") not in {1, 2} or state.get("schema") != "topology_gate.promotion_evidence_config":
             raise ValueError("unsupported evidence config version or schema")
         candidate = cls(
             run_id=cast(str, state.get("run_id")),
@@ -225,6 +236,7 @@ class PromotionEvidenceConfig:
             initial_wealth=cast(float, state.get("initial_wealth", 1.0)),
             score_bound=cast(float, state.get("score_bound", 1.0)),
             certified=state.get("certified", False),
+            missingness_predictable=state.get("missingness_predictable", False),
         )
         identity = state.get("identity")
         if identity is not None and identity != candidate.identity:
