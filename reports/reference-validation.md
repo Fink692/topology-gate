@@ -5,20 +5,20 @@ Interpreter: CPython 3.12.10
 Scope: bounded research/control layer only; no live-data or execution claim
 
 Supported-interpreter matrix: CPython 3.10.11 and 3.11.15 also passed the full
-241-test suite, Ruff, mypy, and compileall in isolated environments. Coverage
+242-test suite, Ruff, mypy, and compileall in isolated environments. Coverage
 is reported from CPython 3.12 only.
 
 ## Reproducible engineering checks
 
-- Full suite: **241 passed**.
-- Configured coverage run: **80.61%** total coverage.
+- Full suite: **242 passed**.
+- Configured coverage run: **80.62%** total coverage.
 - Ruff: passed on `src` and `tests`.
 - Mypy: passed on all 22 source modules.
 - Dependency-light root import: passed without NumPy site packages.
 - Wheel build and isolated target-directory smoke: passed; SHA-256
-  `20ab6a128f570ce39446381a7f1c128963e8e1426a71c42dc3d663ba2f7d2fad`;
-  the build sets `SOURCE_DATE_EPOCH` from the latest package-source commit;
-  two consecutive builds under the same source date produced the same digest;
+  `5a0f1385aaafefbd215d5fc3edab6f7fa7a610e60ffa8a1c0e80dee93f4776e6`;
+  source commit `8f53ae0` supplied `SOURCE_DATE_EPOCH=1785859390`; two
+  consecutive builds under the same source date produced the same digest;
   the smoke exercised strict online-state/checkpoint restore, strict
   `RunManifest`/`StudyManifest` restore, canonical `AsOfBook` source restore,
   digest-bound `EconomicEvidence` selection/evaluation with cutoff provenance,
@@ -38,9 +38,10 @@ is reported from CPython 3.12 only.
   digest-free diagnostic restore.
 - Strict study-input bundle tests: passed for ordered timeline identity,
   dynamic expected-universe preflight, target-label visibility rejection,
-  sealed-holdout enforcement, economic evidence completeness, and causal RLS
-  wrapper receipts/economic-decision conversion. This binds normalized source
-  artifacts before replay but does not validate a vendor source itself.
+  sealed-holdout enforcement, economic evidence completeness, causal RLS
+  wrapper receipts/economic-decision conversion, and paired promotion wrapper
+  receipts. This binds normalized source artifacts before replay but does not
+  validate a vendor source itself.
 - Causal replay prediction-before-label, future-prefix invariance, explicit
   missing/invalid status, chained-record tamper detection, and model-state
   restore tests: passed; composite causal numerical and paired-promotion
@@ -141,11 +142,11 @@ therefore fail-closed.
 
 | Gate | Disposition | Evidence |
 |---|---|---|
-| G0 identity/claim freeze | Partial/pass for the declared protocol | `RunSpec`, `RunManifest`, `StudySpec`, sealed/opened `StudyManifest`, strict `StudyInputBundle`/`StudyTimeline` preflight, evidence config, as-of records, and authenticated checkpoint identities exist; no vendor adapter or source package is present. |
+| G0 identity/claim freeze | Partial/pass for the declared protocol | `RunSpec`, `RunManifest`, `StudySpec`, sealed/opened `StudyManifest`, strict `StudyInputBundle`/`StudyTimeline` preflight, `run_causal_rls_study`/`run_causal_promotion_study`, evidence config, as-of records, and authenticated checkpoint identities exist; no vendor adapter or source package is present. |
 | G1 exact persistent MVP | Pass for bounded reference scope | `persistent.py` plus hand-built and algebraic invariants, and the exploratory `PersistentLaplacianCUSUM` controller; only the declared finite VR/F2/q/pair construction is covered. |
 | G2 calibrated forgetting | Fail for a calibrated claim | The persistent-spectrum controller and calibration harness are exercised, and the harness caught a false-alarm failure; no independent market/dependence calibration artifact authorizes accelerated forgetting. |
 | G3 recursive transactional state | Partial/pass for the migrated path | `CausalReplay` drives numerical detector/RLS plus paired challenger/`PromotionGate` state with prediction-time factor/utility capture, model-state rollback, and detached restore; legacy workers and the generic evidence-ledger path are not all one transaction. |
-| G4 causal replay/recovery | Partial/pass for the migrated path | `AsOfBook`, `PointInTimePanel`, `StudyInputBundle`, `StudyTimeline`, `StudyManifest` phase checks, `CausalReplay`, `CausalRLSModel`, paired promotion, delayed-label ledger, chunk state, HMAC restore, prefix invariance, future append acceptance, consumed-prefix revision rejection, canonical panel identity, and terminal pending cleanup are tested; legacy row adapters remain compatibility paths. |
+| G4 causal replay/recovery | Partial/pass for the migrated path | `AsOfBook`, `PointInTimePanel`, `StudyInputBundle`, `StudyTimeline`, `StudyManifest` phase checks, the RLS and paired-promotion study wrappers, `CausalReplay`, `CausalRLSModel`, paired promotion, delayed-label ledger, chunk state, HMAC restore, prefix invariance, future append acceptance, consumed-prefix revision rejection, canonical panel identity, and terminal pending cleanup are tested; legacy row adapters remain compatibility paths. |
 | G5 economic validation | Contract pass; market evidence not evaluated | `economic.py` is fail-closed for separate returns/costs and explicit abstention accounting, and `StudyManifest` records a sealed holdout boundary, but no point-in-time vendor data, capacity, delistings, or opened final holdout evidence are present. |
 
 The package remains research/alpha. The evidence needed to upgrade the two
