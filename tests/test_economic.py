@@ -241,6 +241,12 @@ def test_economic_evidence_bundle_is_digest_bound_and_selects_visible_revisions(
     assert before_correction[1]["t1"].fee_rate == 0.01
     assert after_correction[1]["t1"].fee_rate == 0.02
     assert EconomicEvidence.from_json(bundle.to_json()) == bundle
+    reordered = EconomicEvidence(
+        "vendor-vintage:v1",
+        realized_returns=(early_return, corrected_return),
+        execution_costs=(early_cost, corrected_cost),
+    )
+    assert reordered.digest == bundle.digest
 
     result = evaluate_economic_evidence_path(
         (decision("t1", 1, 0.5),),
@@ -249,6 +255,8 @@ def test_economic_evidence_bundle_is_digest_bound_and_selects_visible_revisions(
         config=EconomicEvaluationConfig(cost_model_id="rates-v1"),
     )
     assert result.evidence_digest == bundle.digest
+    assert result.evidence_cutoff == 4
+    assert result.to_dict()["evidence_cutoff"] == {"kind": "int", "value": 4}
     assert result.rows[0].realized_return == pytest.approx(0.1)
 
     tampered = dict(bundle.to_dict())
@@ -265,6 +273,23 @@ def test_economic_evidence_bundle_is_digest_bound_and_selects_visible_revisions(
         EconomicEvidence(
             "duplicate",
             realized_returns=(early_return, early_return),
+        )
+
+
+def test_economic_evidence_rejects_mixed_time_domains_before_selection() -> None:
+    with pytest.raises(EconomicEvaluationError, match="one comparable time domain"):
+        EconomicEvidence(
+            "mixed-domains",
+            realized_returns=(
+                realized("numeric", 1, 0.1),
+                RealizedReturn(
+                    target_id="string",
+                    decision_time="2026-01-01T00:00:00Z",
+                    realization_time="2026-01-01T00:01:00Z",
+                    available_time="2026-01-01T00:02:00Z",
+                    value=0.1,
+                ),
+            ),
         )
 
 def test_non_observed_return_cannot_be_disguised_as_zero() -> None:

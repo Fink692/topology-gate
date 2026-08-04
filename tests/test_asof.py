@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import math
+from datetime import datetime, timezone
 
 import pytest
 
@@ -138,6 +139,33 @@ def test_as_of_book_source_wire_round_trip_is_canonical_and_digest_bound() -> No
     )
     assert reordered.digest == book.digest
     assert reordered.to_json() == book.to_json()
+
+
+def test_as_of_book_source_wire_preserves_datetime_time_domain() -> None:
+    event_time = datetime(2026, 1, 2, 14, 30, tzinfo=timezone.utc)
+    available_time = datetime(2026, 1, 2, 14, 31, tzinfo=timezone.utc)
+    book = AsOfBook(
+        observations=(
+            MarketObservation(
+                record_id="datetime-record",
+                instrument_id="ES",
+                event_time=event_time,
+                available_time=available_time,
+                source_revision=0,
+                ingest_sequence=0,
+                fields={"value": 1.0},
+            ),
+        )
+    )
+
+    payload = book.to_dict()
+    assert payload["observations"][0]["event_time"] == {
+        "kind": "datetime",
+        "value": event_time.isoformat(),
+    }
+    restored = AsOfBook.from_json(book.to_json())
+    assert restored == book
+    assert isinstance(restored.observations[0].event_time, datetime)
 
 
 def test_as_of_book_source_wire_rejects_tampering_and_unknown_fields() -> None:

@@ -135,6 +135,54 @@ def _time_json(value: TimePoint) -> str | float | int:
     return value
 
 
+def _source_time_json(value: TimePoint) -> Any:
+    """Encode a source time without losing its in-memory type."""
+
+    if isinstance(value, datetime):
+        return {"kind": "datetime", "value": value.isoformat()}
+    return value
+
+
+def _decode_source_time(value: Any, name: str) -> TimePoint:
+    """Decode a source time while retaining legacy primitive time forms."""
+
+    if isinstance(value, Mapping):
+        if set(value) != {"kind", "value"} or value.get("kind") != "datetime":
+            raise AsOfError(f"{name} has an unsupported encoded time")
+        raw = value.get("value")
+        if not isinstance(raw, str) or not raw:
+            raise AsOfError(f"{name} datetime value is invalid")
+        try:
+            return datetime.fromisoformat(raw)
+        except ValueError as exc:
+            raise AsOfError(f"{name} datetime value is invalid") from exc
+    return value
+
+
+def _source_observation_dict(value: MarketObservation) -> dict[str, Any]:
+    payload = value.to_dict()
+    payload["event_time"] = _source_time_json(value.event_time)
+    payload["available_time"] = _source_time_json(value.available_time)
+    return payload
+
+
+def _source_universe_dict(value: UniverseMembership) -> dict[str, Any]:
+    payload = value.to_dict()
+    payload["start"] = _source_time_json(value.start)
+    payload["end"] = None if value.end is None else _source_time_json(value.end)
+    payload["event_time"] = _source_time_json(value.event_time)
+    payload["available_time"] = _source_time_json(value.available_time)
+    return payload
+
+
+def _source_label_dict(value: LabelObservation) -> dict[str, Any]:
+    payload = value.to_dict()
+    payload["event_time"] = _source_time_json(value.event_time)
+    payload["available_time"] = _source_time_json(value.available_time)
+    payload["received_time"] = _source_time_json(value.received_time)
+    return payload
+
+
 def _check_time_domains(events: Sequence[Any]) -> None:
     values: list[TimePoint] = []
     for event in events:
@@ -703,11 +751,14 @@ class AsOfBook:
     @property
     def digest(self) -> str:
         payload = {
+            "kind": "as_of_book",
             "schema": ASOF_BOOK_SCHEMA,
             "version": ASOF_BOOK_VERSION,
-            "observations": [value.to_dict() for value in self._observations],
-            "universe": [value.to_dict() for value in self._universe],
-            "labels": [value.to_dict() for value in self._labels],
+            "observations": [
+                _source_observation_dict(value) for value in self._observations
+            ],
+            "universe": [_source_universe_dict(value) for value in self._universe],
+            "labels": [_source_label_dict(value) for value in self._labels],
         }
         return hashlib.sha256(
             json.dumps(payload, sort_keys=True, separators=(",", ":")).encode()
@@ -716,20 +767,21 @@ class AsOfBook:
     def to_dict(self) -> dict[str, Any]:
         """Return the strict canonical source representation.
 
-        The digest covers the schema, version, and all revision-bearing event
-        records in canonical event order.  JSON serialization supports the
-        primitive time forms accepted by the event contract (integer, finite
-        float, or string); an in-memory ``datetime`` source must be converted
-        to a canonical string by the vendor adapter before serialization.
+        The digest covers the kind, schema, version, and all revision-bearing
+        event records in canonical event order. Primitive times remain compact;
+        in-memory datetimes use an explicit tagged representation so a source
+        round-trip cannot silently change the time domain.
         """
 
         return {
             "kind": "as_of_book",
             "schema": ASOF_BOOK_SCHEMA,
             "version": ASOF_BOOK_VERSION,
-            "observations": [value.to_dict() for value in self._observations],
-            "universe": [value.to_dict() for value in self._universe],
-            "labels": [value.to_dict() for value in self._labels],
+            "observations": [
+                _source_observation_dict(value) for value in self._observations
+            ],
+            "universe": [_source_universe_dict(value) for value in self._universe],
+            "labels": [_source_label_dict(value) for value in self._labels],
             "digest": self.digest,
         }
 
@@ -824,7 +876,14 @@ class AsOfBook:
                 f"observation[{index}]",
             )
             try:
-                observations.append(MarketObservation(**dict(row)))
+                values = dict(row)
+                values["event_time"] = _decode_source_time(
+                    values["event_time"], f"observation[{index}].event_time"
+                )
+                values["available_time"] = _decode_source_time(
+                    values["available_time"], f"observation[{index}].available_time"
+                )
+                observations.append(MarketObservation(**values))
             except (TypeError, ValueError) as exc:
                 raise AsOfError(f"invalid as-of book observation[{index}]") from exc
         universe: list[UniverseMembership] = []
@@ -843,7 +902,21 @@ class AsOfBook:
                 f"universe[{index}]",
             )
             try:
-                universe.append(UniverseMembership(**dict(row)))
+                values = dict(row)
+                values["start"] = _decode_source_time(
+                    values["start"], f"universe[{index}].start"
+                )
+                if values["end"] is not None:
+                    values["end"] = _decode_source_time(
+                        values["end"], f"universe[{index}].end"
+                    )
+                values["event_time"] = _decode_source_time(
+                    values["event_time"], f"universe[{index}].event_time"
+                )
+                values["available_time"] = _decode_source_time(
+                    values["available_time"], f"universe[{index}].available_time"
+                )
+                universe.append(UniverseMembership(**values))
             except (TypeError, ValueError) as exc:
                 raise AsOfError(f"invalid as-of book universe[{index}]") from exc
         labels: list[LabelObservation] = []
@@ -864,7 +937,17 @@ class AsOfBook:
                 f"label[{index}]",
             )
             try:
-                labels.append(LabelObservation(**dict(row)))
+                values = dict(row)
+                values["event_time"] = _decode_source_time(
+                    values["event_time"], f"label[{index}].event_time"
+                )
+                values["available_time"] = _decode_source_time(
+                    values["available_time"], f"label[{index}].available_time"
+                )
+                values["received_time"] = _decode_source_time(
+                    values["received_time"], f"label[{index}].received_time"
+                )
+                labels.append(LabelObservation(**values))
             except (TypeError, ValueError) as exc:
                 raise AsOfError(f"invalid as-of book label[{index}]") from exc
         try:

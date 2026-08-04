@@ -6,16 +6,16 @@ Scope: bounded research/control layer only; no live-data or execution claim
 
 ## Reproducible engineering checks
 
-- Full suite: **216 passed**.
-- Configured coverage run: **80.16%** total coverage.
+- Full suite: **218 passed**.
+- Configured coverage run: **80.32%** total coverage.
 - Ruff: passed on `src` and `tests`.
 - Mypy: passed on all 20 source modules.
 - Dependency-light root import: passed without NumPy site packages.
 - Wheel build and isolated target-directory smoke: passed; SHA-256
-  `83cf395a288e0bce974af221912d4c7b23f89cbdc258d20013c456aea7dccaa4`;
+  `982f5e977460bf8cab9e3331b9f0a522ebfee4eb5ceea3f49b47767a104d1aae`;
   the smoke exercised canonical `AsOfBook` source restore, digest-bound
-  `EconomicEvidence` selection/evaluation, and sealed challenger registration
-  from the wheel.
+  `EconomicEvidence` selection/evaluation with cutoff provenance, and sealed
+  challenger registration from the wheel.
 - Authenticated checkpoint, manifest digest, promotion/evidence state, and
   detached restore tests: passed.
 - Study-manifest tests: passed for canonical split identity, ordered
@@ -24,8 +24,9 @@ Scope: bounded research/control layer only; no live-data or execution claim
   promotion adapters reject sealed holdout reads and checkpoint identity
   changes.
 - Canonical as-of source tests: passed for deterministic event-order identity,
-  versioned JSON round-trip, digest verification, unknown-field rejection,
-  malformed source rejection, and explicit digest-free diagnostic restore.
+  versioned JSON round-trip including typed datetimes, digest verification,
+  unknown-field rejection, malformed source rejection, and explicit
+  digest-free diagnostic restore.
 - Causal replay prediction-before-label, future-prefix invariance, explicit
   missing/invalid status, chained-record tamper detection, and model-state
   restore tests: passed.
@@ -56,7 +57,7 @@ Scope: bounded research/control layer only; no live-data or execution claim
   identity mismatches, unavailable costs, explicit missing/censored return
   records, zero-placeholder rejection, strict capacity-evidence/turnover
   breach handling, digest-bound revision bundles, and explicit evidence-cutoff
-  evaluation.
+  evaluation with recorded cutoff provenance.
 - Paired causal-promotion tests: passed for prediction-time freezing,
   settlement-only gate advancement, missing/unresolved cleanup, one-shot versus
   resumed state equivalence, constant-eta enforcement, checkpointed

@@ -204,7 +204,8 @@ into the per-step causal telemetry; canonical feature/state panel digests are
 carried alongside it; malformed digests fail closed.
 `EconomicEvidence` provides the corresponding digest-bound revision bundle for
 realized returns and execution costs; call `select_at(...)` before evaluation
-to make the evidence cutoff explicit.
+to make the evidence cutoff explicit, or use the wrapper that records both the
+bundle digest and cutoff in the economic result.
 
 `run_causal_promotion_replay` composes the same transition with paired
 challenger/incumbent learners and the existing alpha-spending promotion gate.

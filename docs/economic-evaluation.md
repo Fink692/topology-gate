@@ -61,4 +61,7 @@ revisions in a versioned, digest-bound JSON artifact. Use
 `bundle.select_at(cutoff)` to choose only records whose availability is visible
 at the declared evidence cutoff; the highest visible source revision wins, and
 conflicting decision times for one target fail closed. Pass the resulting
-mappings to `evaluate_economic_path` with a matching `EconomicEvaluationConfig`.
+mapping to `evaluate_economic_path` with a matching `EconomicEvaluationConfig`,
+or call `evaluate_economic_evidence_path(...)` to bind the bundle digest and
+cutoff into the result artifact. The result does not silently treat a later
+revision as if it had been visible at an earlier cutoff.

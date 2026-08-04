@@ -114,6 +114,50 @@ def _lt(left: TimePoint, right: TimePoint, name: str) -> bool:
         raise EconomicEvaluationError(f"{name} values use different time domains") from exc
 
 
+def _time_domain(value: TimePoint) -> str:
+    if isinstance(value, datetime):
+        return "datetime"
+    if isinstance(value, str):
+        return "str"
+    return "numeric"
+
+
+def _check_time_domains(values: Iterable[TimePoint]) -> None:
+    times = tuple(values)
+    domains = {_time_domain(value) for value in times}
+    if len(domains) > 1:
+        raise EconomicEvaluationError(
+            "economic evidence times must use one comparable time domain"
+        )
+    if len(times) > 1:
+        anchor = times[0]
+        for value in times[1:]:
+            _le(anchor, value, "economic evidence time")
+            _le(value, anchor, "economic evidence time")
+
+
+def _time_order_key(value: TimePoint) -> tuple[str, Any]:
+    return (_time_domain(value), value)
+
+
+def _return_order_key(value: RealizedReturn) -> tuple[Any, ...]:
+    return (
+        _time_order_key(value.available_time),
+        _time_order_key(value.decision_time),
+        value.target_id,
+        value.source_revision,
+    )
+
+
+def _cost_order_key(value: ExecutionCost) -> tuple[Any, ...]:
+    return (
+        _time_order_key(value.available_time),
+        _time_order_key(value.decision_time),
+        value.target_id,
+        value.source_revision,
+    )
+
+
 @dataclass(frozen=True, slots=True)
 class EconomicDecision:
     """One position emitted at a decision boundary."""
@@ -317,6 +361,20 @@ class EconomicEvidence:
             raise EconomicEvaluationError(
                 "execution_costs must contain ExecutionCost values"
             )
+        evidence_times: list[TimePoint] = []
+        for return_item in returns:
+            evidence_times.extend(
+                (
+                    return_item.decision_time,
+                    return_item.realization_time,
+                    return_item.available_time,
+                )
+            )
+        for cost_item in costs:
+            evidence_times.extend(
+                (cost_item.decision_time, cost_item.execution_time, cost_item.available_time)
+            )
+        _check_time_domains(evidence_times)
         return_keys: set[tuple[str, TimePoint, int]] = set()
         for return_item in returns:
             key = (
@@ -337,8 +395,8 @@ class EconomicEvidence:
                     "economic evidence contains duplicate execution-cost revisions"
                 )
             cost_keys.add(key)
-        object.__setattr__(self, "realized_returns", returns)
-        object.__setattr__(self, "execution_costs", costs)
+        object.__setattr__(self, "realized_returns", tuple(sorted(returns, key=_return_order_key)))
+        object.__setattr__(self, "execution_costs", tuple(sorted(costs, key=_cost_order_key)))
 
     def _payload(self) -> dict[str, Any]:
         return {
@@ -643,14 +701,24 @@ class EconomicEvaluationResult:
     metrics: Mapping[str, float]
     digest: str
     evidence_digest: str | None = None
+    evidence_cutoff: TimePoint | None = None
 
     def __post_init__(self) -> None:
         if not isinstance(self.config_identity, str) or not self.config_identity:
             raise EconomicEvaluationError("config_identity must be non-empty")
         object.__setattr__(self, "rows", tuple(self.rows))
         object.__setattr__(self, "metrics", MappingProxyType(dict(self.metrics)))
-        if not isinstance(self.digest, str) or len(self.digest) != 64:
-            raise EconomicEvaluationError("economic result digest must be SHA-256")
+        if (
+            not isinstance(self.digest, str)
+            or len(self.digest) != 64
+            or any(character not in "0123456789abcdefABCDEF" for character in self.digest)
+        ):
+            raise EconomicEvaluationError(
+                "economic result digest must be a 64-character hexadecimal value"
+            )
+        object.__setattr__(self, "digest", self.digest.lower())
+        if self.evidence_cutoff is not None:
+            _time_key(self.evidence_cutoff)
         if self.evidence_digest is not None:
             if (
                 not isinstance(self.evidence_digest, str)
@@ -695,6 +763,11 @@ class EconomicEvaluationResult:
             ],
             "metrics": dict(self.metrics),
             "evidence_digest": self.evidence_digest,
+            "evidence_cutoff": (
+                None
+                if self.evidence_cutoff is None
+                else _encode_time(self.evidence_cutoff)
+            ),
             "digest": self.digest,
         }
 
@@ -729,6 +802,7 @@ def evaluate_economic_path(
     *,
     config: EconomicEvaluationConfig | None = None,
     evidence_digest: str | None = None,
+    evidence_cutoff: TimePoint | None = None,
 ) -> EconomicEvaluationResult:
     """Evaluate an explicit position path using separately sourced evidence.
 
@@ -752,6 +826,8 @@ def evaluate_economic_path(
                 "evidence_digest must be a 64-character hexadecimal value"
             )
         evidence_digest = evidence_digest.lower()
+    if evidence_cutoff is not None:
+        _time_key(evidence_cutoff)
     decision_values = tuple(decisions)
     if len(decision_values) > settings.max_steps:
         raise EconomicEvaluationError("decisions exceed the configured resource limit")
@@ -913,6 +989,9 @@ def evaluate_economic_path(
         "version": ECONOMIC_VERSION,
         "config_identity": settings.identity,
         "evidence_digest": evidence_digest,
+        "evidence_cutoff": (
+            None if evidence_cutoff is None else _encode_time(evidence_cutoff)
+        ),
         "rows": [
             {
                 "decision": row.decision.to_dict(),
@@ -939,6 +1018,7 @@ def evaluate_economic_path(
         metrics,
         digest,
         evidence_digest,
+        evidence_cutoff,
     )
 
 
@@ -960,6 +1040,7 @@ def evaluate_economic_evidence_path(
         execution_costs,
         config=config,
         evidence_digest=evidence.digest,
+        evidence_cutoff=availability_time,
     )
 
 
