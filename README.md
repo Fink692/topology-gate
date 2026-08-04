@@ -1,0 +1,130 @@
+# topology-gate
+
+`topology-gate` is a small, typed Python package boundary for research on a
+topology-gated recursive quant model. It defines the objects and protocols that
+connect five independently implemented pieces:
+
+- a topology detector;
+- a recursive least-squares (RLS) learner;
+- an e-process gate;
+- a synthetic-data generator; and
+- an offline backtest/evaluation runner.
+
+This repository does not claim that a topology signal predicts returns or that a
+gate is statistically valid for a particular data-generating process. The
+algorithms, assumptions, and calibration procedures belong in their respective
+worker modules and must be evaluated empirically.
+
+The default detector is a causal k-nearest-neighbour normalized-Laplacian
+spectral approximation. It is explicitly not a persistent-Laplacian or
+persistent-homology implementation. The e-process primitive is valid only for
+its documented bounded conditional-mean score and predictable betting rule;
+the surrounding caller must enforce data availability, selection, and risk
+controls.
+
+## Install
+
+The core package has no runtime dependencies:
+
+```bash
+python -m pip install -e .
+```
+
+Install only the optional numerical stack needed by a worker module:
+
+```bash
+python -m pip install -e ".[numeric]"      # NumPy-based computation
+python -m pip install -e ".[statistics]"   # NumPy plus SciPy routines
+python -m pip install -e ".[data]"         # NumPy plus pandas adapters
+python -m pip install -e ".[test]"
+```
+
+NumPy, SciPy, and pandas are optional because the shared types use only the
+standard library. The extras make the dependency boundary explicit: numerical
+workers can require NumPy, statistical helpers can require SciPy, and tabular
+adapters can require pandas without imposing those packages on every caller.
+The release-gate direct pins are recorded in
+[`requirements-release-py312.txt`](requirements-release-py312.txt); numerical
+results still depend on the platform's BLAS/runtime implementation.
+
+## Stable package boundary
+
+The package root exports the shared types from `topology_gate.types`:
+
+```python
+from topology_gate import (
+    BacktestDatasetProtocol,
+    BacktesterProtocol,
+    TopologySignal,
+)
+
+
+def evaluate_offline(
+    backtester: BacktesterProtocol,
+    dataset: BacktestDatasetProtocol,
+):
+    return backtester.run(dataset)
+
+
+signal = TopologySignal(score=0.0, confidence=None)
+```
+
+`ArrayLike` intentionally describes one- or two-dimensional numeric sequences;
+worker implementations may accept NumPy arrays when the `numeric` extra is
+installed. The richer `SyntheticDataset` implementation is owned by
+`topology_gate.synthetic`; the shared API uses `BacktestDatasetProtocol` so it
+does not duplicate that worker-owned class.
+
+The protocols are intentionally narrow integration contracts:
+
+| Component | Required boundary | Shared result |
+| --- | --- | --- |
+| Topology detector | `detect(features)` | worker-owned topology result |
+| RLS learner | `predict(features)` and `update(features, target)` | updated coefficients/state |
+| E-process gate | `update(score, *, eta=None, metadata=None)` | worker-owned promotion decision |
+| Synthetic data | seeded factory callable | worker-owned synthetic dataset |
+| Backtest | `run(features, labels=None, realized_returns=None, ...)` | worker-owned backtest report |
+
+`TopologySignal.score` and `dimension` have no package-wide scale; the detector
+must document their meaning. A detector may put its own threshold result in
+`passed`. `GateDecision` records whether the gate allowed the step, the evidence
+value and threshold used, and an optional topology signal/reason.
+
+## Offline evaluation only
+
+`BacktestConfig` and `BacktestResult` describe sequential model evaluation.
+There are no broker, order, position, account, or live-data interfaces in this
+package. A backtest should make its data split, warmup, update order, gate
+semantics, and reported metrics explicit; it should not be interpreted as a
+live-trading integration.
+
+## Causal replay and checkpoints
+
+`run_recursive_rls` separates training outcomes from realized returns, supports
+fixed delays and explicit `label_available_at` positions, and returns terminal
+pending labels instead of silently discarding them. Pass the returned
+`OnlineStreamState` as `initial_state` with `reset_state=False` to continue a
+chunked replay at its absolute stream position. `CheckpointEnvelope` and
+`checkpoint_from_components` provide canonical JSON state with configuration,
+backend, dependency, learner, detector, online, promotion, and RNG fields. Use
+an HMAC key from a secret manager; authenticated checkpoints are required by
+default and the key is never written into the checkpoint. Plain SHA-256 is
+available only with an explicit trusted-local opt-in.
+
+This is an offline control component. It has no broker, network, order, account,
+or live-data side effect.
+
+## Tests and typing
+
+Run the configured test suite with:
+
+```bash
+python -m pip install -e ".[test]"
+python -m pytest
+ruff check src tests examples
+mypy src
+```
+
+The reusable fixtures in `tests/conftest.py` are deterministic and use only the
+standard library plus pytest. The package metadata also contains a small mypy
+configuration for the typed public boundary.
