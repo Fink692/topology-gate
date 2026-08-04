@@ -251,6 +251,10 @@ class CausalPromotionConfig:
             raise CausalPromotionError("require_sealed_registration must be boolean")
         if not isinstance(self.require_pure_predictions, bool):
             raise CausalPromotionError("require_pure_predictions must be boolean")
+        if self.require_sealed_registration and not self.require_pure_predictions:
+            raise CausalPromotionError(
+                "certified causal promotion requires pure predictions"
+            )
 
     @property
     def identity(self) -> str:

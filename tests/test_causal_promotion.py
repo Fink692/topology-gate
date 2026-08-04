@@ -379,6 +379,9 @@ def test_paired_promotion_rejects_predictor_state_mutation_transactionally() -> 
 
 
 def test_paired_promotion_binds_utility_scale_and_gate_family() -> None:
+    with pytest.raises(CausalPromotionError, match="pure predictions"):
+        CausalPromotionConfig(require_pure_predictions=False)
+
     mismatched_scale = PromotionGate(
         "incumbent", alpha=0.9, eta=0.5, score_bound=0.5
     )
