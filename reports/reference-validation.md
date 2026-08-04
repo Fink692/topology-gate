@@ -11,7 +11,7 @@ compileall. Coverage is reported from CPython 3.12 only.
 
 ## Reproducible engineering checks
 
-- Full suite: **297 passed**.
+- Full suite: **299 passed**.
 - Configured coverage run: **80.91%** total coverage.
 - Coverage enforcement: configured floor **80%**; the current CPython 3.10,
   3.11, and 3.12 runs each clear it at **80.91%** total.
@@ -93,7 +93,10 @@ compileall. Coverage is reported from CPython 3.12 only.
   `--all-pre-holdout` path now audits calibration, tuning, and validation in
   order, writes separate receipts, and explicitly leaves holdout closed.
   The exact external request and field-level handoff contract are recorded in
-  [`docs/vendor-handoff-request.md`](../docs/vendor-handoff-request.md).
+  [`docs/vendor-handoff-request.md`](../docs/vendor-handoff-request.md). The
+  canonical package builder now binds serialized manifests, timeline, as-of
+  book, economic evidence, provenance, explicit cutoff, and exact raw-byte
+  fingerprints before writing `StudySourcePackage`.
 - Heavy-tail expert-allocation tests: passed for Catoni outlier resistance,
   full-information next-boundary selection, switching-cost behavior,
   change-point history resets, deterministic checkpoint round-trip, identity

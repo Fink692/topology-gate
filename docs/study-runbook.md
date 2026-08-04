@@ -120,6 +120,11 @@ This audits `calibration`, `tuning`, and `validation` in that order. It never
 calls the holdout path; opening holdout still requires a new manifest and an
 explicit release event.
 
+If the vendor handoff is still split into canonical artifacts, assemble it
+first with [`examples/build_study_source_package.py`](../examples/build_study_source_package.py);
+that command requires an explicit economic cutoff and verifies every declared
+raw byte before writing the package.
+
 The ordinary `audit(...)` path remains appropriate for synthetic or partial
 engineering runs. It does not authorize a market-performance claim.
 

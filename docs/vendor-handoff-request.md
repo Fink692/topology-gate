@@ -45,7 +45,26 @@ observed realized returns, non-negative execution costs, and capacity limits
 for every required target. Missing, late, revised, or censored records must
 remain explicit; they must not become zeroes.
 
-After the package is placed in `handoff\`:
+After the vendor outputs are placed in `handoff\`, assemble the canonical
+package first. The cutoff is explicit and must use the same time domain as the
+timeline (a string cutoff should be quoted; a numeric cutoff may be passed as
+JSON):
+
+```powershell
+$env:PYTHONPATH = 'src'
+py -3.12 examples\build_study_source_package.py `
+  --run-manifest handoff\run-manifest.json `
+  --study-manifest handoff\study-manifest.json `
+  --timeline handoff\timeline.json `
+  --as-of-book handoff\as-of-book.json `
+  --economic-evidence handoff\economic-evidence.json `
+  --provenance handoff\provenance.json `
+  --raw-dir handoff\raw `
+  --economic-cutoff '"2026-08-04"' `
+  --output handoff\study-source-package.json
+```
+
+Then audit the package through all pre-holdout phases:
 
 ```powershell
 $env:PYTHONPATH = 'src'
