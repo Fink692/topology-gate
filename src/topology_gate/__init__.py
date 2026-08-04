@@ -15,6 +15,8 @@ from importlib import import_module
 from typing import Any
 
 from .asof import (
+    ASOF_BOOK_SCHEMA,
+    ASOF_BOOK_VERSION,
     LABEL_PRECEDENCE,
     MARKET_PRECEDENCE,
     UNIVERSE_PRECEDENCE,
@@ -42,15 +44,19 @@ from .checkpoint import (
     save_checkpoint,
 )
 from .economic import (
+    ECONOMIC_EVIDENCE_SCHEMA,
+    ECONOMIC_EVIDENCE_VERSION,
     ECONOMIC_SCHEMA,
     ECONOMIC_VERSION,
     EconomicDecision,
     EconomicEvaluationConfig,
     EconomicEvaluationError,
     EconomicEvaluationResult,
+    EconomicEvidence,
     EconomicPathRow,
     ExecutionCost,
     RealizedReturn,
+    evaluate_economic_evidence_path,
     evaluate_economic_path,
 )
 from .evidence import (
@@ -257,6 +263,8 @@ def __dir__() -> list[str]:
 
 
 __all__ = [
+    "ASOF_BOOK_SCHEMA",
+    "ASOF_BOOK_VERSION",
     "AdaptiveRLS",
     "AmbiguousEventError",
     "ArrayLike",
@@ -302,7 +310,10 @@ __all__ = [
     "EProcessState",
     "ECONOMIC_SCHEMA",
     "ECONOMIC_VERSION",
+    "ECONOMIC_EVIDENCE_SCHEMA",
+    "ECONOMIC_EVIDENCE_VERSION",
     "EconomicDecision",
+    "EconomicEvidence",
     "EconomicEvaluationConfig",
     "EconomicEvaluationError",
     "EconomicEvaluationResult",
@@ -414,6 +425,7 @@ __all__ = [
     "run_causal_rls_replay",
     "run_causal_promotion_replay",
     "evaluate_economic_path",
+    "evaluate_economic_evidence_path",
     "save_checkpoint",
     "persistent_laplacian_backend",
 ]

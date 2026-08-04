@@ -6,16 +6,15 @@ Scope: bounded research/control layer only; no live-data or execution claim
 
 ## Reproducible engineering checks
 
-- Full suite: **211 passed**.
-- Configured coverage run: **80.22%** total coverage.
+- Full suite: **216 passed**.
+- Configured coverage run: **80.16%** total coverage.
 - Ruff: passed on `src` and `tests`.
 - Mypy: passed on all 20 source modules.
 - Dependency-light root import: passed without NumPy site packages.
 - Wheel build and isolated target-directory smoke: passed; SHA-256
-  `8692700803e6210e6bc6ec5c58727b50a5cfbabb8778f7beb523972cc5d05e1e`;
-  the smoke exercised public complete-universe panel identity, certified
-  online authorization, promotion-calibration epochs, checkpointed
-  minimum-label configuration, and sealed challenger-registration restore
+  `83cf395a288e0bce974af221912d4c7b23f89cbdc258d20013c456aea7dccaa4`;
+  the smoke exercised canonical `AsOfBook` source restore, digest-bound
+  `EconomicEvidence` selection/evaluation, and sealed challenger registration
   from the wheel.
 - Authenticated checkpoint, manifest digest, promotion/evidence state, and
   detached restore tests: passed.
@@ -24,6 +23,9 @@ Scope: bounded research/control layer only; no live-data or execution claim
   explicit immutable holdout release state; causal numerical and paired
   promotion adapters reject sealed holdout reads and checkpoint identity
   changes.
+- Canonical as-of source tests: passed for deterministic event-order identity,
+  versioned JSON round-trip, digest verification, unknown-field rejection,
+  malformed source rejection, and explicit digest-free diagnostic restore.
 - Causal replay prediction-before-label, future-prefix invariance, explicit
   missing/invalid status, chained-record tamper detection, and model-state
   restore tests: passed.
@@ -51,7 +53,10 @@ Scope: bounded research/control layer only; no live-data or execution claim
   identity recording.
 - Strict economic contract tests: passed for separate realized returns,
   component execution costs, turnover/flip accounting, explicit abstentions,
-  identity mismatches, unavailable costs, and non-observed return rejection.
+  identity mismatches, unavailable costs, explicit missing/censored return
+  records, zero-placeholder rejection, strict capacity-evidence/turnover
+  breach handling, digest-bound revision bundles, and explicit evidence-cutoff
+  evaluation.
 - Paired causal-promotion tests: passed for prediction-time freezing,
   settlement-only gate advancement, missing/unresolved cleanup, one-shot versus
   resumed state equivalence, constant-eta enforcement, checkpointed

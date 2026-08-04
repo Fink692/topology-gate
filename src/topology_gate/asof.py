@@ -30,6 +30,8 @@ Revision: TypeAlias = int
 MARKET_PRECEDENCE = 20
 UNIVERSE_PRECEDENCE = 10
 LABEL_PRECEDENCE = 30
+ASOF_BOOK_SCHEMA = "topology_gate.asof_book"
+ASOF_BOOK_VERSION = 1
 
 
 class AsOfError(ValueError):
@@ -134,10 +136,18 @@ def _time_json(value: TimePoint) -> str | float | int:
 
 
 def _check_time_domains(events: Sequence[Any]) -> None:
-    values = [event.available_time for event in events]
+    values: list[TimePoint] = []
+    for event in events:
+        values.extend((event.event_time, event.available_time))
+        if isinstance(event, LabelObservation):
+            values.append(event.received_time)
+        elif isinstance(event, UniverseMembership):
+            values.append(event.start)
+            if event.end is not None:
+                values.append(event.end)
     domains = {_time_domain(value) for value in values}
     if len(domains) > 1:
-        raise TypeError("all available_time values must use one time domain")
+        raise TypeError("all event times must use one comparable time domain")
     for event in events:
         # Datetime values may be mixed only when Python can compare them; this
         # catches naive/aware datetime mixtures before sorting.
@@ -659,10 +669,24 @@ class AsOfBook:
             universe_values,
             lambda item: (item.instrument_id, item.start, item.source_revision),
         )
-        canonical_event_order((*observation_values, *universe_values, *label_values))
-        object.__setattr__(self, "_observations", observation_values)
-        object.__setattr__(self, "_universe", universe_values)
-        object.__setattr__(self, "_labels", label_values)
+        ordered = canonical_event_order(
+            (*observation_values, *universe_values, *label_values)
+        )
+        object.__setattr__(
+            self,
+            "_observations",
+            tuple(item for item in ordered if isinstance(item, MarketObservation)),
+        )
+        object.__setattr__(
+            self,
+            "_universe",
+            tuple(item for item in ordered if isinstance(item, UniverseMembership)),
+        )
+        object.__setattr__(
+            self,
+            "_labels",
+            tuple(item for item in ordered if isinstance(item, LabelObservation)),
+        )
 
     @property
     def observations(self) -> tuple[MarketObservation, ...]:
@@ -679,6 +703,8 @@ class AsOfBook:
     @property
     def digest(self) -> str:
         payload = {
+            "schema": ASOF_BOOK_SCHEMA,
+            "version": ASOF_BOOK_VERSION,
             "observations": [value.to_dict() for value in self._observations],
             "universe": [value.to_dict() for value in self._universe],
             "labels": [value.to_dict() for value in self._labels],
@@ -686,6 +712,192 @@ class AsOfBook:
         return hashlib.sha256(
             json.dumps(payload, sort_keys=True, separators=(",", ":")).encode()
         ).hexdigest()
+
+    def to_dict(self) -> dict[str, Any]:
+        """Return the strict canonical source representation.
+
+        The digest covers the schema, version, and all revision-bearing event
+        records in canonical event order.  JSON serialization supports the
+        primitive time forms accepted by the event contract (integer, finite
+        float, or string); an in-memory ``datetime`` source must be converted
+        to a canonical string by the vendor adapter before serialization.
+        """
+
+        return {
+            "kind": "as_of_book",
+            "schema": ASOF_BOOK_SCHEMA,
+            "version": ASOF_BOOK_VERSION,
+            "observations": [value.to_dict() for value in self._observations],
+            "universe": [value.to_dict() for value in self._universe],
+            "labels": [value.to_dict() for value in self._labels],
+            "digest": self.digest,
+        }
+
+    def to_json(self) -> str:
+        """Serialize the source boundary using deterministic canonical JSON."""
+
+        return json.dumps(
+            self.to_dict(),
+            allow_nan=False,
+            ensure_ascii=True,
+            separators=(",", ":"),
+            sort_keys=True,
+        )
+
+    @classmethod
+    def from_dict(
+        cls,
+        state: Mapping[str, Any],
+        *,
+        require_digest: bool = True,
+    ) -> "AsOfBook":
+        """Restore a canonical source and verify its content digest.
+
+        Unknown top-level or event fields are rejected.  This prevents a
+        vendor adapter from silently dropping a revision, status, or timing
+        field that was not understood by the research contract.
+        """
+
+        if not isinstance(state, Mapping):
+            raise AsOfError("as-of book state must be a mapping")
+        if state.get("kind") != "as_of_book":
+            raise AsOfError("unsupported as-of book kind")
+        if state.get("schema") != ASOF_BOOK_SCHEMA:
+            raise AsOfError("unsupported as-of book schema")
+        if type(state.get("version")) is not int or state.get("version") != ASOF_BOOK_VERSION:
+            raise AsOfError("unsupported as-of book version")
+        if not isinstance(require_digest, bool):
+            raise TypeError("require_digest must be boolean")
+        expected_keys = {
+            "kind",
+            "schema",
+            "version",
+            "observations",
+            "universe",
+            "labels",
+            "digest",
+        }
+        provided_keys = set(state)
+        accepted_keys: tuple[set[str], ...] = (expected_keys,)
+        if not require_digest:
+            accepted_keys += (expected_keys - {"digest"},)
+        if not any(provided_keys == allowed for allowed in accepted_keys):
+            raise AsOfError("as-of book contains unknown or missing top-level fields")
+
+        def records(value: Any, name: str) -> tuple[Mapping[str, Any], ...]:
+            if isinstance(value, (str, bytes, bytearray)) or not isinstance(
+                value, Sequence
+            ):
+                raise AsOfError(f"as-of book {name} must be a sequence")
+            result: list[Mapping[str, Any]] = []
+            for item in value:
+                if not isinstance(item, Mapping):
+                    raise AsOfError(f"as-of book {name} entries must be mappings")
+                result.append(item)
+            return tuple(result)
+
+        def exact_record(
+            value: Mapping[str, Any],
+            expected: set[str],
+            name: str,
+        ) -> Mapping[str, Any]:
+            if set(value) != expected:
+                raise AsOfError(f"as-of book {name} has unknown or missing fields")
+            return value
+
+        observation_rows = records(state["observations"], "observations")
+        universe_rows = records(state["universe"], "universe")
+        label_rows = records(state["labels"], "labels")
+        observations: list[MarketObservation] = []
+        for index, raw in enumerate(observation_rows):
+            row = exact_record(
+                raw,
+                {
+                    "record_id",
+                    "instrument_id",
+                    "event_time",
+                    "available_time",
+                    "source_revision",
+                    "ingest_sequence",
+                    "fields",
+                },
+                f"observation[{index}]",
+            )
+            try:
+                observations.append(MarketObservation(**dict(row)))
+            except (TypeError, ValueError) as exc:
+                raise AsOfError(f"invalid as-of book observation[{index}]") from exc
+        universe: list[UniverseMembership] = []
+        for index, raw in enumerate(universe_rows):
+            row = exact_record(
+                raw,
+                {
+                    "instrument_id",
+                    "start",
+                    "end",
+                    "event_time",
+                    "available_time",
+                    "source_revision",
+                    "ingest_sequence",
+                },
+                f"universe[{index}]",
+            )
+            try:
+                universe.append(UniverseMembership(**dict(row)))
+            except (TypeError, ValueError) as exc:
+                raise AsOfError(f"invalid as-of book universe[{index}]") from exc
+        labels: list[LabelObservation] = []
+        for index, raw in enumerate(label_rows):
+            row = exact_record(
+                raw,
+                {
+                    "label_id",
+                    "target_id",
+                    "event_time",
+                    "available_time",
+                    "received_time",
+                    "status",
+                    "value",
+                    "source_revision",
+                    "ingest_sequence",
+                },
+                f"label[{index}]",
+            )
+            try:
+                labels.append(LabelObservation(**dict(row)))
+            except (TypeError, ValueError) as exc:
+                raise AsOfError(f"invalid as-of book label[{index}]") from exc
+        try:
+            candidate = cls(observations, universe, labels)
+        except (TypeError, ValueError) as exc:
+            raise AsOfError("as-of book contains invalid event records") from exc
+        stored_digest = state.get("digest")
+        if stored_digest is None and not require_digest:
+            return candidate
+        if not isinstance(stored_digest, str) or len(stored_digest) != 64:
+            raise AsOfError("as-of book digest must be a 64-character hexadecimal value")
+        if any(character not in "0123456789abcdefABCDEF" for character in stored_digest):
+            raise AsOfError("as-of book digest must be hexadecimal")
+        if stored_digest.lower() != candidate.digest:
+            raise AsOfError("as-of book digest does not match its event content")
+        return candidate
+
+    @classmethod
+    def from_json(
+        cls,
+        payload: str,
+        *,
+        require_digest: bool = True,
+    ) -> "AsOfBook":
+        """Restore a canonical source from deterministic JSON."""
+
+        if not isinstance(payload, str) or not payload.strip():
+            raise TypeError("as-of book JSON must be a non-empty string")
+        try:
+            state = json.loads(payload)
+        except json.JSONDecodeError as exc:
+            raise AsOfError("as-of book JSON is invalid") from exc
+        return cls.from_dict(state, require_digest=require_digest)
 
     @property
     def ordered_events(
@@ -784,6 +996,8 @@ def _reject_overlapping_memberships(
 
 
 __all__ = [
+    "ASOF_BOOK_SCHEMA",
+    "ASOF_BOOK_VERSION",
     "AmbiguousEventError",
     "AsOfBook",
     "AsOfError",

@@ -7,9 +7,12 @@ import math
 import pytest
 
 from topology_gate.asof import (
+    ASOF_BOOK_SCHEMA,
+    ASOF_BOOK_VERSION,
     UNIVERSE_PRECEDENCE,
     AmbiguousEventError,
     AsOfBook,
+    AsOfError,
     DuplicateEventError,
     LabelObservation,
     MarketObservation,
@@ -111,6 +114,72 @@ def test_prefix_snapshot_does_not_mutate_when_future_event_is_appended() -> None
     assert prefix == extended.materialize(4)
     with pytest.raises(UnavailableEventError):
         extended.materialize(4, required_record_ids=("m2",))
+
+
+def test_as_of_book_source_wire_round_trip_is_canonical_and_digest_bound() -> None:
+    book = AsOfBook(
+        observations=(market("m2", 4, value=2.0), market("m1", 2, value=1.0)),
+        universe=(UniverseMembership("ES", 0, 10, 0, 1, 0),),
+        labels=(label("l1", "t1", 5),),
+    )
+    payload = book.to_dict()
+
+    assert payload["schema"] == ASOF_BOOK_SCHEMA
+    assert payload["version"] == ASOF_BOOK_VERSION
+    assert payload["digest"] == book.digest
+    restored = AsOfBook.from_dict(payload)
+    assert restored == book
+    assert AsOfBook.from_json(book.to_json()) == book
+
+    reordered = AsOfBook(
+        observations=(market("m1", 2, value=1.0), market("m2", 4, value=2.0)),
+        universe=(UniverseMembership("ES", 0, 10, 0, 1, 0),),
+        labels=(label("l1", "t1", 5),),
+    )
+    assert reordered.digest == book.digest
+    assert reordered.to_json() == book.to_json()
+
+
+def test_as_of_book_source_wire_rejects_tampering_and_unknown_fields() -> None:
+    payload = AsOfBook(observations=(market("m1", 2),)).to_dict()
+    tampered = dict(payload)
+    tampered["digest"] = "0" * 64
+    with pytest.raises(AsOfError, match="digest"):
+        AsOfBook.from_dict(tampered)
+
+    unknown_top_level = dict(payload)
+    unknown_top_level["vendor_private_field"] = "must not be dropped"
+    with pytest.raises(AsOfError, match="unknown"):
+        AsOfBook.from_dict(unknown_top_level)
+
+    unknown_event = dict(payload)
+    unknown_event["observations"] = [
+        {**payload["observations"][0], "vendor_revision_reason": "correction"}
+    ]
+    with pytest.raises(AsOfError, match="unknown"):
+        AsOfBook.from_dict(unknown_event)
+
+    without_digest = dict(payload)
+    del without_digest["digest"]
+    assert AsOfBook.from_dict(without_digest, require_digest=False).digest == payload["digest"]
+
+
+def test_as_of_book_rejects_mixed_time_domains_at_the_source_boundary() -> None:
+    with pytest.raises(TypeError, match="one comparable time domain"):
+        AsOfBook(
+            observations=(
+                market("integer-time", 1),
+                MarketObservation(
+                    record_id="string-time",
+                    instrument_id="ES",
+                    event_time="2026-01-01T00:00:00Z",
+                    available_time="2026-01-01T00:00:01Z",
+                    source_revision=0,
+                    ingest_sequence=1,
+                    fields={"value": 1.0},
+                ),
+            )
+        )
 
 
 def test_equal_time_order_uses_precedence_then_ingest_then_record_id() -> None:

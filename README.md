@@ -166,7 +166,10 @@ The dependency-light `AsOfBook` is the corresponding data-boundary contract:
 observations, labels, and universe memberships carry event time, availability,
 source revision, and deterministic ingest order. Its snapshots exclude future
 revisions and expose missing labels explicitly. It is a causal contract and
-test fixture, not a market-data vendor or a survivorship-bias guarantee.
+test fixture, not a market-data vendor or a survivorship-bias guarantee. For a
+canonical vendor export, `AsOfBook.to_json()` emits a versioned source artifact
+with a content digest, and `AsOfBook.from_json()` rejects unknown fields,
+malformed revisions, and digest mismatches.
 
 `PointInTimePanel` is the explicit cross-asset selection contract layered on an
 as-of snapshot. It requires one visible record per instrument, a fixed field
@@ -191,11 +194,17 @@ bindings are resolved from the snapshot, the real topology detector and RLS
 learner run behind the shared transition, and the prediction-time forgetting
 factor is retained until label settlement. It returns no tradable PnL by
 design. Use `evaluate_economic_path` only with separately sourced
-`RealizedReturn` and `ExecutionCost` records; missing returns and costs fail
-closed, and abstentions remain visible. When the configured topology backend
+`RealizedReturn` and `ExecutionCost` records; missing, censored, or invalid
+returns remain explicit and fail closed rather than becoming zero, and
+abstentions remain visible. A strict economic configuration can also require
+sourced per-decision capacity limits and reject turnover breaches. When the
+configured topology backend
 produces an exact finite artifact, its 64-character content digest is carried
 into the per-step causal telemetry; canonical feature/state panel digests are
 carried alongside it; malformed digests fail closed.
+`EconomicEvidence` provides the corresponding digest-bound revision bundle for
+realized returns and execution costs; call `select_at(...)` before evaluation
+to make the evidence cutoff explicit.
 
 `run_causal_promotion_replay` composes the same transition with paired
 challenger/incumbent learners and the existing alpha-spending promotion gate.

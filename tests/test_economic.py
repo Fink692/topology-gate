@@ -8,8 +8,10 @@ from topology_gate.economic import (
     EconomicDecision,
     EconomicEvaluationConfig,
     EconomicEvaluationError,
+    EconomicEvidence,
     ExecutionCost,
     RealizedReturn,
+    evaluate_economic_evidence_path,
     evaluate_economic_path,
 )
 
@@ -47,6 +49,24 @@ def cost(target: str, time: int) -> ExecutionCost:
         slippage_rate=0.03,
         impact_rate=0.04,
         other_rate=0.05,
+    )
+
+
+def capacity_cost(target: str, time: int, capacity: float) -> ExecutionCost:
+    base = cost(target, time)
+    return ExecutionCost(
+        target_id=base.target_id,
+        decision_time=base.decision_time,
+        execution_time=base.execution_time,
+        available_time=base.available_time,
+        cost_model_id=base.cost_model_id,
+        fee_rate=base.fee_rate,
+        spread_rate=base.spread_rate,
+        slippage_rate=base.slippage_rate,
+        impact_rate=base.impact_rate,
+        other_rate=base.other_rate,
+        source_revision=base.source_revision,
+        capacity_limit=capacity,
     )
 
 
@@ -145,6 +165,108 @@ def test_invalid_cost_or_time_data_is_rejected_before_evaluation() -> None:
         )
 
 
+def test_capacity_evidence_is_optional_by_default_but_strict_when_required() -> None:
+    result = evaluate_economic_path(
+        (decision("t1", 1, 0.5),),
+        {"t1": realized("t1", 1, 0.1)},
+        {"t1": capacity_cost("t1", 1, 0.75)},
+        config=EconomicEvaluationConfig(
+            cost_model_id="rates-v1",
+            require_capacity_evidence=True,
+        ),
+    )
+    assert result.metrics["capacity_evidence_count"] == 1.0
+    assert result.metrics["capacity_utilization_max"] == pytest.approx(2.0 / 3.0)
+
+    with pytest.raises(EconomicEvaluationError, match="capacity evidence is missing"):
+        evaluate_economic_path(
+            (decision("t1", 1, 0.5),),
+            {"t1": realized("t1", 1, 0.1)},
+            {"t1": cost("t1", 1)},
+            config=EconomicEvaluationConfig(
+                cost_model_id="rates-v1",
+                require_capacity_evidence=True,
+            ),
+        )
+    with pytest.raises(EconomicEvaluationError, match="exceeds supplied capacity"):
+        evaluate_economic_path(
+            (decision("t1", 1, 0.5),),
+            {"t1": realized("t1", 1, 0.1)},
+            {"t1": capacity_cost("t1", 1, 0.25)},
+            config=EconomicEvaluationConfig(
+                cost_model_id="rates-v1",
+                require_capacity_evidence=True,
+            ),
+        )
+
+
+def test_economic_evidence_bundle_is_digest_bound_and_selects_visible_revisions() -> None:
+    early_return = RealizedReturn(
+        target_id="t1",
+        decision_time=1,
+        realization_time=2,
+        available_time=3,
+        value=0.1,
+        source_revision=0,
+    )
+    corrected_return = RealizedReturn(
+        target_id="t1",
+        decision_time=1,
+        realization_time=2,
+        available_time=5,
+        value=0.2,
+        source_revision=1,
+    )
+    early_cost = capacity_cost("t1", 1, 1.0)
+    corrected_cost = ExecutionCost(
+        target_id="t1",
+        decision_time=1,
+        execution_time=5,
+        available_time=5,
+        cost_model_id="rates-v1",
+        fee_rate=0.02,
+        source_revision=1,
+        capacity_limit=1.0,
+    )
+    bundle = EconomicEvidence(
+        "vendor-vintage:v1",
+        realized_returns=(corrected_return, early_return),
+        execution_costs=(corrected_cost, early_cost),
+    )
+
+    before_correction = bundle.select_at(4)
+    after_correction = bundle.select_at(5)
+    assert before_correction[0]["t1"].value == 0.1
+    assert after_correction[0]["t1"].value == 0.2
+    assert before_correction[1]["t1"].fee_rate == 0.01
+    assert after_correction[1]["t1"].fee_rate == 0.02
+    assert EconomicEvidence.from_json(bundle.to_json()) == bundle
+
+    result = evaluate_economic_evidence_path(
+        (decision("t1", 1, 0.5),),
+        bundle,
+        4,
+        config=EconomicEvaluationConfig(cost_model_id="rates-v1"),
+    )
+    assert result.evidence_digest == bundle.digest
+    assert result.rows[0].realized_return == pytest.approx(0.1)
+
+    tampered = dict(bundle.to_dict())
+    tampered["digest"] = "0" * 64
+    with pytest.raises(EconomicEvaluationError, match="digest"):
+        EconomicEvidence.from_dict(tampered)
+
+    unknown = dict(bundle.to_dict())
+    unknown["unmodeled_vendor_field"] = "reject"
+    with pytest.raises(EconomicEvaluationError, match="unknown"):
+        EconomicEvidence.from_dict(unknown)
+
+    with pytest.raises(EconomicEvaluationError, match="duplicate"):
+        EconomicEvidence(
+            "duplicate",
+            realized_returns=(early_return, early_return),
+        )
+
 def test_non_observed_return_cannot_be_disguised_as_zero() -> None:
     with pytest.raises(EconomicEvaluationError, match="non-observed"):
         RealizedReturn(
@@ -154,4 +276,21 @@ def test_non_observed_return_cannot_be_disguised_as_zero() -> None:
             available_time=3,
             value=0.0,
             status="missing",
+        )
+
+    missing = RealizedReturn(
+        target_id="t1",
+        decision_time=1,
+        realization_time=2,
+        available_time=3,
+        value=None,
+        status="missing",
+    )
+    assert missing.value is None
+    with pytest.raises(EconomicEvaluationError, match="explicitly missing"):
+        evaluate_economic_path(
+            (decision("t1", 1, 0.5),),
+            {"t1": missing},
+            {"t1": cost("t1", 1)},
+            config=EconomicEvaluationConfig(cost_model_id="rates-v1"),
         )

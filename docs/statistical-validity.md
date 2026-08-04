@@ -130,9 +130,12 @@ calibration.
 `AsOfBook` supplies a dependency-light contract and adversarial fixture for
 those semantics. It keeps event and availability times separate, selects only
 visible revisions, orders equal-availability events deterministically, tracks
-point-in-time universe membership, and rejects implicit missing labels. The
-existing row-indexed backtest remains an exploratory adapter until it consumes
-this event contract end to end.
+point-in-time universe membership, and rejects implicit missing labels. Its
+versioned `to_json()`/`from_json()` source boundary binds all revision-bearing
+records to a digest and rejects unknown fields or tampering; it still requires
+the caller's vendor adapter to establish survivorship and economic completeness.
+The existing row-indexed backtest remains an exploratory adapter until it
+consumes this event contract end to end.
 
 `CausalReplay` provides the corresponding transition contract for a small
 timestamped study: it materializes an as-of snapshot, settles prior pending
@@ -166,7 +169,11 @@ It freezes both predictions before labels arrive, advances bounded paired
 utility only at observed settlement, and rolls back both learners and gate state
 on a failed transition. Its instrument-labelled plans use the same canonical
 panel selection and carry the panel identity into pending promotion evidence.
-Missing or terminally unresolved labels never advance the e-process. This is a
+Missing or terminally unresolved labels never advance the e-process. The
+economic boundary likewise represents missing/censored realized returns
+explicitly with `value=None` and refuses to score them as zero. Its strict
+capacity mode requires sourced per-decision turnover limits and rejects
+breaches; it does not estimate liquidity. This is a
 tested composition boundary, not a calibrated market promotion result; the
 utility scale, eta policy, minimum-label burn-in, source manifest, and holdout
 evidence still require a pre-registered study. When configured, burn-in labels

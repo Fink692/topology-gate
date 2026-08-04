@@ -169,6 +169,10 @@ instrument rows and emits a panel digest plus the snapshot universe digest;
 record those identities with the numerical replay. This is a deterministic
 selection contract only: the run still needs a vendor manifest, delisting and
 membership policy, cost model, and sealed holdout before any market claim.
+When the vendor adapter produces a canonical `AsOfBook` export, retain its
+versioned JSON and digest beside the `StudyManifest`; restore it with
+`AsOfBook.from_json()` before replay so field, revision, and source-integrity
+failures stop the run at the data boundary.
 
 ## Release gates
 
