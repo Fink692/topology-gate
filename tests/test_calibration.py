@@ -182,8 +182,12 @@ def test_threshold_calibration_selects_on_calibration_and_certifies_evaluation()
     assert first.selected_index == 1
     assert first.calibration_results[0].false_alarm_rate == 1.0
     assert first.calibration_results[1].false_alarm_rate == 0.0
-    assert first.calibration_observation_identity == calibration_factory.identity
-    assert first.evaluation_observation_identity == evaluation_factory.identity
+    assert first.calibration_observation_identity == (
+        f"{calibration_factory.identity}:threshold-split:calibration:v1"
+    )
+    assert first.evaluation_observation_identity == (
+        f"{evaluation_factory.identity}:threshold-split:evaluation:v1"
+    )
     assert first.evaluation_result.seed == evaluation.seed
     assert first.approved
     certificate = first.to_certificate()

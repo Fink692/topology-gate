@@ -42,7 +42,10 @@ records every candidate calibration identity, both observation-factory
 identities, both split seeds, the detector factory identity, and the selection
 identity. Passing a new seed to the same factory is rejected because it does
 not prove that a time or source split was declared. It is still evidence for
-the declared finite null and not market calibration.
+the declared finite null and not market calibration. The recorded observation
+identities are deterministically role-bound with `:threshold-split:calibration:v1`
+and `:threshold-split:evaluation:v1` suffixes, so the serialized artifact
+cannot silently collapse the two roles back to one base factory identity.
 
 The current finite persistent-CUSUM surrogate record, including a stricter
 budget rejection, is maintained in

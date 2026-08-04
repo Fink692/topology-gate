@@ -263,6 +263,21 @@ def _score_factory_identity(factory: Any) -> str:
     return value
 
 
+class _ThresholdSplitObservationFactory:
+    """Bind an observation factory to one threshold-calibration split role."""
+
+    __slots__ = ("_factory", "identity")
+
+    def __init__(self, factory: ObservationFactory, role: str) -> None:
+        self._factory = factory
+        self.identity = f"{_factory_identity(factory)}:threshold-split:{role}:v1"
+
+    def __call__(
+        self, rng: np.random.Generator, horizon: int, n_features: int
+    ) -> Any:
+        return self._factory(rng, horizon, n_features)
+
+
 class StationaryBlockBootstrap:
     """Seeded stationary block bootstrap observation factory.
 
@@ -1564,10 +1579,14 @@ def calibrate_threshold(
         raise ValueError("candidate_thresholds must be unique")
 
     detector_factory_identity = _factory_identity(detector_factory)
-    calibration_observation_identity = _factory_identity(
-        calibration_observation_factory
+    calibration_split_factory = _ThresholdSplitObservationFactory(
+        calibration_observation_factory, "calibration"
     )
-    evaluation_observation_identity = _factory_identity(evaluation_observation_factory)
+    evaluation_split_factory = _ThresholdSplitObservationFactory(
+        evaluation_observation_factory, "evaluation"
+    )
+    calibration_observation_identity = calibration_split_factory.identity
+    evaluation_observation_identity = evaluation_split_factory.identity
     calibration_results: list[NullCalibrationResult] = []
     for threshold in thresholds:
         def candidate_factory(value: float = threshold) -> Any:
@@ -1575,7 +1594,7 @@ def calibrate_threshold(
 
         result = calibrate_null(
             candidate_factory,
-            calibration_observation_factory,
+            calibration_split_factory,
             config=calibration_config,
         )
         calibration_results.append(result)
@@ -1597,7 +1616,7 @@ def calibrate_threshold(
 
     evaluation_result = calibrate_null(
         selected_factory,
-        evaluation_observation_factory,
+        evaluation_split_factory,
         config=evaluation_config,
     )
     if any(
