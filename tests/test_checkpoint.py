@@ -53,6 +53,16 @@ def test_hmac_envelope_round_trip_and_tamper_rejection() -> None:
     with pytest.raises(CheckpointIntegrityError):
         CheckpointEnvelope.from_json(envelope.to_json())
 
+    unknown = json.loads(envelope.to_json())
+    unknown["unmodeled_field"] = "reject"
+    with pytest.raises(CheckpointCompatibilityError, match="unknown or missing"):
+        CheckpointEnvelope.from_dict(unknown, hmac_key=key)
+
+    missing = json.loads(envelope.to_json())
+    del missing["metadata"]
+    with pytest.raises(CheckpointCompatibilityError, match="unknown or missing"):
+        CheckpointEnvelope.from_dict(missing, hmac_key=key)
+
 
 def test_checkpoint_file_is_atomic_and_root_constrained(tmp_path: Path) -> None:
     envelope = CheckpointEnvelope.create(

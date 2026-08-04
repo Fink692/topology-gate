@@ -7,18 +7,19 @@ Scope: bounded research/control layer only; no live-data or execution claim
 ## Reproducible engineering checks
 
 - Full suite: **220 passed**.
-- Configured coverage run: **80.31%** total coverage.
+- Configured coverage run: **80.42%** total coverage.
 - Ruff: passed on `src` and `tests`.
 - Mypy: passed on all 20 source modules.
 - Dependency-light root import: passed without NumPy site packages.
 - Wheel build and isolated target-directory smoke: passed; SHA-256
-  `d646b9c610fb52d2daf2d05c66200f930df863ca9a8b7c419bfbea9240d7a40a`;
-  the smoke exercised strict `RunManifest`/`StudyManifest` restore, canonical
-  `AsOfBook` source restore, digest-bound `EconomicEvidence`
-  selection/evaluation with cutoff provenance, and sealed challenger
-  registration from the wheel.
+  `9f043c426cf2cc5056f2cb24eb6f2d9815787a0fd5c8f160cb1d2e17f1dccf25`;
+  the smoke exercised strict online-state/checkpoint restore, strict
+  `RunManifest`/`StudyManifest` restore, canonical `AsOfBook` source restore,
+  digest-bound `EconomicEvidence` selection/evaluation with cutoff provenance,
+  and sealed challenger registration from the wheel.
 - Authenticated checkpoint, manifest digest, promotion/evidence state, and
-  detached restore tests: passed.
+  detached restore tests: passed; checkpoint and online-state top-level schema
+  drift is rejected before state mutation.
 - Study-manifest tests: passed for canonical split identity, ordered
   calibration/tuning/validation/holdout windows, embargo enforcement, and
   explicit immutable holdout release state, strict JSON round-trip, and

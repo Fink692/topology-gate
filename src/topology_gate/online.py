@@ -17,6 +17,8 @@ import numpy as np
 
 MAX_ONLINE_ROWS = 100_000
 MAX_PENDING_LABELS = 8_192
+ONLINE_STREAM_SCHEMA = "topology_gate.online.stream"
+ONLINE_STREAM_VERSION = 1
 
 
 def _finite_matrix(value: Any, name: str) -> np.ndarray[Any, Any]:
@@ -85,12 +87,26 @@ class PendingLabelRecord:
     def from_state_dict(cls, state: Mapping[str, Any]) -> "PendingLabelRecord":
         if not isinstance(state, Mapping):
             raise ValueError("pending label state must be a mapping")
+        expected = {
+            "source_step",
+            "available_step",
+            "features",
+            "target",
+            "forgetting_factor",
+        }
+        if set(state) != expected:
+            raise ValueError("pending label state contains unknown or missing fields")
+        raw_features = state["features"]
+        if isinstance(raw_features, (str, bytes, bytearray)) or not isinstance(
+            raw_features, (list, tuple)
+        ):
+            raise ValueError("pending label features must be a sequence")
         return cls(
-            source_step=cast(int, state.get("source_step")),
-            available_step=cast(int, state.get("available_step")),
-            features=tuple(state.get("features", ())),
-            target=cast(float, state.get("target")),
-            forgetting_factor=cast(float, state.get("forgetting_factor")),
+            source_step=cast(int, state["source_step"]),
+            available_step=cast(int, state["available_step"]),
+            features=tuple(raw_features),
+            target=cast(float, state["target"]),
+            forgetting_factor=cast(float, state["forgetting_factor"]),
         )
 
 
@@ -135,8 +151,8 @@ class OnlineStreamState:
 
     def state_dict(self) -> dict[str, Any]:
         return {
-            "version": 1,
-            "schema": "topology_gate.online.stream",
+            "version": ONLINE_STREAM_VERSION,
+            "schema": ONLINE_STREAM_SCHEMA,
             "next_step": self.next_step,
             "previous_position": self.previous_position,
             "feature_count": self.feature_count,
@@ -151,20 +167,41 @@ class OnlineStreamState:
         *,
         max_pending_labels: int | None = None,
     ) -> "OnlineStreamState":
-        if not isinstance(state, Mapping) or state.get("version") != 1:
+        if not isinstance(state, Mapping):
             raise ValueError("unsupported online stream state")
-        raw_pending = state.get("pending_labels", ())
-        if isinstance(raw_pending, (str, bytes, bytearray)):
+        expected = {
+            "version",
+            "schema",
+            "next_step",
+            "previous_position",
+            "feature_count",
+            "max_pending_labels",
+            "pending_labels",
+        }
+        if set(state) != expected:
+            raise ValueError("online stream state contains unknown or missing fields")
+        if (
+            type(state["version"]) is not int
+            or state["version"] != ONLINE_STREAM_VERSION
+            or state["schema"] != ONLINE_STREAM_SCHEMA
+        ):
+            raise ValueError("unsupported online stream state")
+        raw_pending = state["pending_labels"]
+        if isinstance(raw_pending, (str, bytes, bytearray)) or not isinstance(
+            raw_pending, (list, tuple)
+        ):
             raise ValueError("pending_labels must be a sequence")
         pending = tuple(PendingLabelRecord.from_state_dict(item) for item in raw_pending)
-        configured_limit = state.get(
-            "max_pending_labels", 8192
-        ) if max_pending_labels is None else max_pending_labels
+        configured_limit = (
+            state["max_pending_labels"]
+            if max_pending_labels is None
+            else max_pending_labels
+        )
         return cls(
-            next_step=cast(int, state.get("next_step")),
-            previous_position=cast(float, state.get("previous_position")),
+            next_step=cast(int, state["next_step"]),
+            previous_position=cast(float, state["previous_position"]),
             pending_labels=pending,
-            feature_count=cast(int, state.get("feature_count")),
+            feature_count=cast(int, state["feature_count"]),
             max_pending_labels=configured_limit,
         )
 
@@ -564,6 +601,8 @@ __all__ = [
     "OnlineStreamState",
     "MAX_ONLINE_ROWS",
     "MAX_PENDING_LABELS",
+    "ONLINE_STREAM_SCHEMA",
+    "ONLINE_STREAM_VERSION",
     "PendingLabelRecord",
     "run_recursive_rls",
 ]

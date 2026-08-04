@@ -238,6 +238,29 @@ class CheckpointEnvelope:
             raise CheckpointError("checkpoint envelope must be a mapping")
         if value.get("version") != CHECKPOINT_VERSION or value.get("schema") != CHECKPOINT_SCHEMA:
             raise CheckpointCompatibilityError("unsupported checkpoint version or schema")
+        required_fields = {
+            "version",
+            "schema",
+            "package_version",
+            "config_fingerprint",
+            "backend_identity",
+            "dependency_fingerprint",
+            "learner_state",
+            "detector_state",
+            "online_state",
+            "promotion_state",
+            "rng_state",
+            "metadata",
+            "integrity_algorithm",
+            "integrity",
+        }
+        optional_fields = {"evidence_state", "manifest_digest"}
+        if not required_fields.issubset(value) or set(value) - (
+            required_fields | optional_fields
+        ):
+            raise CheckpointCompatibilityError(
+                "checkpoint envelope contains unknown or missing fields"
+            )
         algorithm = value.get("integrity_algorithm")
         proof = value.get("integrity")
         if algorithm not in {"sha256", "hmac-sha256"} or not isinstance(proof, str):

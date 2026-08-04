@@ -206,6 +206,17 @@ def test_irregular_label_availability_is_causal_and_terminal_pending_is_visible(
     assert result.update_steps[0]
     assert result.update_steps[1]
     assert result.update_steps[2]
+    assert result.stream_state is not None
+    restored = OnlineStreamState.from_state_dict(result.stream_state.state_dict())
+    assert restored == result.stream_state
+    unknown_state = dict(result.stream_state.state_dict())
+    unknown_state["unmodeled_field"] = "reject"
+    with pytest.raises(ValueError, match="unknown or missing"):
+        OnlineStreamState.from_state_dict(unknown_state)
+    unknown_pending = dict(result.pending_labels[0].state_dict())
+    unknown_pending["unmodeled_field"] = "reject"
+    with pytest.raises(ValueError, match="unknown or missing"):
+        PendingLabelRecord.from_state_dict(unknown_pending)
     with pytest.raises(ValueError, match="strictly after"):
         run_recursive_rls(
             features[:3],

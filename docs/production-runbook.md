@@ -90,6 +90,8 @@ absolute stream positions. Callable policies must be supplied again and must
 match the recorded callable identity. Plain SHA-256 checkpoints are for
 trusted local artifacts only and are rejected by component restore unless the
 caller opts into `allow_untrusted=True`.
+The online stream state is a versioned strict artifact: restore rejects schema,
+version, missing-field, and unknown-field mismatches before continuation.
 
 ## Challenger promotion
 
