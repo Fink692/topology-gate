@@ -280,6 +280,7 @@ class CausalStep:
     score: float
     alarm: bool
     ready: bool
+    acceleration_authorized: bool
     forgetting_factor: float
     position: float
     method: str
@@ -300,6 +301,7 @@ class CausalRLSModel:
         *,
         detector: Any | None = None,
         config: CausalRLSConfig | None = None,
+        calibration: Any | None = None,
     ) -> None:
         if not callable(getattr(learner, "predict", None)) or not callable(
             getattr(learner, "update", None)
@@ -321,6 +323,12 @@ class CausalRLSModel:
         self.plan = plan
         self.detector = detector
         self.config = config or CausalRLSConfig()
+        if detector is None and calibration is not None:
+            raise CausalNumericError(
+                "a calibration certificate requires a topology detector"
+            )
+        self.calibration = calibration
+        self._calibration_identity = self._validate_calibration()
         self._pending: dict[str, tuple[tuple[float, ...], float]] = {}
         self._steps: list[CausalStep] = []
 
@@ -337,6 +345,42 @@ class CausalRLSModel:
         if maximum is None:
             maximum = getattr(self.learner, "lambda_max", 1.0)
         return self._validate_forgetting_factor(maximum, "default forgetting factor")
+
+    def _validate_calibration(self) -> str | None:
+        if self.detector is None:
+            return None
+        detector_identity = getattr(self.detector, "config_identity", None)
+        if callable(detector_identity):
+            detector_identity = detector_identity()
+        if not isinstance(detector_identity, str) or not detector_identity:
+            raise CausalNumericError(
+                "a topology detector must expose config_identity for calibration"
+            )
+        if self.calibration is None:
+            return None
+        certificate_identity = getattr(self.calibration, "detector_identity", None)
+        if certificate_identity != detector_identity:
+            raise CausalNumericError(
+                "calibration certificate does not match detector identity"
+            )
+        identity = _text(
+            getattr(self.calibration, "identity", None),
+            "calibration certificate identity",
+        )
+        approved = getattr(self.calibration, "approved", False)
+        if not isinstance(approved, bool):
+            raise CausalNumericError("calibration certificate approval is invalid")
+        return identity
+
+    @property
+    def calibration_authorized(self) -> bool:
+        """Whether the supplied finite-null certificate permits acceleration."""
+
+        return self.detector is None or bool(
+            self.calibration is not None
+            and self._calibration_identity is not None
+            and getattr(self.calibration, "approved", False)
+        )
 
     def _validate_forgetting_factor(self, value: Any, name: str) -> float:
         factor = _finite(value, name)
@@ -393,10 +437,11 @@ class CausalRLSModel:
             reported_factor = _finite(
                 detection.forgetting_factor, "forgetting factor"
             )
-            # Insufficient or uncalibrated topology is never allowed to
+            # Insufficient or uncertified topology is never allowed to
             # accelerate memory.  The detector's neutral factor is the
             # learner/configured maximum, captured before the label.
-            if not ready:
+            acceleration_authorized = ready and self.calibration_authorized
+            if not acceleration_authorized:
                 factor = self._default_factor()
             else:
                 factor = self._validate_forgetting_factor(
@@ -405,6 +450,7 @@ class CausalRLSModel:
             method = _text(detection.method, "detector method")
         else:
             factor = self._default_factor()
+            acceleration_authorized = True
         raw = self.learner.predict(np.asarray(features, dtype=float))
         values = np.asarray(raw, dtype=float).reshape(-1)
         if values.size != 1:
@@ -431,6 +477,7 @@ class CausalRLSModel:
                 score=score,
                 alarm=alarm,
                 ready=ready,
+                acceleration_authorized=acceleration_authorized,
                 forgetting_factor=factor,
                 position=position,
                 method=method,
@@ -471,12 +518,16 @@ class CausalRLSModel:
         if self.detector is not None:
             detector_state = self.detector.stream_state_dict()
             detector_identity = getattr(self.detector, "config_identity", None)
+            if callable(detector_identity):
+                detector_identity = detector_identity()
         return {
             "schema": CAUSAL_NUMERIC_SCHEMA,
             "version": CAUSAL_NUMERIC_VERSION,
             "model_id": self.config.model_id,
             "config_identity": self.config.identity,
             "plan_identity": self.plan.identity,
+            "calibration_identity": self._calibration_identity,
+            "calibration_authorized": self.calibration_authorized,
             "learner": self.learner.state_dict(),
             "detector_identity": detector_identity,
             "detector": detector_state,
@@ -497,6 +548,10 @@ class CausalRLSModel:
             raise CausalNumericError("causal model configuration identity mismatch")
         if state.get("plan_identity") != self.plan.identity:
             raise CausalNumericError("causal feature plan identity mismatch")
+        if state.get("calibration_identity") != self._calibration_identity:
+            raise CausalNumericError("causal calibration identity mismatch")
+        if state.get("calibration_authorized", self.calibration_authorized) != self.calibration_authorized:
+            raise CausalNumericError("causal calibration authorization mismatch")
         learner_state = state.get("learner")
         if not isinstance(learner_state, Mapping):
             raise CausalNumericError("causal model state is missing learner state")
@@ -614,6 +669,7 @@ def run_causal_rls_replay(
     plan: CausalFeaturePlan,
     learner: Any,
     detector: Any | None = None,
+    calibration: Any | None = None,
     model_config: CausalRLSConfig | None = None,
     replay_config: ReplayConfig | None = None,
     model_state: Mapping[str, Any] | None = None,
@@ -627,6 +683,7 @@ def run_causal_rls_replay(
         plan,
         detector=detector,
         config=numeric_config,
+        calibration=calibration,
     )
     if model_state is not None:
         model.load_state_dict(model_state)

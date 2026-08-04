@@ -27,6 +27,7 @@ MAX_CALIBRATION_TRIALS = 4_096
 MAX_CALIBRATION_HORIZON = 100_000
 MAX_CALIBRATION_FEATURES = 256
 _WILSON_Z_95 = 1.959963984540054
+_WILSON_CONFIDENCE_95 = 0.95
 
 ObservationFactory = Callable[[np.random.Generator, int, int], Any]
 DetectorFactory = Callable[[], Any]
@@ -207,6 +208,120 @@ class NullCalibrationResult:
             "config_identity": self.config_identity,
         }
 
+    def to_certificate(self, *, max_false_alarm_rate: float) -> "CalibrationCertificate":
+        """Create a finite-null certificate for a declared alarm budget.
+
+        The certificate authorizes only the detector identity and null
+        experiment supplied here.  It is not a market-calibration claim.
+        Wilson bounds in this result are fixed at 95%, so the resulting
+        certificate records that confidence level explicitly.
+        """
+
+        return CalibrationCertificate(
+            detector_identity=self.detector_identity,
+            null_config_identity=self.config_identity,
+            trials=self.trials,
+            horizon=self.horizon,
+            false_alarm_count=self.false_alarm_count,
+            false_alarm_rate=self.false_alarm_rate,
+            false_alarm_ci_high=self.false_alarm_ci_high,
+            max_false_alarm_rate=max_false_alarm_rate,
+        )
+
+
+@dataclass(frozen=True, slots=True)
+class CalibrationCertificate:
+    """Explicit finite-null authorization for detector-driven acceleration."""
+
+    detector_identity: str
+    null_config_identity: str
+    trials: int
+    horizon: int
+    false_alarm_count: int
+    false_alarm_rate: float
+    false_alarm_ci_high: float
+    max_false_alarm_rate: float
+    confidence: float = _WILSON_CONFIDENCE_95
+
+    def __post_init__(self) -> None:
+        for name in ("detector_identity", "null_config_identity"):
+            value = getattr(self, name)
+            if not isinstance(value, str) or not value:
+                raise ValueError(f"{name} must be a non-empty string")
+        trials = _bounded_int("trials", self.trials, 1, MAX_CALIBRATION_TRIALS)
+        horizon = _bounded_int("horizon", self.horizon, 2, MAX_CALIBRATION_HORIZON)
+        if isinstance(self.false_alarm_count, (bool, np.bool_)) or not isinstance(
+            self.false_alarm_count, (int, np.integer)
+        ):
+            raise ValueError("false_alarm_count must be an integer")
+        false_count = int(self.false_alarm_count)
+        if not 0 <= false_count <= trials:
+            raise ValueError("false_alarm_count must be between zero and trials")
+        rate = float(self.false_alarm_rate)
+        upper = float(self.false_alarm_ci_high)
+        if not all(math.isfinite(value) for value in (rate, upper)):
+            raise ValueError("certificate alarm rates must be finite")
+        if not 0.0 <= rate <= 1.0 or not 0.0 <= upper <= 1.0 or rate > upper:
+            raise ValueError("certificate alarm rates are invalid")
+        max_rate = _finite_probability(
+            "max_false_alarm_rate", self.max_false_alarm_rate
+        )
+        confidence = _finite_probability("confidence", self.confidence)
+        if not math.isclose(
+            confidence, _WILSON_CONFIDENCE_95, rel_tol=0.0, abs_tol=1.0e-12
+        ):
+            raise ValueError("certificate confidence must match the Wilson 95% interval")
+        object.__setattr__(self, "trials", trials)
+        object.__setattr__(self, "horizon", horizon)
+        object.__setattr__(self, "false_alarm_count", false_count)
+        object.__setattr__(self, "false_alarm_rate", rate)
+        object.__setattr__(self, "false_alarm_ci_high", upper)
+        object.__setattr__(self, "max_false_alarm_rate", max_rate)
+        object.__setattr__(self, "confidence", confidence)
+
+    @property
+    def approved(self) -> bool:
+        """Whether the conservative finite-null bound passes the declared budget."""
+
+        return self.false_alarm_ci_high <= self.max_false_alarm_rate
+
+    @property
+    def identity(self) -> str:
+        payload = {
+            "schema": "topology_gate.calibration_certificate",
+            "version": 1,
+            "detector_identity": self.detector_identity,
+            "null_config_identity": self.null_config_identity,
+            "trials": self.trials,
+            "horizon": self.horizon,
+            "false_alarm_count": self.false_alarm_count,
+            "false_alarm_rate": self.false_alarm_rate,
+            "false_alarm_ci_high": self.false_alarm_ci_high,
+            "max_false_alarm_rate": self.max_false_alarm_rate,
+            "confidence": self.confidence,
+            "approved": self.approved,
+        }
+        return hashlib.sha256(
+            json.dumps(payload, sort_keys=True, separators=(",", ":")).encode()
+        ).hexdigest()
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "schema": "topology_gate.calibration_certificate",
+            "version": 1,
+            "detector_identity": self.detector_identity,
+            "null_config_identity": self.null_config_identity,
+            "trials": self.trials,
+            "horizon": self.horizon,
+            "false_alarm_count": self.false_alarm_count,
+            "false_alarm_rate": self.false_alarm_rate,
+            "false_alarm_ci_high": self.false_alarm_ci_high,
+            "max_false_alarm_rate": self.max_false_alarm_rate,
+            "confidence": self.confidence,
+            "approved": self.approved,
+            "identity": self.identity,
+        }
+
 
 @dataclass(frozen=True, slots=True)
 class ShiftCalibrationResult:
@@ -334,6 +449,7 @@ def calibrate_shift(
 
 
 __all__ = [
+    "CalibrationCertificate",
     "CalibrationConfig",
     "MAX_CALIBRATION_FEATURES",
     "MAX_CALIBRATION_HORIZON",

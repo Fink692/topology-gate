@@ -88,6 +88,9 @@ resource limits; it does not establish rolling-market calibration.
 The default reflected CUSUM-like score, topology alarm, score-to-forgetting
 map, and challenger promotion statistics are exploratory unless an independent
 calibration study establishes their assumptions and operating characteristics.
+The numerical causal adapter now requires a matching approved finite-null
+certificate before it can use a topology factor below the neutral maximum;
+the detector's warm-up `calibrated` mask alone cannot authorize acceleration.
 In particular, a threshold is not an average-run-length or level-α guarantee,
 and an isolated e-process primitive does not certify arbitrary caller-supplied
 promotion streams. Calibration must specify the null, dependence structure,

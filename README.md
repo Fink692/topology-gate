@@ -169,7 +169,10 @@ Use [`docs/calibration.md`](docs/calibration.md) and the bounded
 `calibrate_null`/`calibrate_shift` helpers before interpreting detector alarms,
 forgetting changes, or shift delays. They produce finite-horizon Wilson
 intervals and censored run-length evidence; they do not establish universal
-market or optional-stopping guarantees.
+market or optional-stopping guarantees. `NullCalibrationResult.to_certificate`
+is the explicit authorization boundary for the numerical adapter: without a
+matching approved finite-null certificate, topology-driven forgetting remains
+at its neutral maximum.
 
 ## Tests and typing
 

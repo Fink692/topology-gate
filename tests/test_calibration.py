@@ -8,6 +8,7 @@ import numpy as np
 import pytest
 
 from topology_gate.calibration import (
+    CalibrationCertificate,
     CalibrationConfig,
     calibrate_null,
     calibrate_shift,
@@ -98,3 +99,19 @@ def test_calibration_rejects_bad_factories_and_limits() -> None:
             lambda rng, horizon, features: np.zeros((horizon, features + 1)),
             config=CalibrationConfig(trials=1, horizon=4, n_features=1),
         )
+
+
+def test_null_certificate_requires_its_conservative_bound_to_pass() -> None:
+    result = calibrate_null(
+        _ThresholdDetector,
+        _zeros,
+        config=CalibrationConfig(trials=32, horizon=16, n_features=1, seed=11),
+    )
+    approved = result.to_certificate(max_false_alarm_rate=0.2)
+    rejected = result.to_certificate(max_false_alarm_rate=0.05)
+
+    assert isinstance(approved, CalibrationCertificate)
+    assert approved.approved
+    assert not rejected.approved
+    assert approved.identity != rejected.identity
+    assert approved.to_dict()["approved"] is True

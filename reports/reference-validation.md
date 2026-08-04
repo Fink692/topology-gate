@@ -6,8 +6,8 @@ Scope: bounded research/control layer only; no live-data or execution claim
 
 ## Reproducible engineering checks
 
-- Full suite: **170 passed**.
-- Configured coverage run: **79.84%** total coverage.
+- Full suite: **172 passed**.
+- Configured coverage run: **79.92%** total coverage.
 - Ruff: passed on `src` and `tests`.
 - Mypy: passed on all 20 source modules.
 - Dependency-light root import: passed without NumPy site packages.
@@ -18,7 +18,10 @@ Scope: bounded research/control layer only; no live-data or execution claim
   restore tests: passed.
 - Timestamped detector/RLS migration tests: passed for feature-ID extraction,
   strict point-in-time universe membership, prediction-time factor freezing,
-  one-shot versus resumed replay equivalence, and missing-label context cleanup.
+  one-shot versus resumed replay equivalence, missing-label context cleanup,
+  and neutral forgetting without an approved detector certificate.
+- Finite-null certificate tests: passed for conservative Wilson-bound approval,
+  detector-identity binding, and explicit rejection of an unapproved budget.
 - Strict economic contract tests: passed for separate realized returns,
   component execution costs, turnover/flip accounting, explicit abstentions,
   identity mismatches, unavailable costs, and non-observed return rejection.

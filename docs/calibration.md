@@ -21,6 +21,15 @@ assumptions belong in the experiment manifest. A null result is evidence for
 the tested finite horizon and factory only, not a universal guarantee for
 market data.
 
+`NullCalibrationResult.to_certificate(max_false_alarm_rate=...)` creates an
+explicit finite-null certificate. The certificate is approved only when the
+95% Wilson upper bound is no larger than the declared budget, and it is bound
+to the detector and null-experiment identities. The causal numerical adapter
+requires a matching approved certificate before it can use a detector factor
+below its neutral maximum; without one, topology remains diagnostic and
+forgetting stays neutral. A certificate from a synthetic or dependent null is
+not market calibration.
+
 Minimum protocol for a research release:
 
 1. Freeze detector configuration, source revision, dependency fingerprint, and

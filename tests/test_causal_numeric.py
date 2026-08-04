@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from types import SimpleNamespace
+
 import numpy as np
 import pytest
 
@@ -11,6 +13,7 @@ from topology_gate.asof import (
     MarketObservation,
     UniverseMembership,
 )
+from topology_gate.calibration import CalibrationCertificate
 from topology_gate.causal_numeric import (
     CausalFeaturePlan,
     CausalNumericError,
@@ -86,6 +89,36 @@ def detector() -> RollingTopologyDetector:
             forgetting_lambda_max=0.99,
         )
     )
+
+
+class ReadyDetector:
+    config_identity = "ready-detector:v1"
+    config = SimpleNamespace(forgetting_lambda_max=0.99)
+
+    def __init__(self) -> None:
+        self.calls = 0
+
+    def observe(self, state_features: np.ndarray) -> SimpleNamespace:
+        assert state_features.shape == (1,)
+        self.calls += 1
+        return SimpleNamespace(
+            score=1.0,
+            alarm=True,
+            ready=True,
+            forgetting_factor=0.8,
+            method="ready-test",
+        )
+
+    def stream_state_dict(self) -> dict[str, object]:
+        return {"calls": self.calls}
+
+    def validate_stream_state_dict(self, state: dict[str, object]) -> dict[str, object]:
+        if set(state) != {"calls"}:
+            raise ValueError("invalid ready detector state")
+        return {"calls": int(state["calls"])}
+
+    def load_stream_state_dict(self, state: dict[str, object]) -> None:
+        self.calls = int(state["calls"])
 
 
 def make_book(*, missing: bool = False) -> AsOfBook:
@@ -216,6 +249,64 @@ def test_strict_feature_plan_rejects_future_event_and_missing_membership() -> No
             plan=plan(),
             learner=make_learner(),
             model_config=CausalRLSConfig(model_id="membership"),
+        )
+
+
+def test_detector_forgetting_acceleration_requires_an_approved_certificate() -> None:
+    neutral = run_causal_rls_replay(
+        make_book(),
+        (1, 2, 4),
+        ("t1", "t2", "t3"),
+        plan=plan(),
+        learner=make_learner(),
+        detector=ReadyDetector(),
+        model_config=CausalRLSConfig(model_id="neutral"),
+    )
+    assert all(not step.acceleration_authorized for step in neutral.steps)
+    assert all(step.forgetting_factor == 0.99 for step in neutral.steps)
+
+    certificate = CalibrationCertificate(
+        detector_identity=ReadyDetector.config_identity,
+        null_config_identity="declared-null:v1",
+        trials=100,
+        horizon=16,
+        false_alarm_count=0,
+        false_alarm_rate=0.0,
+        false_alarm_ci_high=0.01,
+        max_false_alarm_rate=0.05,
+    )
+    authorized = run_causal_rls_replay(
+        make_book(),
+        (1, 2, 4),
+        ("t1", "t2", "t3"),
+        plan=plan(),
+        learner=make_learner(),
+        detector=ReadyDetector(),
+        calibration=certificate,
+        model_config=CausalRLSConfig(model_id="authorized"),
+    )
+    assert all(step.acceleration_authorized for step in authorized.steps)
+    assert all(step.forgetting_factor == 0.8 for step in authorized.steps)
+
+    with pytest.raises(CausalNumericError, match="detector identity"):
+        run_causal_rls_replay(
+            make_book(),
+            (1,),
+            ("t1",),
+            plan=plan(),
+            learner=make_learner(),
+            detector=ReadyDetector(),
+            calibration=CalibrationCertificate(
+                detector_identity="wrong-detector",
+                null_config_identity="declared-null:v1",
+                trials=100,
+                horizon=16,
+                false_alarm_count=0,
+                false_alarm_rate=0.0,
+                false_alarm_ci_high=0.01,
+                max_false_alarm_rate=0.05,
+            ),
+            model_config=CausalRLSConfig(model_id="wrong"),
         )
 
 

@@ -16,6 +16,7 @@ def test_root_all_is_unique_and_resolves_every_public_name() -> None:
 
     numeric_names = {
         "BacktestEngine",
+        "CalibrationCertificate",
         "CausalFeaturePlan",
         "CausalNumericError",
         "CausalPromotionConfig",
