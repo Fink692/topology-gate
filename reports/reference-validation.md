@@ -6,16 +6,22 @@ Scope: bounded research/control layer only; no live-data or execution claim
 
 ## Reproducible engineering checks
 
-- Full suite: **153 passed**.
-- Configured coverage run: **79.10%** total coverage.
+- Full suite: **165 passed**.
+- Configured coverage run: **79.59%** total coverage.
 - Ruff: passed on `src` and `tests`.
-- Mypy: passed on all 16 source modules.
+- Mypy: passed on all 19 source modules.
 - Dependency-light root import: passed without NumPy site packages.
 - Authenticated checkpoint, manifest digest, promotion/evidence state, and
   detached restore tests: passed.
 - Causal replay prediction-before-label, future-prefix invariance, explicit
   missing/invalid status, chained-record tamper detection, and model-state
   restore tests: passed.
+- Timestamped detector/RLS migration tests: passed for feature-ID extraction,
+  strict point-in-time universe membership, prediction-time factor freezing,
+  one-shot versus resumed replay equivalence, and missing-label context cleanup.
+- Strict economic contract tests: passed for separate realized returns,
+  component execution costs, turnover/flip accounting, explicit abstentions,
+  identity mismatches, unavailable costs, and non-observed return rejection.
 - Exact finite persistence algebra, PSD/eigen residual, permutation/duplicate,
   digest, and resource-cap invariants: passed.
 
@@ -56,9 +62,9 @@ therefore fail-closed.
 | G0 identity/claim freeze | Partial | `RunSpec`, `RunManifest`, evidence config, as-of records, and authenticated checkpoint identities exist; no full vendor input manifest or shared event engine yet. |
 | G1 exact persistent MVP | Pass for bounded reference scope | `persistent.py` plus hand-built and algebraic invariants; only the declared finite VR/F2/q/pair construction is covered. |
 | G2 calibrated forgetting | Fail for a calibrated claim | Harness exists and caught a false-alarm failure; no independent market/dependence calibration artifact authorizes accelerated forgetting. |
-| G3 recursive transactional state | Partial/pass for components | RLS and e-process state tests plus frozen eta/evidence/checkpoint replay; the dependency-light `CausalReplay` transition is hash-chained and model-state checked, but the numerical workers are not all routed through it. |
-| G4 causal replay/recovery | Partial/pass for the new boundary | `AsOfBook`, `CausalReplay`, delayed-label ledger, chunk state, HMAC restore, and prefix tests exist; legacy online/offline row adapters still need migration to the shared transition. |
-| G5 economic validation | Not evaluated | No point-in-time vendor data, costs, capacity, delistings, or final holdout are present. Strict configs now reject implicit target/zero return substitution. |
+| G3 recursive transactional state | Partial/pass for the migrated path | `CausalReplay` now drives the numerical detector/RLS adapter with prediction-time factor capture, model-state rollback, and detached restore; challenger/e-process and legacy worker state are not yet one transaction. |
+| G4 causal replay/recovery | Partial/pass for the migrated path | `AsOfBook`, `CausalReplay`, `CausalRLSModel`, delayed-label ledger, chunk state, HMAC restore, prefix invariance, future append acceptance, and consumed-prefix revision rejection are tested; legacy row adapters remain compatibility paths. |
+| G5 economic validation | Contract pass; market evidence not evaluated | `economic.py` is fail-closed for separate returns/costs and explicit abstention accounting, but no point-in-time vendor data, capacity, delistings, or sealed final holdout are present. |
 
 The package remains research/alpha. The evidence needed to upgrade the two
 remaining scientific claims is explicit: a pre-registered dependence-aware

@@ -147,6 +147,14 @@ prediction/label ledger. A checkpointable model must expose a JSON-safe
 `state_dict`; callers that disable that requirement are explicitly using an
 untracked diagnostic replay.
 
+`run_causal_rls_replay` is the numerical migration adapter: immutable feature
+bindings are resolved from the snapshot, the real topology detector and RLS
+learner run behind the shared transition, and the prediction-time forgetting
+factor is retained until label settlement. It returns no tradable PnL by
+design. Use `evaluate_economic_path` only with separately sourced
+`RealizedReturn` and `ExecutionCost` records; missing returns and costs fail
+closed, and abstentions remain visible.
+
 ## Calibration evidence
 
 Use [`docs/calibration.md`](docs/calibration.md) and the bounded

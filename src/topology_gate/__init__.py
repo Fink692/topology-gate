@@ -40,6 +40,18 @@ from .checkpoint import (
     restore_component_states,
     save_checkpoint,
 )
+from .economic import (
+    ECONOMIC_SCHEMA,
+    ECONOMIC_VERSION,
+    EconomicDecision,
+    EconomicEvaluationConfig,
+    EconomicEvaluationError,
+    EconomicEvaluationResult,
+    EconomicPathRow,
+    ExecutionCost,
+    RealizedReturn,
+    evaluate_economic_path,
+)
 from .evidence import (
     EvidenceLedger,
     EvidenceResolution,
@@ -109,6 +121,14 @@ from .types import (
 __version__ = "0.1.0"
 
 _LAZY_EXPORTS: dict[str, tuple[str, str]] = {
+    "CausalFeaturePlan": (".causal_numeric", "CausalFeaturePlan"),
+    "CausalNumericError": (".causal_numeric", "CausalNumericError"),
+    "CausalRLSConfig": (".causal_numeric", "CausalRLSConfig"),
+    "CausalRLSModel": (".causal_numeric", "CausalRLSModel"),
+    "CausalRLSReplayResult": (".causal_numeric", "CausalRLSReplayResult"),
+    "CausalStep": (".causal_numeric", "CausalStep"),
+    "FeatureBinding": (".causal_numeric", "FeatureBinding"),
+    "run_causal_rls_replay": (".causal_numeric", "run_causal_rls_replay"),
     "CalibrationConfig": (".calibration", "CalibrationConfig"),
     "NullCalibrationResult": (".calibration", "NullCalibrationResult"),
     "ShiftCalibrationResult": (".calibration", "ShiftCalibrationResult"),
@@ -156,7 +176,14 @@ _LAZY_EXPORTS: dict[str, tuple[str, str]] = {
 # boundary preserve a useful standard-library-only import while giving a
 # precise hint when a caller asks for a numerical worker without its extra.
 _NUMERIC_WORKER_MODULES = frozenset(
-    {".backtest", ".calibration", ".online", ".persistent", ".synthetic"}
+    {
+        ".backtest",
+        ".calibration",
+        ".causal_numeric",
+        ".online",
+        ".persistent",
+        ".synthetic",
+    }
 )
 
 
@@ -208,8 +235,14 @@ __all__ = [
     "BacktestResultProtocol",
     "BacktesterProtocol",
     "CalibrationConfig",
+    "CausalFeaturePlan",
+    "CausalNumericError",
+    "CausalRLSConfig",
+    "CausalRLSModel",
+    "CausalRLSReplayResult",
     "CausalReplay",
     "CausalReplayResult",
+    "CausalStep",
     "CheckpointCompatibilityError",
     "CheckpointEnvelope",
     "CheckpointError",
@@ -221,9 +254,18 @@ __all__ = [
     "EProcess",
     "EProcessGateProtocol",
     "EProcessState",
+    "ECONOMIC_SCHEMA",
+    "ECONOMIC_VERSION",
+    "EconomicDecision",
+    "EconomicEvaluationConfig",
+    "EconomicEvaluationError",
+    "EconomicEvaluationResult",
+    "EconomicPathRow",
+    "ExecutionCost",
     "GateDecision",
     "GateStatus",
     "FrozenPrediction",
+    "FeatureBinding",
     "LabelReceipt",
     "LABEL_PRECEDENCE",
     "LabelObservation",
@@ -267,6 +309,7 @@ __all__ = [
     "RLSLearnerProtocol",
     "RLSState",
     "RLSUpdate",
+    "RealizedReturn",
     "RunManifest",
     "RunSpec",
     "RollingTopologyDetector",
@@ -312,6 +355,8 @@ __all__ = [
     "restore_component_states",
     "run_recursive_rls",
     "run_causal_replay",
+    "run_causal_rls_replay",
+    "evaluate_economic_path",
     "save_checkpoint",
     "persistent_laplacian_backend",
 ]

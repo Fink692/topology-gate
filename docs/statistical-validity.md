@@ -124,6 +124,15 @@ target being predicted, and records a hash chain. This closes the causal
 ordering boundary for its callbacks, but it does not make arbitrary callback
 code causal and it is not yet wired into the legacy NumPy row adapters.
 
+The `causal_numeric` adapter now runs the existing detector/RLS workers through
+that transition using immutable record/field bindings and point-in-time
+universe checks. Its one-shot and checkpoint-resumed paths are tested for
+equivalence. It still does not establish a cross-asset market study. The
+separate `economic` contract requires timestamped realized returns and
+execution-cost components, rejects target/zero substitution and unavailable
+costs, and reports abstentions explicitly; it is an evaluation boundary, not
+market evidence.
+
 ## Minimum evidence before a stronger claim
 
 Any paper or deployment claiming calibrated change detection, anytime-valid

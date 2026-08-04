@@ -8,10 +8,11 @@ This document is the architecture contract for a topology-gated recursive quanti
 
 The requested production architecture is not implemented end to end. The
 workspace contains an alpha topology_gate scaffold plus bounded reference
-contracts for exact finite persistence, as-of events, run manifests, evidence
-ledger composition, and authenticated state. These additions narrow and test
+contracts for exact finite persistence, as-of events, causal replay, numerical
+detector/RLS migration, run manifests, evidence ledger composition, strict
+economic evaluation, and authenticated state. These additions narrow and test
 important boundaries; they do not yet constitute a live market-data engine,
-shared online/offline transition function, cross-asset portfolio system, or
+full legacy-worker migration, cross-asset portfolio system, or
 statistical/economic certification. The package names and interfaces below
 define the target boundary.
 

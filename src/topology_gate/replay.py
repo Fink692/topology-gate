@@ -64,6 +64,7 @@ class ReplayModel(Protocol):
 PredictionFn: TypeAlias = Callable[[AsOfSnapshot, str], Any]
 ScoreFn: TypeAlias = Callable[["ReplayPrediction", LabelObservation], Any]
 LabelFn: TypeAlias = Callable[["ReplayPrediction", LabelObservation, float | None], None]
+ResolutionFn: TypeAlias = Callable[["ReplayPrediction", LabelObservation, ReplayStatus], None]
 
 
 def _text(value: Any, name: str) -> str:
@@ -483,10 +484,13 @@ class ReplayState:
     chain_digest: str
     model_state_digest: str
     model_state: Any
+    book_prefix_digest: str | None = None
 
     def __post_init__(self) -> None:
         object.__setattr__(self, "config_identity", _text(self.config_identity, "config_identity"))
         object.__setattr__(self, "book_digest", _text(self.book_digest, "book_digest"))
+        prefix_digest = self.book_digest if self.book_prefix_digest is None else self.book_prefix_digest
+        object.__setattr__(self, "book_prefix_digest", _text(prefix_digest, "book_prefix_digest"))
         if isinstance(self.next_sequence, bool) or not isinstance(self.next_sequence, int) or self.next_sequence < 0:
             raise ReplayError("next_sequence must be a non-negative integer")
         object.__setattr__(self, "chain_digest", _text(self.chain_digest, "chain_digest"))
@@ -515,6 +519,7 @@ class ReplayState:
             "version": REPLAY_VERSION,
             "config_identity": self.config_identity,
             "book_digest": self.book_digest,
+            "book_prefix_digest": self.book_prefix_digest,
             "next_sequence": self.next_sequence,
             "last_decision_time": None
             if self.last_decision_time is None
@@ -557,6 +562,7 @@ class ReplayState:
             chain_digest=cast(str, state.get("chain_digest")),
             model_state_digest=cast(str, state.get("model_state_digest")),
             model_state=state.get("model_state"),
+            book_prefix_digest=state.get("book_prefix_digest"),
         )
         _validate_record_chain(candidate.records, candidate.chain_digest)
         return candidate
@@ -605,6 +611,7 @@ class CausalReplay:
         *,
         score: ScoreFn | None = None,
         on_label: LabelFn | None = None,
+        on_resolution: ResolutionFn | None = None,
         config: ReplayConfig | None = None,
     ) -> None:
         if not callable(predictor):
@@ -613,10 +620,13 @@ class CausalReplay:
             raise TypeError("score must be callable")
         if on_label is not None and not callable(on_label):
             raise TypeError("on_label must be callable")
+        if on_resolution is not None and not callable(on_resolution):
+            raise TypeError("on_resolution must be callable")
         self.book = book
         self.predictor = predictor
         self.score = score
         self.on_label = on_label
+        self.on_resolution = on_resolution
         self.config = config or ReplayConfig(
             score_id="none" if score is None else "callable"
         )
@@ -641,8 +651,13 @@ class CausalReplay:
     def _check_initial_state(self, state: ReplayState, model: Any) -> None:
         if state.config_identity != self.config.identity:
             raise ReplayStateError("initial replay state uses a different configuration")
-        if state.book_digest != self.book.digest:
-            raise ReplayStateError("initial replay state uses a different input book")
+        if state.last_decision_time is None:
+            if state.book_digest != self.book.digest:
+                raise ReplayStateError("initial replay state uses a different input book")
+        else:
+            current_prefix = self.book.materialize(state.last_decision_time).digest
+            if current_prefix != state.book_prefix_digest:
+                raise ReplayStateError("initial replay state uses a different consumed input prefix")
         if state.next_sequence != len(state.records):
             raise ReplayStateError("initial replay state has an invalid record count")
         _validate_record_chain(state.records, state.chain_digest)
@@ -754,6 +769,8 @@ class CausalReplay:
                             self.on_label(prediction, label, score_value)
                 else:
                     reason = f"label status is {label.status}"
+                if self.on_resolution is not None:
+                    self.on_resolution(prediction, label, resolution_status)
                 after_digest, _ = _state_snapshot(
                     model, required=self.config.require_model_state
                 )
@@ -856,6 +873,11 @@ class CausalReplay:
         model_digest, model_state = _state_snapshot(
             model, required=self.config.require_model_state
         )
+        prefix_digest = (
+            self.book.digest
+            if last_time is None
+            else self.book.materialize(last_time).digest
+        )
         final_state = ReplayState(
             config_identity=self.config.identity,
             book_digest=self.book.digest,
@@ -867,6 +889,7 @@ class CausalReplay:
             chain_digest=chain_digest,
             model_state_digest=model_digest,
             model_state=model_state,
+            book_prefix_digest=prefix_digest,
         )
         return CausalReplayResult(
             predictions=final_state.predictions,
@@ -885,6 +908,7 @@ def run_causal_replay(
     model: Any,
     score: ScoreFn | None = None,
     on_label: LabelFn | None = None,
+    on_resolution: ResolutionFn | None = None,
     config: ReplayConfig | None = None,
     initial_state: ReplayState | None = None,
 ) -> CausalReplayResult:
@@ -895,6 +919,7 @@ def run_causal_replay(
         predictor,
         score=score,
         on_label=on_label,
+        on_resolution=on_resolution,
         config=config,
     ).run(
         decision_times,
@@ -917,6 +942,7 @@ __all__ = [
     "ReplayPrediction",
     "ReplayRecord",
     "ReplayResolution",
+    "ResolutionFn",
     "ReplayState",
     "ReplayStateError",
     "ReplayStatus",

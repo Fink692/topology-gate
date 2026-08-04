@@ -25,14 +25,21 @@ class CounterModel:
         return {"updates": self.updates, "seen_scores": list(self.seen_scores)}
 
 
-def market(record_id: str, available: int, value: float) -> MarketObservation:
+def market(
+    record_id: str,
+    available: int,
+    value: float,
+    *,
+    revision: int = 0,
+    ingest: int = 0,
+) -> MarketObservation:
     return MarketObservation(
         record_id=record_id,
         instrument_id="ES",
         event_time=available,
         available_time=available,
-        source_revision=0,
-        ingest_sequence=0,
+        source_revision=revision,
+        ingest_sequence=ingest,
         fields={"value": value},
     )
 
@@ -111,6 +118,38 @@ def test_future_event_cannot_change_prefix_records() -> None:
     ]
 
 
+def test_resume_accepts_future_append_but_rejects_consumed_prefix_revision() -> None:
+    base = AsOfBook(observations=(market("m1", 1, 5.0),))
+
+    def predict(snapshot, target_id):
+        return snapshot.observation("m1").fields["value"]
+
+    first = run_causal_replay(
+        base, (1,), ("t1",), predict, model=CounterModel()
+    )
+    extended = base.with_observation(market("future", 20, 500.0))
+    resumed = run_causal_replay(
+        extended,
+        (2,),
+        ("t2",),
+        predict,
+        model=CounterModel(),
+        initial_state=ReplayState.from_state_dict(first.state_dict()),
+    )
+    assert resumed.predictions[-1].value == 5.0
+
+    revised = base.with_observation(market("m1", 1, 6.0, revision=1, ingest=1))
+    with pytest.raises(ReplayStateError, match="consumed input prefix"):
+        run_causal_replay(
+            revised,
+            (2,),
+            ("t2",),
+            predict,
+            model=CounterModel(),
+            initial_state=first.state,
+        )
+
+
 def test_missing_label_is_explicit_and_does_not_call_update() -> None:
     missing = LabelObservation(
         label_id="label-t1",
@@ -123,6 +162,7 @@ def test_missing_label_is_explicit_and_does_not_call_update() -> None:
         source_revision=0,
     )
     calls: list[str] = []
+    resolutions: list[ReplayStatus] = []
     result = run_causal_replay(
         AsOfBook(observations=(market("m1", 1, 1.0),), labels=(missing,)),
         (1, 3),
@@ -130,8 +170,10 @@ def test_missing_label_is_explicit_and_does_not_call_update() -> None:
         lambda snapshot, target: 1.0,
         model=CounterModel(),
         on_label=lambda prediction, label, score: calls.append(label.status),
+        on_resolution=lambda prediction, label, status: resolutions.append(status),
     )
     assert calls == []
+    assert resolutions == [ReplayStatus.MISSING]
     assert result.resolutions[0].status is ReplayStatus.MISSING
     assert result.resolutions[0].score is None
     assert result.resolutions[0].reason == "label status is missing"

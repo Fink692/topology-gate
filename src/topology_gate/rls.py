@@ -1220,7 +1220,15 @@ class AdaptiveRLS:
         )
         if state_n_outputs is not None and state_n_outputs != parsed_n_outputs:
             raise ValueError("state.n_outputs disagrees with state.theta")
-        candidate_n_outputs = parsed_n_outputs
+        # Preserve the scalar ``n_outputs=None`` convention when restoring a
+        # state produced by a scalar estimator.  Normalizing it to ``1`` here
+        # changes the serialized identity even though the numerical state is
+        # identical, which breaks detached replay/checkpoint fingerprints.
+        candidate_n_outputs = (
+            None
+            if state_n_outputs is None and parsed_n_outputs == 1
+            else parsed_n_outputs
+        )
         covariance = _matrix(covariance_value, self._n_features, "state.covariance")
         _validate_symmetric(covariance, "state.covariance")
         covariance = _stabilize_covariance(covariance, "state.covariance")

@@ -16,6 +16,13 @@ def test_root_all_is_unique_and_resolves_every_public_name() -> None:
 
     numeric_names = {
         "BacktestEngine",
+        "CausalFeaturePlan",
+        "CausalNumericError",
+        "CausalRLSConfig",
+        "CausalRLSModel",
+        "CausalRLSReplayResult",
+        "CausalStep",
+        "FeatureBinding",
         "OnlineRunConfig",
         "OnlineRunResult",
         "PersistentLaplacianConfig",
@@ -34,6 +41,7 @@ def test_root_all_is_unique_and_resolves_every_public_name() -> None:
         "generate_regime_switching",
         "generate_synthetic_regimes",
         "run_recursive_rls",
+        "run_causal_rls_replay",
         "compute_persistent_laplacian",
         "persistent_laplacian_backend",
     }
