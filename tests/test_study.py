@@ -35,7 +35,9 @@ from topology_gate.study import (
     run_causal_rls_study,
 )
 from topology_gate.study_package import (
+    REQUIRED_MARKET_ARTIFACT_ROLES,
     StudySourceArtifact,
+    StudySourceAudit,
     StudySourcePackage,
     StudySourcePackageError,
     StudySourceProvenance,
@@ -131,7 +133,9 @@ def _book(*, first_label_available: int = 2) -> AsOfBook:
     )
 
 
-def _economic_evidence(*, omit_target: str | None = None) -> EconomicEvidence:
+def _economic_evidence(
+    *, omit_target: str | None = None, with_capacity: bool = False
+) -> EconomicEvidence:
     returns = tuple(
         RealizedReturn(
             target_id=f"t{index}",
@@ -150,6 +154,7 @@ def _economic_evidence(*, omit_target: str | None = None) -> EconomicEvidence:
             execution_time=index,
             available_time=index,
             cost_model_id="rates:v1",
+            capacity_limit=1.0 if with_capacity else None,
         )
         for index in range(1, 9)
         if f"t{index}" != omit_target
@@ -277,6 +282,36 @@ def test_bundle_audit_requires_complete_universe_and_economic_records() -> None:
     assert audit.economic_records_complete is True
     assert audit.economic_evidence_digest == bundle.economic_evidence.digest
     assert audit.bundle_digest == bundle.digest
+
+
+def test_bundle_audit_requires_capacity_evidence_when_requested() -> None:
+    timeline = StudyTimeline(
+        decision_times=(1, 2),
+        target_ids=("t1", "t2"),
+        decision_indices=(0, 1),
+        expected_instrument_ids=(("ES",), ("ES",)),
+    )
+    without_capacity = _bundle(
+        timeline,
+        economic_evidence=_economic_evidence(),
+    )
+    with pytest.raises(StudyInputError, match="capacity evidence"):
+        without_capacity.audit(
+            "calibration",
+            require_observed_economic_evidence=True,
+            require_capacity_evidence=True,
+        )
+
+    with_capacity = _bundle(
+        timeline,
+        economic_evidence=_economic_evidence(with_capacity=True),
+    )
+    audit = with_capacity.audit(
+        "calibration",
+        require_observed_economic_evidence=True,
+        require_capacity_evidence=True,
+    )
+    assert audit.capacity_evidence_complete is True
 
 
 def test_bundle_rejects_universe_mismatch_before_model_execution() -> None:
@@ -460,6 +495,97 @@ def test_source_package_round_trip_binds_provenance_and_all_artifacts() -> None:
             }
         )
     assert restored.audit("calibration").decision_count == 2
+
+
+def test_market_source_audit_binds_vintage_roles_bytes_and_capacity() -> None:
+    timeline = StudyTimeline(
+        (1, 2),
+        ("t1", "t2"),
+        (0, 1),
+        (("ES",), ("ES",)),
+    )
+    payloads = {
+        f"{role}.csv": f"role={role}\n".encode("ascii")
+        for role in REQUIRED_MARKET_ARTIFACT_ROLES
+    }
+    provenance = replace(
+        _source_provenance(),
+        source_artifacts=tuple(
+            StudySourceArtifact.from_bytes(
+                artifact_id,
+                role=artifact_id.removesuffix(".csv"),
+                payload=payload,
+                record_count=1,
+            )
+            for artifact_id, payload in payloads.items()
+        ),
+    )
+    package = StudySourcePackage(
+        provenance,
+        _bundle(
+            timeline,
+            economic_evidence=_economic_evidence(with_capacity=True),
+        ),
+    )
+
+    receipt = package.audit_market("calibration", payloads)
+
+    assert isinstance(receipt, StudySourceAudit)
+    assert receipt.source_artifacts_verified is True
+    assert receipt.package_digest == package.digest
+    assert receipt.provenance_digest == provenance.digest
+    assert receipt.input_audit.capacity_evidence_complete is True
+    assert receipt.required_artifact_roles == REQUIRED_MARKET_ARTIFACT_ROLES
+    assert receipt.to_dict()["digest"] == receipt.digest
+    restored_receipt = StudySourceAudit.from_json(receipt.to_json())
+    assert restored_receipt == receipt
+    tampered_receipt = receipt.to_dict()
+    tampered_receipt["phase"] = "tuning"
+    with pytest.raises(StudySourcePackageError, match="source audit digest"):
+        StudySourceAudit.from_dict(tampered_receipt)
+
+
+def test_market_source_audit_rejects_missing_roles_bytes_and_vintage() -> None:
+    timeline = StudyTimeline((1,), ("t1",), (0,), (("ES",),))
+    package = StudySourcePackage(
+        _source_provenance(),
+        _bundle(timeline, economic_evidence=_economic_evidence(with_capacity=True)),
+    )
+    with pytest.raises(StudySourcePackageError, match="missing required roles"):
+        package.audit_market(
+            "calibration",
+            {"market-data.csv": b"record_id,instrument_id\nm1,ES\n"},
+        )
+
+    roles = REQUIRED_MARKET_ARTIFACT_ROLES
+    payloads = {f"{role}.csv": b"payload\n" for role in roles}
+    artifacts = tuple(
+        StudySourceArtifact.from_bytes(
+            artifact_id,
+            role=artifact_id.removesuffix(".csv"),
+            payload=payload,
+            record_count=1,
+        )
+        for artifact_id, payload in payloads.items()
+    )
+    package = StudySourcePackage(
+        replace(_source_provenance(), source_artifacts=artifacts),
+        _bundle(timeline, economic_evidence=_economic_evidence(with_capacity=True)),
+    )
+    with pytest.raises(StudySourcePackageError, match="byte size|sha256"):
+        package.audit_market(
+            "calibration",
+            {**payloads, "delistings.csv": b"tampered"},
+        )
+    with pytest.raises(StudySourcePackageError, match="vintage"):
+        mismatched = StudySourcePackage(
+            replace(
+                package.provenance,
+                vintage_id="different-vintage:v1",
+            ),
+            package.bundle,
+        )
+        mismatched.audit_market("calibration", payloads)
 
 
 def test_source_package_rejects_tampered_artifacts_and_unknown_fields() -> None:

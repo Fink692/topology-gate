@@ -65,3 +65,10 @@ mapping to `evaluate_economic_path` with a matching `EconomicEvaluationConfig`,
 or call `evaluate_economic_evidence_path(...)` to bind the bundle digest and
 cutoff into the result artifact. The result does not silently treat a later
 revision as if it had been visible at an earlier cutoff.
+
+For a market-source package, `StudySourcePackage.audit_market(...)` enables
+the stricter study boundary: it requires observed returns and costs plus a
+capacity limit for every evaluated target, and records the verified raw
+artifact IDs in a `StudySourceAudit` receipt. The lower-level economic
+evaluator remains usable without capacity evidence for explicitly exploratory
+accounting runs.

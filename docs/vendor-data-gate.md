@@ -45,13 +45,18 @@ The vendor adapter should deliver:
    including capacity limits when capacity is claimed.
 4. One raw-file fingerprint for every source input using
    `StudySourceArtifact.from_bytes(...)`, including role and record count.
+   A market audit requires the exact roles `delistings`, `execution-costs`,
+   `labels`, `market-observations`, `realized-returns`, and
+   `universe-membership`.
 5. The vendor license, dataset version, retrieval time, release/cut date, and
    the exact adapter revision in `StudySourceProvenance`.
 
 Before phase auditing, pass the raw payloads back to the restored package as
-`verify_source_artifacts({artifact_id: raw_bytes, ...})`. That call requires
-the supplied ID set to equal the declared artifact set and verifies every byte
-size and SHA-256 fingerprint. The adapter must fail closed on missing
+`audit_market(phase, {artifact_id: raw_bytes, ...})`. That call requires
+the supplied ID set to equal the declared artifact set, verifies every byte
+size and SHA-256 fingerprint, binds the provenance vintage to the run
+manifest, and requires complete universe, observed economic, and capacity
+evidence. The adapter must fail closed on missing
 availability timestamps, duplicate revisions, unknown fields, unstable
 identifiers, unexplained delistings, or unverifiable raw-file hashes. An
 adjusted-price download from a current public history is not sufficient
@@ -59,8 +64,9 @@ evidence for this gate.
 
 ## Acceptance sequence
 
-Run the source package through `audit("calibration")`, `audit("tuning")`, and
-`audit("validation")` while the holdout remains sealed. Freeze the challenger
+Run the source package through `audit_market("calibration", payloads)`,
+`audit_market("tuning", payloads)`, and `audit_market("validation", payloads)`
+while the holdout remains sealed. Freeze the challenger
 family and e-process budget before calibration. Only after the validation audit
 and all economic records pass should the registered release event open the
 holdout. The final report must retain the package digest, every raw-artifact

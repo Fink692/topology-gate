@@ -73,6 +73,24 @@ artifact ID. Provenance describes the adapter's source policy; it is not
 independent proof that a vendor source is survivorship-free or
 revision-complete.
 
+For the market-evidence gate, use the stricter source audit after restoring
+the raw payloads. It requires the exact artifact roles `delistings`,
+`execution-costs`, `labels`, `market-observations`, `realized-returns`, and
+`universe-membership`; verifies every declared byte; binds the provenance
+vintage to `RunSpec.input_vintage_id`; requires complete point-in-time
+universe rows, observed returns/costs, and per-target capacity limits; and
+returns a digest-bound `StudySourceAudit` receipt:
+
+```python
+source_audit = restored.audit_market(
+    "validation",
+    {artifact_id: raw_bytes[artifact_id] for artifact_id in artifact_ids},
+)
+```
+
+The ordinary `audit(...)` path remains appropriate for synthetic or partial
+engineering runs. It does not authorize a market-performance claim.
+
 ```python
 from topology_gate import (
     StudyInputBundle,

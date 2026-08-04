@@ -32,6 +32,16 @@ SOURCE_PACKAGE_SCHEMA = "topology_gate.study_source_package"
 SOURCE_PACKAGE_VERSION = 1
 SOURCE_ARTIFACT_SCHEMA = "topology_gate.study_source_artifact"
 SOURCE_ARTIFACT_VERSION = 1
+SOURCE_AUDIT_SCHEMA = "topology_gate.study_source_audit"
+SOURCE_AUDIT_VERSION = 1
+REQUIRED_MARKET_ARTIFACT_ROLES = (
+    "delistings",
+    "execution-costs",
+    "labels",
+    "market-observations",
+    "realized-returns",
+    "universe-membership",
+)
 
 
 class StudySourcePackageError(ValueError):
@@ -343,6 +353,179 @@ class StudySourceProvenance:
 
 
 @dataclass(frozen=True, slots=True)
+class StudySourceAudit:
+    """Receipt proving a strict market-source audit was actually performed.
+
+    The receipt is only constructible after the package has verified every
+    declared raw artifact and the normalized study bundle has passed the
+    complete-universe, observed-economic-record, and capacity checks.
+    """
+
+    package_digest: str
+    provenance_digest: str
+    phase: str
+    input_audit: StudyInputAudit
+    verified_artifact_ids: tuple[str, ...]
+    required_artifact_roles: tuple[str, ...]
+    capacity_evidence_required: bool
+    source_artifacts_verified: bool = True
+    schema: str = SOURCE_AUDIT_SCHEMA
+    version: int = SOURCE_AUDIT_VERSION
+
+    def __post_init__(self) -> None:
+        object.__setattr__(
+            self,
+            "package_digest",
+            _stored_digest(self.package_digest, "source package digest"),
+        )
+        object.__setattr__(
+            self,
+            "provenance_digest",
+            _stored_digest(self.provenance_digest, "source provenance digest"),
+        )
+        _text(self.phase, "source audit phase")
+        if not isinstance(self.input_audit, StudyInputAudit):
+            raise StudySourcePackageError("input_audit must be StudyInputAudit")
+        for name in ("verified_artifact_ids", "required_artifact_roles"):
+            value = getattr(self, name)
+            if isinstance(value, (str, bytes, bytearray)):
+                raise StudySourcePackageError(f"{name} must be a sequence")
+            try:
+                normalized = tuple(value)
+            except TypeError as exc:
+                raise StudySourcePackageError(f"{name} must be a sequence") from exc
+            if not normalized or not all(
+                isinstance(item, str) and item.strip() for item in normalized
+            ):
+                raise StudySourcePackageError(
+                    f"{name} must contain non-empty strings"
+                )
+            if tuple(sorted(normalized)) != normalized:
+                raise StudySourcePackageError(f"{name} must be sorted")
+            if len(set(normalized)) != len(normalized):
+                raise StudySourcePackageError(f"{name} must be unique")
+            object.__setattr__(self, name, normalized)
+        if not isinstance(self.capacity_evidence_required, bool):
+            raise StudySourcePackageError(
+                "capacity_evidence_required must be boolean"
+            )
+        if not isinstance(self.source_artifacts_verified, bool):
+            raise StudySourcePackageError(
+                "source_artifacts_verified must be boolean"
+            )
+        if not self.source_artifacts_verified:
+            raise StudySourcePackageError(
+                "source audit receipts require verified source artifacts"
+            )
+        if self.capacity_evidence_required and not self.input_audit.capacity_evidence_complete:
+            raise StudySourcePackageError(
+                "source audit receipt is missing capacity evidence"
+            )
+        if not set(REQUIRED_MARKET_ARTIFACT_ROLES).issubset(
+            set(self.required_artifact_roles)
+        ):
+            raise StudySourcePackageError(
+                "source audit receipt is missing required market artifact roles"
+            )
+        if self.schema != SOURCE_AUDIT_SCHEMA:
+            raise StudySourcePackageError(
+                f"schema must be exactly {SOURCE_AUDIT_SCHEMA!r}"
+            )
+        if type(self.version) is not int or self.version != SOURCE_AUDIT_VERSION:
+            raise StudySourcePackageError(
+                f"version must be exactly {SOURCE_AUDIT_VERSION}"
+            )
+
+    def _payload(self) -> dict[str, Any]:
+        return {
+            "schema": self.schema,
+            "version": self.version,
+            "package_digest": self.package_digest.lower(),
+            "provenance_digest": self.provenance_digest.lower(),
+            "phase": self.phase,
+            "input_audit": self.input_audit.to_dict(),
+            "verified_artifact_ids": list(self.verified_artifact_ids),
+            "required_artifact_roles": list(self.required_artifact_roles),
+            "capacity_evidence_required": self.capacity_evidence_required,
+            "source_artifacts_verified": self.source_artifacts_verified,
+        }
+
+    @property
+    def digest(self) -> str:
+        return _digest(self._payload())
+
+    def to_dict(self) -> dict[str, Any]:
+        return {**self._payload(), "digest": self.digest}
+
+    def to_json(self) -> str:
+        return json.dumps(
+            self.to_dict(),
+            allow_nan=False,
+            ensure_ascii=True,
+            separators=(",", ":"),
+            sort_keys=True,
+        )
+
+    @classmethod
+    def from_dict(cls, state: Mapping[str, Any]) -> "StudySourceAudit":
+        if not isinstance(state, Mapping):
+            raise StudySourcePackageError("source audit must be a mapping")
+        expected = {
+            "schema",
+            "version",
+            "package_digest",
+            "provenance_digest",
+            "phase",
+            "input_audit",
+            "verified_artifact_ids",
+            "required_artifact_roles",
+            "capacity_evidence_required",
+            "source_artifacts_verified",
+            "digest",
+        }
+        if set(state) != expected:
+            raise StudySourcePackageError(
+                "source audit contains unknown or missing fields"
+            )
+        try:
+            for name in ("verified_artifact_ids", "required_artifact_roles"):
+                if isinstance(state[name], (str, bytes, bytearray)):
+                    raise StudySourcePackageError(f"{name} must be a sequence")
+            candidate = cls(
+                package_digest=state["package_digest"],
+                provenance_digest=state["provenance_digest"],
+                phase=state["phase"],
+                input_audit=StudyInputAudit.from_dict(state["input_audit"]),
+                verified_artifact_ids=tuple(state["verified_artifact_ids"]),
+                required_artifact_roles=tuple(state["required_artifact_roles"]),
+                capacity_evidence_required=state["capacity_evidence_required"],
+                source_artifacts_verified=state["source_artifacts_verified"],
+                schema=state["schema"],
+                version=state["version"],
+            )
+        except (TypeError, ValueError) as exc:
+            if isinstance(exc, StudySourcePackageError):
+                raise
+            raise StudySourcePackageError("source audit is invalid") from exc
+        stored = _stored_digest(state["digest"], "source audit digest")
+        if stored != candidate.digest:
+            raise StudySourcePackageError(
+                "source audit digest does not match its content"
+            )
+        return candidate
+
+    @classmethod
+    def from_json(cls, payload: str) -> "StudySourceAudit":
+        if not isinstance(payload, str) or not payload.strip():
+            raise TypeError("source audit JSON must be a non-empty string")
+        try:
+            state = json.loads(payload)
+        except json.JSONDecodeError as exc:
+            raise StudySourcePackageError("source audit JSON is invalid") from exc
+        return cls.from_dict(state)
+
+
+@dataclass(frozen=True, slots=True)
 class StudySourcePackage:
     """A canonical source envelope ready for strict study preflight."""
 
@@ -494,6 +677,54 @@ class StudySourcePackage:
 
         return self.bundle.audit(phase, **kwargs)
 
+    def audit_market(
+        self,
+        phase: str,
+        raw_payloads: Mapping[str, bytes],
+    ) -> StudySourceAudit:
+        """Verify the complete source handoff before a market-data study.
+
+        This stricter boundary binds raw-byte verification, provenance vintage,
+        required source roles, complete point-in-time universe coverage,
+        observed economic records, and per-target capacity evidence into one
+        immutable receipt.  It intentionally rejects the minimal synthetic
+        fixtures used by ordinary package round-trip tests.
+        """
+
+        self.verify_source_artifacts(raw_payloads)
+        if (
+            self.provenance.vintage_id
+            != self.bundle.run_manifest.spec.input_vintage_id
+        ):
+            raise StudySourcePackageError(
+                "source provenance vintage does not match the run manifest"
+            )
+        declared_roles = {artifact.role for artifact in self.provenance.source_artifacts}
+        missing_roles = sorted(
+            set(REQUIRED_MARKET_ARTIFACT_ROLES) - declared_roles
+        )
+        if missing_roles:
+            raise StudySourcePackageError(
+                "market source artifacts are missing required roles "
+                f"{missing_roles!r}"
+            )
+        input_audit = self.bundle.audit(
+            phase,
+            require_complete_universe=True,
+            require_economic_evidence=True,
+            require_observed_economic_evidence=True,
+            require_capacity_evidence=True,
+        )
+        return StudySourceAudit(
+            package_digest=self.digest,
+            provenance_digest=self.provenance.digest,
+            phase=input_audit.phase,
+            input_audit=input_audit,
+            verified_artifact_ids=tuple(sorted(raw_payloads)),
+            required_artifact_roles=tuple(REQUIRED_MARKET_ARTIFACT_ROLES),
+            capacity_evidence_required=True,
+        )
+
     def verify_source_artifact(self, artifact_id: str, payload: bytes) -> None:
         """Verify raw bytes against the package's declared artifact fingerprint."""
 
@@ -525,6 +756,9 @@ class StudySourcePackage:
 
 
 __all__ = [
+    "REQUIRED_MARKET_ARTIFACT_ROLES",
+    "SOURCE_AUDIT_SCHEMA",
+    "SOURCE_AUDIT_VERSION",
     "SOURCE_PACKAGE_SCHEMA",
     "SOURCE_PACKAGE_VERSION",
     "SOURCE_ARTIFACT_SCHEMA",
@@ -534,5 +768,6 @@ __all__ = [
     "StudySourcePackage",
     "StudySourcePackageError",
     "StudySourceArtifact",
+    "StudySourceAudit",
     "StudySourceProvenance",
 ]

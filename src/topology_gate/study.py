@@ -132,6 +132,14 @@ def _digest(value: Any) -> str:
     return hashlib.sha256(_canonical(value)).hexdigest()
 
 
+def _stored_digest(value: Any, name: str) -> str:
+    if not isinstance(value, str) or len(value) != 64:
+        raise StudyInputError(f"{name} must be a 64-character hexadecimal value")
+    if any(character not in "0123456789abcdefABCDEF" for character in value):
+        raise StudyInputError(f"{name} must be hexadecimal")
+    return value.lower()
+
+
 def _sequence(value: Any, name: str) -> tuple[Any, ...]:
     if isinstance(value, (str, bytes, bytearray)) or not isinstance(value, Sequence):
         raise StudyInputError(f"{name} must be a sequence")
@@ -278,6 +286,7 @@ class StudyInputAudit:
     economic_cutoff: TimePoint | None
     expected_universe_complete: bool
     economic_records_complete: bool
+    capacity_evidence_complete: bool
     holdout_status: str
 
     def to_dict(self) -> dict[str, Any]:
@@ -297,8 +306,85 @@ class StudyInputAudit:
             ),
             "expected_universe_complete": self.expected_universe_complete,
             "economic_records_complete": self.economic_records_complete,
+            "capacity_evidence_complete": self.capacity_evidence_complete,
             "holdout_status": self.holdout_status,
         }
+
+    @classmethod
+    def from_dict(cls, state: Mapping[str, Any]) -> "StudyInputAudit":
+        if not isinstance(state, Mapping):
+            raise StudyInputError("study input audit state must be a mapping")
+        expected = {
+            "schema",
+            "version",
+            "bundle_digest",
+            "phase",
+            "decision_count",
+            "timeline_digest",
+            "as_of_book_digest",
+            "economic_evidence_digest",
+            "economic_cutoff",
+            "expected_universe_complete",
+            "economic_records_complete",
+            "capacity_evidence_complete",
+            "holdout_status",
+        }
+        if set(state) != expected:
+            raise StudyInputError(
+                "study input audit contains unknown or missing fields"
+            )
+        if state["schema"] != STUDY_INPUT_SCHEMA:
+            raise StudyInputError("unsupported study input audit schema")
+        if type(state["version"]) is not int or state["version"] != STUDY_INPUT_VERSION:
+            raise StudyInputError("unsupported study input audit version")
+        count = state["decision_count"]
+        if isinstance(count, bool) or not isinstance(count, int) or count < 0:
+            raise StudyInputError("decision_count must be a non-negative integer")
+        for name in ("bundle_digest", "timeline_digest", "as_of_book_digest"):
+            _stored_digest(state[name], name)
+        economic_digest = state["economic_evidence_digest"]
+        if economic_digest is not None:
+            _stored_digest(economic_digest, "economic_evidence_digest")
+        flags = (
+            "expected_universe_complete",
+            "economic_records_complete",
+            "capacity_evidence_complete",
+        )
+        if any(type(state[name]) is not bool for name in flags):
+            raise StudyInputError("study input audit completeness fields must be boolean")
+        try:
+            cutoff = (
+                None
+                if state["economic_cutoff"] is None
+                else _decode_time(state["economic_cutoff"], "economic_cutoff")
+            )
+            return cls(
+                bundle_digest=_stored_digest(state["bundle_digest"], "bundle_digest"),
+                phase=_text(state["phase"], "phase"),
+                decision_count=count,
+                timeline_digest=_stored_digest(
+                    state["timeline_digest"], "timeline_digest"
+                ),
+                as_of_book_digest=_stored_digest(
+                    state["as_of_book_digest"], "as_of_book_digest"
+                ),
+                economic_evidence_digest=(
+                    None
+                    if economic_digest is None
+                    else _stored_digest(
+                        economic_digest, "economic_evidence_digest"
+                    )
+                ),
+                economic_cutoff=cutoff,
+                expected_universe_complete=state["expected_universe_complete"],
+                economic_records_complete=state["economic_records_complete"],
+                capacity_evidence_complete=state["capacity_evidence_complete"],
+                holdout_status=_text(state["holdout_status"], "holdout_status"),
+            )
+        except (TypeError, ValueError) as exc:
+            if isinstance(exc, StudyInputError):
+                raise
+            raise StudyInputError("study input audit is invalid") from exc
 
 
 @dataclass(frozen=True, slots=True)
@@ -370,6 +456,7 @@ class StudyInputBundle:
         require_complete_universe: bool = False,
         require_economic_evidence: bool = False,
         require_observed_economic_evidence: bool = False,
+        require_capacity_evidence: bool = False,
     ) -> StudyInputAudit:
         """Validate source completeness before entering a causal replay."""
 
@@ -382,7 +469,11 @@ class StudyInputBundle:
             raise StudyInputError(
                 "require_observed_economic_evidence must be boolean"
             )
+        if not isinstance(require_capacity_evidence, bool):
+            raise StudyInputError("require_capacity_evidence must be boolean")
         if require_observed_economic_evidence:
+            require_economic_evidence = True
+        if require_capacity_evidence:
             require_economic_evidence = True
 
         try:
@@ -424,6 +515,7 @@ class StudyInputBundle:
                     )
 
         economic_complete = False
+        capacity_complete = False
         if require_economic_evidence:
             if self.economic_evidence is None:
                 raise StudyInputError(
@@ -437,6 +529,7 @@ class StudyInputBundle:
             missing_returns = []
             missing_costs = []
             non_observed = []
+            missing_capacity = []
             for target_id, decision_time in zip(
                 self.timeline.target_ids, self.timeline.decision_times
             ):
@@ -448,11 +541,19 @@ class StudyInputBundle:
                     non_observed.append(target_id)
                 if cost_item is None or cost_item.decision_time != decision_time:
                     missing_costs.append(target_id)
+                elif cost_item.capacity_limit is None:
+                    missing_capacity.append(target_id)
             if missing_returns or missing_costs:
                 raise StudyInputError(
                     "economic evidence is incomplete: "
                     f"missing returns={missing_returns!r}, "
                     f"missing costs={missing_costs!r}"
+                )
+            capacity_complete = not missing_capacity
+            if require_capacity_evidence and missing_capacity:
+                raise StudyInputError(
+                    "capacity evidence is incomplete for "
+                    f"{missing_capacity!r}"
                 )
             if require_observed_economic_evidence and non_observed:
                 raise StudyInputError(
@@ -475,6 +576,7 @@ class StudyInputBundle:
             economic_cutoff=self.economic_cutoff,
             expected_universe_complete=expected_complete,
             economic_records_complete=economic_complete,
+            capacity_evidence_complete=capacity_complete,
             holdout_status=self.study_manifest.holdout_status,
         )
 
@@ -538,6 +640,7 @@ def run_causal_rls_study(
     require_complete_universe: bool = False,
     require_economic_evidence: bool = False,
     require_observed_economic_evidence: bool = False,
+    require_capacity_evidence: bool = False,
 ) -> StudyRLSRunResult:
     """Preflight a bundle, then run the shared causal RLS transition."""
 
@@ -548,6 +651,7 @@ def run_causal_rls_study(
         require_complete_universe=require_complete_universe,
         require_economic_evidence=require_economic_evidence,
         require_observed_economic_evidence=require_observed_economic_evidence,
+        require_capacity_evidence=require_capacity_evidence,
     )
     result = run_causal_rls_replay(
         bundle.as_of_book,
@@ -583,6 +687,7 @@ def run_causal_promotion_study(
     require_complete_universe: bool = False,
     require_economic_evidence: bool = False,
     require_observed_economic_evidence: bool = False,
+    require_capacity_evidence: bool = False,
 ) -> StudyPromotionRunResult:
     """Preflight a bundle, then run the shared paired-promotion transition."""
 
@@ -593,6 +698,7 @@ def run_causal_promotion_study(
         require_complete_universe=require_complete_universe,
         require_economic_evidence=require_economic_evidence,
         require_observed_economic_evidence=require_observed_economic_evidence,
+        require_capacity_evidence=require_capacity_evidence,
     )
     result = run_causal_promotion_replay(
         bundle.as_of_book,

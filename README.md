@@ -232,7 +232,11 @@ as-of, revision, universe, and delisting policies with digest verification. Its
 required raw-artifact fingerprints can be checked byte-for-byte through
 `verify_source_artifact(...)`; `verify_source_artifacts(...)` additionally
 rejects omitted or unexpected raw files. It does not parse vendor-native files
-or certify a vendor's point-in-time claim.
+or certify a vendor's point-in-time claim. `audit_market(...)` is the stricter
+handoff: it verifies every raw artifact, binds the provenance vintage to the
+run manifest, requires the declared market/universe/delisting/label/return/
+cost roles, and fails closed unless observed economic and per-target capacity
+evidence are complete. It returns a digest-bound `StudySourceAudit` receipt.
 
 `run_causal_promotion_replay` composes the same transition with paired
 challenger/incumbent learners and the existing alpha-spending promotion gate.
