@@ -48,10 +48,14 @@ The vendor adapter should deliver:
 5. The vendor license, dataset version, retrieval time, release/cut date, and
    the exact adapter revision in `StudySourceProvenance`.
 
-The adapter must fail closed on missing availability timestamps, duplicate
-revisions, unknown fields, unstable identifiers, unexplained delistings, or
-unverifiable raw-file hashes. An adjusted-price download from a current public
-history is not sufficient evidence for this gate.
+Before phase auditing, pass the raw payloads back to the restored package as
+`verify_source_artifacts({artifact_id: raw_bytes, ...})`. That call requires
+the supplied ID set to equal the declared artifact set and verifies every byte
+size and SHA-256 fingerprint. The adapter must fail closed on missing
+availability timestamps, duplicate revisions, unknown fields, unstable
+identifiers, unexplained delistings, or unverifiable raw-file hashes. An
+adjusted-price download from a current public history is not sufficient
+evidence for this gate.
 
 ## Acceptance sequence
 
