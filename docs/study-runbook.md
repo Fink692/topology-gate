@@ -66,9 +66,11 @@ audit = restored.audit("validation", require_complete_universe=True)
 The package carries the full canonical manifests, timeline, as-of book, and
 optional economic evidence. Restoration verifies exact schema fields, tagged
 time domains, every nested artifact digest, the bundle digest, and the package
-digest. `verify_source_artifact(...)` checks the raw bytes against the declared
-SHA-256 and byte size. Provenance describes the adapter's source policy; it is
-not independent proof that a vendor source is survivorship-free or
+digest. `verify_source_artifact(...)` checks one raw payload against its
+declared SHA-256 and byte size; `verify_source_artifacts(...)` additionally
+requires the supplied payload mapping to contain exactly every declared
+artifact ID. Provenance describes the adapter's source policy; it is not
+independent proof that a vendor source is survivorship-free or
 revision-complete.
 
 ```python

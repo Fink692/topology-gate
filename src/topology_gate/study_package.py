@@ -506,6 +506,23 @@ class StudySourcePackage:
             f"source artifact {artifact_name!r} is not declared"
         )
 
+    def verify_source_artifacts(self, payloads: Mapping[str, bytes]) -> None:
+        """Verify every declared raw artifact and reject omissions or extras."""
+
+        if not isinstance(payloads, Mapping):
+            raise TypeError("source artifact payloads must be a mapping")
+        expected = {artifact.artifact_id for artifact in self.provenance.source_artifacts}
+        provided = set(payloads)
+        if provided != expected:
+            missing = sorted(expected - provided)
+            unexpected = sorted(provided - expected, key=repr)
+            raise StudySourcePackageError(
+                "source artifact payload IDs do not match the package "
+                f"(missing={missing!r}, unexpected={unexpected!r})"
+            )
+        for artifact in self.provenance.source_artifacts:
+            artifact.verify_bytes(payloads[artifact.artifact_id])
+
 
 __all__ = [
     "SOURCE_PACKAGE_SCHEMA",

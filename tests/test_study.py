@@ -445,8 +445,20 @@ def test_source_package_round_trip_binds_provenance_and_all_artifacts() -> None:
         "market-data.csv",
         b"record_id,instrument_id\nm1,ES\n",
     )
+    restored.verify_source_artifacts(
+        {"market-data.csv": b"record_id,instrument_id\nm1,ES\n"}
+    )
     with pytest.raises(StudySourcePackageError, match="byte size|sha256"):
         restored.verify_source_artifact("market-data.csv", b"tampered")
+    with pytest.raises(StudySourcePackageError, match="missing"):
+        restored.verify_source_artifacts({})
+    with pytest.raises(StudySourcePackageError, match="unexpected"):
+        restored.verify_source_artifacts(
+            {
+                "market-data.csv": b"record_id,instrument_id\nm1,ES\n",
+                "extra.csv": b"unexpected",
+            }
+        )
     assert restored.audit("calibration").decision_count == 2
 
 
