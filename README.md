@@ -221,6 +221,13 @@ realized returns and execution costs; call `select_at(...)` before evaluation
 to make the evidence cutoff explicit, or use the wrapper that records both the
 bundle digest and cutoff in the economic result.
 
+For the vendor-to-model handoff, [`docs/study-runbook.md`](docs/study-runbook.md)
+documents `StudyInputBundle`, `StudyTimeline`, and `run_causal_rls_study`. This
+preflights manifest phase indices, target-label visibility, expected
+point-in-time universe coverage, and optional economic evidence before entering
+the shared causal replay. It accepts normalized source artifacts; it is not a
+vendor adapter or economic validation by itself.
+
 `run_causal_promotion_replay` composes the same transition with paired
 challenger/incumbent learners and the existing alpha-spending promotion gate.
 Predictions are frozen at decision time; only an observed settled label can
