@@ -45,10 +45,25 @@ observed realized returns, non-negative execution costs, and capacity limits
 for every required target. Missing, late, revised, or censored records must
 remain explicit; they must not become zeroes.
 
-After the vendor outputs are placed in `handoff\`, assemble the canonical
-package first. The cutoff is explicit and must use the same time domain as the
-timeline (a string cutoff should be quoted; a numeric cutoff may be passed as
-JSON):
+After a vendor-specific mapper emits the exact canonical JSONL roles, the
+checked-in normalizer can construct the package directly:
+
+```powershell
+$env:PYTHONPATH = 'src;examples'
+py -3.12 examples\normalize_vendor_handoff.py `
+  --raw-dir handoff\canonical-jsonl `
+  --run-manifest handoff\run-manifest.json `
+  --study-manifest handoff\study-manifest.json `
+  --timeline handoff\timeline.json `
+  --provenance handoff\provenance-metadata.json `
+  --economic-cutoff '"2026-08-04"' `
+  --output handoff\study-source-package.json
+```
+
+If the adapter already produced canonical `AsOfBook` and `EconomicEvidence`
+JSON artifacts, the lower-level package builder remains available. The cutoff
+is explicit and must use the same time domain as the timeline (a string cutoff
+should be quoted; a numeric cutoff may be passed as JSON):
 
 ```powershell
 $env:PYTHONPATH = 'src'

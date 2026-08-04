@@ -17,3 +17,6 @@ fingerprint the exact raw bytes, and build a `StudySourcePackage`. Then run the
 [`study-runbook.md`](study-runbook.md). The template never opens the holdout
 and never authorizes a market claim by itself.
 
+The strict canonical JSONL boundary is documented in
+[`canonical-jsonl-adapter.md`](canonical-jsonl-adapter.md). It rejects unknown
+fields and does not guess mappings from vendor-native exports.

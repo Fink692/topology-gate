@@ -5,16 +5,16 @@ Interpreter: CPython 3.12.10
 Scope: bounded research/control layer only; no live-data or execution claim
 
 Supported-interpreter matrix: CPython 3.10.11, 3.11.15, and 3.12.10 each
-passed the current 320-test suite; the 3.10 and 3.11 runs used isolated `uv`
+passed the current 323-test suite; the 3.10 and 3.11 runs used isolated `uv`
 environment. The CPython 3.12 release gate also passed Ruff, mypy, and
 compileall. Coverage is reported from CPython 3.12 for this local run.
 
 ## Reproducible engineering checks
 
-- Full suite: **320 passed**.
-- Configured coverage run: **81.24%** total coverage.
+- Full suite: **323 passed**.
+- Configured coverage run: **81.25%** total coverage.
 - Coverage enforcement: configured floor **80%**; the current CPython 3.12
-  run clears it at **81.24%** total.
+  run clears it at **81.25%** total.
 - Ruff: passed on `src`, `tests`, and `examples`.
 - Mypy: passed on all 31 source modules.
 - Dependency-light root import: passed without NumPy site packages.
@@ -279,12 +279,17 @@ therefore fail-closed.
   rows, while the sealed holdout remained unread. The six required source
   roles were byte-verified through the filesystem intake; the receipt is
   [`reports/synthetic-market-handoff.json`](synthetic-market-handoff.json).
+- The strict canonical JSONL adapter was tested on all six role files. It
+  decoded tagged time points, built an auditable source package, passed the
+  validation market gate, and rejected unknown fields and unexpected raw
+  files. It remains a canonical-boundary adapter, not a vendor-native mapper;
+  see [`docs/canonical-jsonl-adapter.md`](../docs/canonical-jsonl-adapter.md).
 
 ## Acceptance disposition
 
 | Gate | Disposition | Evidence |
 |---|---|---|
-| G0 identity/claim freeze | Partial/pass for the declared protocol | `RunSpec`, `RunManifest`, `StudySpec`, sealed/opened `StudyManifest`, strict `StudyInputBundle`/`StudyTimeline` preflight, digest-verified `StudySourcePackage`/provenance/raw-artifact fingerprints, strict `StudySourceAudit` market gate, `run_causal_rls_study`/`run_causal_promotion_study`, evidence config, as-of records, and authenticated checkpoint identities exist; no vendor-native adapter or source dataset is present. |
+| G0 identity/claim freeze | Partial/pass for the declared protocol | `RunSpec`, `RunManifest`, `StudySpec`, sealed/opened `StudyManifest`, strict `StudyInputBundle`/`StudyTimeline` preflight, digest-verified `StudySourcePackage`/provenance/raw-artifact fingerprints, strict `StudySourceAudit` market gate, canonical JSONL normalizer, `run_causal_rls_study`/`run_causal_promotion_study`, evidence config, as-of records, and authenticated checkpoint identities exist; no vendor-native mapper or source dataset is present. |
 | G1 exact persistent MVP | Pass for bounded reference scope | `persistent.py` plus hand-built and algebraic invariants, and the exploratory `PersistentLaplacianCUSUM` controller; only the declared finite VR/F2/q/pair construction is covered. |
 | G2 calibrated forgetting | Synthetic protocol pass; market claim fail | `calibrate_threshold` binds predeclared candidate selection to distinct role-bound observation factories and an independent evaluation split; `SelectionBudget` binds model/feature/eta family allocation; and the finite family null is recorded. The surrogate record includes a stricter-budget rejection; no independent market/dependence calibration artifact authorizes accelerated forgetting. |
 | G3 recursive transactional state | Partial/pass for the migrated path | `CausalReplay` drives numerical detector/RLS plus paired challenger/`PromotionGate` state with prediction-time factor/utility capture, model-state rollback, and detached restore; legacy workers and the generic evidence-ledger path are not all one transaction. |
@@ -298,7 +303,8 @@ Wasserstein surrogate, adaptive signature memory, and finite stress bridge are
 complete as bounded research artifacts. The remaining upgrade path is
 external: a point-in-time cross-asset source bundle, an audited
 dependence-aware market calibration split, and a sealed final test. The
-repository now contains the handoff request, canonical package builder,
+repository now contains the handoff request, canonical JSONL normalizer,
+canonical package builder,
 phase-aware package audit, synthetic end-to-end intake receipt, and fail-closed
 pre-holdout audit; it cannot manufacture the licensed vendor data
 or certify its point-in-time claims.

@@ -29,6 +29,11 @@ The source-boundary workflow is exercised end-to-end by
 That receipt proves the six-role byte verification and phase selection path,
 not the validity of a market vendor's data.
 
+The canonical six-role JSONL normalizer is documented in
+[`canonical-jsonl-adapter.md`](canonical-jsonl-adapter.md). It is ready for a
+vendor-specific mapper to feed, but no vendor-native mapper or licensed source
+files are present in this workspace.
+
 ## What still requires external data
 
 The repository cannot create the missing licensed source evidence. Before a

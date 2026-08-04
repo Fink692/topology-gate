@@ -125,6 +125,12 @@ first with [`examples/build_study_source_package.py`](../examples/build_study_so
 that command requires an explicit economic cutoff and verifies every declared
 raw byte before writing the package.
 
+For the six canonical JSONL role files, use
+[`examples/normalize_vendor_handoff.py`](../examples/normalize_vendor_handoff.py)
+first. It decodes tagged times and builds the `AsOfBook` and
+`EconomicEvidence`; it is not a vendor-native mapper and rejects unknown
+fields.
+
 The ordinary `audit(...)` path remains appropriate for synthetic or partial
 engineering runs. It does not authorize a market-performance claim.
 
