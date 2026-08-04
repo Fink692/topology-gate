@@ -3,7 +3,10 @@
 **Date:** 2026-08-04
 **Scope:** research-architecture upgrade for the topology-gated recursive quant proposal
 **Reviewed:** `docs/architecture.md`, `docs/agent-contracts.md`, current `src/topology_gate`, current tests, and all prior reports
-**Change made in this review:** this report only; I did not edit source or test files
+**Status:** initial gate-review snapshot. Follow-up implementation evidence is
+maintained in [`reference-validation.md`](reference-validation.md); this
+report's findings and counts should be read as the review baseline, not as a
+replacement for that current evidence record.
 
 ## Executive decision
 

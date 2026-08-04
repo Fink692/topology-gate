@@ -4,15 +4,19 @@ Date: 2026-08-04
 Interpreter: CPython 3.12.10
 Scope: bounded research/control layer only; no live-data or execution claim
 
+Supported-interpreter matrix: CPython 3.10.11 and 3.11.15 also passed the full
+222-test suite, Ruff, mypy, and compileall in isolated environments. Coverage
+is reported from CPython 3.12 only.
+
 ## Reproducible engineering checks
 
-- Full suite: **220 passed**.
-- Configured coverage run: **80.42%** total coverage.
+- Full suite: **222 passed**.
+- Configured coverage run: **80.46%** total coverage.
 - Ruff: passed on `src` and `tests`.
 - Mypy: passed on all 20 source modules.
 - Dependency-light root import: passed without NumPy site packages.
 - Wheel build and isolated target-directory smoke: passed; SHA-256
-  `9f043c426cf2cc5056f2cb24eb6f2d9815787a0fd5c8f160cb1d2e17f1dccf25`;
+  `770fac13ecedc05baeaf38448e7c3b9e692a8471d1c6a9ff9d2576fe55911205`;
   the smoke exercised strict online-state/checkpoint restore, strict
   `RunManifest`/`StudyManifest` restore, canonical `AsOfBook` source restore,
   digest-bound `EconomicEvidence` selection/evaluation with cutoff provenance,
@@ -32,7 +36,8 @@ Scope: bounded research/control layer only; no live-data or execution claim
   digest-free diagnostic restore.
 - Causal replay prediction-before-label, future-prefix invariance, explicit
   missing/invalid status, chained-record tamper detection, and model-state
-  restore tests: passed.
+  restore tests: passed; composite causal numerical and paired-promotion
+  checkpoints reject unknown top-level and pending-context fields.
 - Timestamped detector/RLS migration tests: passed for feature-ID extraction,
   strict point-in-time universe membership, prediction-time factor freezing,
   one-shot versus resumed replay equivalence, missing-label context cleanup,

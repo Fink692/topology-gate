@@ -2,6 +2,11 @@
 
 Date: 2026-08-04
 
+The historical review counts below are superseded by the current reproducible
+record in [`reference-validation.md`](reference-validation.md), which includes
+the later causal-checkpoint hardening, 222-test release gate, and Python
+3.10/3.11 compatibility matrix.
+
 ## Release posture
 
 The repository is release-ready as an offline, research/alpha control

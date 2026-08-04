@@ -1,5 +1,9 @@
 # Final security/reproducibility review
 
+> Historical review snapshot: subsequent remediation is recorded in
+> [`reference-validation.md`](reference-validation.md). Retain this report for
+> the original findings; use the current record for release status.
+
 ## Verdict
 
 **FAIL** for an adversarial or exact-replay release. The implementation has useful validation and atomic-write controls, but checkpoint authenticity and replay compatibility are optional/advisory rather than enforced.

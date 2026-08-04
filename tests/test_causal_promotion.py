@@ -281,6 +281,37 @@ def test_chunked_promotion_replay_matches_one_shot_state() -> None:
     assert second.pending_target_ids == ("t5",)
 
 
+def test_causal_promotion_state_rejects_unknown_top_level_and_pending_fields() -> None:
+    settings = replay_settings(finalize_unresolved=False)
+    first = run(
+        (1, 2, 3),
+        ("t1", "t2", "t3"),
+        replay_config=settings,
+    )
+
+    with pytest.raises(CausalPromotionError, match="state fields"):
+        run(
+            (4,),
+            ("t4",),
+            replay_config=settings,
+            model_state={**first.state.model_state, "unexpected": True},
+            initial_state=first.state,
+        )
+
+    pending = {
+        target: {**value, "unexpected": True}
+        for target, value in first.state.model_state["pending"].items()
+    }
+    with pytest.raises(CausalPromotionError, match="pending comparison fields"):
+        run(
+            (4,),
+            ("t4",),
+            replay_config=settings,
+            model_state={**first.state.model_state, "pending": pending},
+            initial_state=first.state,
+        )
+
+
 def test_missing_and_unresolved_labels_do_not_feed_promotion_or_leak_context() -> None:
     result = run(
         (1, 2),

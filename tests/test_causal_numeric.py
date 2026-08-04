@@ -323,6 +323,45 @@ def test_chunked_timestamped_replay_matches_one_shot_after_state_restore() -> No
     assert second.state.model_state == one_shot.state.model_state
 
 
+def test_causal_numeric_state_rejects_unknown_top_level_and_pending_fields() -> None:
+    first = run_causal_rls_replay(
+        make_book(),
+        (1, 2),
+        ("t1", "t2"),
+        plan=plan(),
+        learner=make_learner(),
+        model_config=CausalRLSConfig(model_id="strict-state"),
+    )
+
+    with pytest.raises(CausalNumericError, match="state fields"):
+        run_causal_rls_replay(
+            make_book(),
+            (4,),
+            ("t3",),
+            plan=plan(),
+            learner=make_learner(),
+            model_config=CausalRLSConfig(model_id="strict-state"),
+            model_state={**first.state.model_state, "unexpected": True},
+            initial_state=first.state,
+        )
+
+    pending = {
+        target: {**value, "unexpected": True}
+        for target, value in first.state.model_state["pending"].items()
+    }
+    with pytest.raises(CausalNumericError, match="pending context fields"):
+        run_causal_rls_replay(
+            make_book(),
+            (4,),
+            ("t3",),
+            plan=plan(),
+            learner=make_learner(),
+            model_config=CausalRLSConfig(model_id="strict-state"),
+            model_state={**first.state.model_state, "pending": pending},
+            initial_state=first.state,
+        )
+
+
 def test_missing_label_is_settled_without_an_rls_update_or_pending_leak() -> None:
     result = run_causal_rls_replay(
         make_book(missing=True),

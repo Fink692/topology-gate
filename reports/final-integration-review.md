@@ -1,5 +1,9 @@
 # Final integration review
 
+> Historical review snapshot: subsequent remediation is recorded in
+> [`reference-validation.md`](reference-validation.md). Retain this report for
+> the original findings; use the current record for release status.
+
 ## Verdict
 
 **FAIL for production/live-trading release. PASS only for the explicitly documented research/alpha boundary.**

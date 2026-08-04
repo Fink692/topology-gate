@@ -556,6 +556,22 @@ class CausalPromotionModel:
     def load_state_dict(self, state: Mapping[str, Any]) -> None:
         if not isinstance(state, Mapping):
             raise CausalPromotionError("causal promotion state must be a mapping")
+        expected_state_fields = {
+            "schema",
+            "version",
+            "promotion_id",
+            "config_identity",
+            "plan_identity",
+            "study_manifest_digest",
+            "challenger",
+            "incumbent",
+            "gate",
+            "pending",
+            "prediction_count",
+            "observed_label_count",
+        }
+        if set(state) != expected_state_fields:
+            raise CausalPromotionError("causal promotion state fields are invalid")
         if (
             state.get("schema") != CAUSAL_PROMOTION_SCHEMA
             or state.get("version") != CAUSAL_PROMOTION_VERSION
@@ -606,6 +622,18 @@ class CausalPromotionModel:
             target_id = _text(target, "pending target")
             if not isinstance(raw, Mapping):
                 raise CausalPromotionError("pending comparison must be a mapping")
+            if set(raw) != {
+                "prediction_id",
+                "target_id",
+                "features",
+                "challenger_prediction",
+                "incumbent_prediction",
+                "feature_digest",
+                "feature_panel_digest",
+                "challenger_state_digest",
+                "incumbent_state_digest",
+            }:
+                raise CausalPromotionError("pending comparison fields are invalid")
             features_raw = raw.get("features")
             if isinstance(features_raw, (str, bytes, bytearray)) or not isinstance(
                 features_raw, Sequence

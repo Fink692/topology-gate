@@ -678,6 +678,22 @@ class CausalRLSModel:
     def load_state_dict(self, state: Mapping[str, Any]) -> None:
         if not isinstance(state, Mapping):
             raise CausalNumericError("causal model state must be a mapping")
+        expected_state_fields = {
+            "schema",
+            "version",
+            "model_id",
+            "config_identity",
+            "plan_identity",
+            "calibration_identity",
+            "calibration_authorized",
+            "study_manifest_digest",
+            "learner",
+            "detector_identity",
+            "detector",
+            "pending",
+        }
+        if set(state) != expected_state_fields:
+            raise CausalNumericError("causal model state fields are invalid")
         if state.get("schema") != CAUSAL_NUMERIC_SCHEMA or state.get("version") != CAUSAL_NUMERIC_VERSION:
             raise CausalNumericError("unsupported causal numerical model state")
         if state.get("model_id") != self.config.model_id:
@@ -722,6 +738,8 @@ class CausalRLSModel:
             target_id = _text(target, "pending target")
             if not isinstance(raw, Mapping):
                 raise CausalNumericError("pending context must be a mapping")
+            if set(raw) != {"features", "forgetting_factor"}:
+                raise CausalNumericError("pending context fields are invalid")
             features_raw = raw.get("features")
             if not isinstance(features_raw, Sequence) or isinstance(
                 features_raw, (str, bytes, bytearray)
