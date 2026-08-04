@@ -17,8 +17,8 @@ gate also passed Ruff, mypy, and compileall. Coverage is reported from CPython
 - Mypy: passed on all 23 source modules.
 - Dependency-light root import: passed without NumPy site packages.
 - Wheel build and isolated target-directory smoke: passed; SHA-256
-  `e28e7b727c00eccc09fa7736b3ff1d89231aeb47be0f695c90fdf3ee899900c4`;
-  source commit `b7b7f19` supplied `SOURCE_DATE_EPOCH=1785862260`; two
+  `93b32f1d0995d012fcac6cfc26e5df0ad108a597a56e7d5d7e181b13fb026439`;
+  source commit `26b6faa` supplied `SOURCE_DATE_EPOCH=1785862260`; two
   consecutive builds under the same source date produced the same digest;
   the smoke exercised canonical `StudySourcePackage` serialization/restoration,
   exact raw source-artifact ID-set and byte/size verification, strict
