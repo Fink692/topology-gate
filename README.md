@@ -148,6 +148,11 @@ It is explicitly not an adapted-Wasserstein solver; its availability rules,
 reliability weights, and state identity are documented in
 [`docs/causal-transport-replay.md`](docs/causal-transport-replay.md).
 
+The optional `topology_gate.experts` module provides a Catoni robust,
+full-information expert allocator with switching-cost penalties and explicit
+change-point resets. It is a control-layer diagnostic, not a market or
+promotion certificate; see [`docs/heavy-tail-expert-allocation.md`](docs/heavy-tail-expert-allocation.md).
+
 Set `require_realized_returns=True` in the worker backtest or online config for
 economic evaluation. The compatibility default still permits target outcomes
 to stand in for realized returns, but that path is diagnostic and must not be
