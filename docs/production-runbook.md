@@ -93,6 +93,12 @@ active e-process after looking at an unfavorable segment. A promotion becomes
 an operational decision only after the caller's schema, data-quality, risk, and
 deployment checks pass.
 
+Before a multi-challenger study, run `calibrate_promotion_null` with the exact
+bounded score factory, constant eta, challenger count, and global alpha used
+by the gate. Keep its per-slot allocation and first-promotion evidence beside
+the study manifest; it is a finite selection-budget diagnostic, not a market
+promotion certificate.
+
 ## Metric and claim conventions
 
 Use `absolute_comparator_discrepancy` for the symmetric comparator diagnostic

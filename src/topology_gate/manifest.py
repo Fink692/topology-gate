@@ -338,11 +338,11 @@ class StudyManifest:
             raise ManifestValidationError("study decision indices must not be empty")
         previous = -1
         for index in indices:
+            self.assert_index_allowed(index, phase)
             if index <= previous:
                 raise ManifestValidationError(
                     "study decision indices must be strictly increasing"
                 )
-            self.assert_index_allowed(index, phase)
             previous = index
 
     def open_holdout(self, release_id: str) -> "StudyManifest":

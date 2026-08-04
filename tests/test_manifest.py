@@ -217,6 +217,10 @@ def test_study_manifest_phase_checks_reject_sealed_holdout_and_out_of_window_ind
         sealed.assert_index_allowed(100, "tuning")
     with pytest.raises(ManifestValidationError, match="strictly increasing"):
         sealed.assert_indices_allowed((105, 105), "tuning")
+    with pytest.raises(ManifestValidationError, match="non-negative integer"):
+        sealed.assert_indices_allowed(("105",), "tuning")  # type: ignore[arg-type]
+    with pytest.raises(ManifestValidationError, match="non-negative integer"):
+        sealed.assert_indices_allowed((True,), "tuning")  # type: ignore[arg-type]
     with pytest.raises(ManifestValidationError, match="calibration, tuning"):
         sealed.spec.window_for_phase("test")
 

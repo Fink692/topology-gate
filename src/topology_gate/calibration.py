@@ -16,7 +16,7 @@ import math
 from dataclasses import dataclass
 from typing import Any, Callable
 
-from .promotion import EProcess, validate_eta
+from .promotion import EProcess, PromotionGate, geometric_alpha_allocation, validate_eta
 
 try:
     import numpy as np
@@ -31,12 +31,14 @@ MAX_CALIBRATION_TRIALS = 4_096
 MAX_CALIBRATION_HORIZON = 100_000
 MAX_CALIBRATION_FEATURES = 256
 MAX_CALIBRATION_SOURCE_ROWS = 100_000
+MAX_CALIBRATION_CHALLENGERS = 64
 _WILSON_Z_95 = 1.959963984540054
 _WILSON_CONFIDENCE_95 = 0.95
 
 ObservationFactory = Callable[[np.random.Generator, int, int], Any]
 DetectorFactory = Callable[[], Any]
 EProcessScoreFactory = Callable[[np.random.Generator, int], Any]
+PromotionScoreFactory = Callable[[np.random.Generator, int, int], Any]
 
 
 def _bounded_int(name: str, value: Any, minimum: int, maximum: int) -> int:
@@ -128,6 +130,55 @@ class EProcessCalibrationConfig:
             raise ValueError("seed must be non-negative")
         object.__setattr__(self, "trials", trials)
         object.__setattr__(self, "horizon", horizon)
+        object.__setattr__(self, "alpha", alpha)
+        object.__setattr__(self, "eta", eta)
+        object.__setattr__(self, "initial_wealth", initial_wealth)
+        object.__setattr__(self, "seed", seed)
+
+
+@dataclass(frozen=True, slots=True)
+class PromotionCalibrationConfig:
+    """Finite null-simulation settings for a complete promotion gate.
+
+    ``challengers`` are registered before any scores are observed, so the
+    geometric alpha allocation and the candidate-selection rule are part of
+    the experiment.  The harness simulates one gate epoch and stops a path at
+    its first promotion.  It is evidence about this finite declared gate,
+    not a market-validity or conditional-mean certificate.
+    """
+
+    trials: int = 1_000
+    horizon: int = 512
+    challengers: int = 1
+    alpha: float = 0.05
+    eta: float = 0.5
+    initial_wealth: float = 1.0
+    seed: int = 7
+
+    def __post_init__(self) -> None:
+        trials = _bounded_int("trials", self.trials, 1, MAX_CALIBRATION_TRIALS)
+        horizon = _bounded_int("horizon", self.horizon, 2, MAX_CALIBRATION_HORIZON)
+        challengers = _bounded_int(
+            "challengers", self.challengers, 1, MAX_CALIBRATION_CHALLENGERS
+        )
+        alpha = _finite_probability("alpha", self.alpha)
+        eta = validate_eta(self.eta)
+        try:
+            initial_wealth = float(self.initial_wealth)
+        except (TypeError, ValueError, OverflowError) as exc:
+            raise ValueError("initial_wealth must be finite and positive") from exc
+        if not math.isfinite(initial_wealth) or initial_wealth <= 0.0:
+            raise ValueError("initial_wealth must be finite and positive")
+        if isinstance(self.seed, (bool, np.bool_)) or not isinstance(
+            self.seed, (int, np.integer)
+        ):
+            raise ValueError("seed must be an integer")
+        seed = int(self.seed)
+        if seed < 0:
+            raise ValueError("seed must be non-negative")
+        object.__setattr__(self, "trials", trials)
+        object.__setattr__(self, "horizon", horizon)
+        object.__setattr__(self, "challengers", challengers)
         object.__setattr__(self, "alpha", alpha)
         object.__setattr__(self, "eta", eta)
         object.__setattr__(self, "initial_wealth", initial_wealth)
@@ -686,6 +737,217 @@ class EProcessNullCalibrationResult:
         }
 
 
+@dataclass(frozen=True, slots=True)
+class PromotionNullCalibrationResult:
+    """Finite optional-stopping evidence for a complete promotion gate.
+
+    ``first_promotion_steps`` use zero-based steps and ``horizon`` is the
+    explicit no-promotion sentinel.  ``first_promoted_challenger_indices``
+    uses ``-1`` for that sentinel.  Candidate streams are observed in their
+    registered order at each step; once one candidate promotes, the gate is
+    closed and no later candidate is observed on that path.
+    """
+
+    score_factory_identity: str
+    trials: int
+    horizon: int
+    challenger_count: int
+    alpha: float
+    eta: float
+    initial_wealth: float
+    seed: int
+    challenger_alpha_allocations: tuple[float, ...]
+    threshold_crossing_count: int
+    threshold_crossing_rate: float
+    threshold_crossing_ci_low: float
+    threshold_crossing_ci_high: float
+    first_promotion_steps: tuple[int, ...]
+    first_promoted_challenger_indices: tuple[int, ...]
+
+    def __post_init__(self) -> None:
+        if not isinstance(self.score_factory_identity, str) or not self.score_factory_identity:
+            raise ValueError("score_factory_identity must be a non-empty string")
+        trials = _bounded_int("trials", self.trials, 1, MAX_CALIBRATION_TRIALS)
+        horizon = _bounded_int("horizon", self.horizon, 2, MAX_CALIBRATION_HORIZON)
+        challengers = _bounded_int(
+            "challenger_count", self.challenger_count, 1, MAX_CALIBRATION_CHALLENGERS
+        )
+        alpha = _finite_probability("alpha", self.alpha)
+        validate_eta(self.eta)
+        if not math.isfinite(float(self.initial_wealth)) or self.initial_wealth <= 0.0:
+            raise ValueError("initial_wealth must be finite and positive")
+        if isinstance(self.seed, (bool, np.bool_)) or not isinstance(
+            self.seed, (int, np.integer)
+        ) or int(self.seed) < 0:
+            raise ValueError("seed must be a non-negative integer")
+        if len(self.challenger_alpha_allocations) != challengers:
+            raise ValueError(
+                "challenger_alpha_allocations must have one value per challenger"
+            )
+        normalized_allocations = tuple(
+            float(value) for value in self.challenger_alpha_allocations
+        )
+        expected_allocations = tuple(
+            geometric_alpha_allocation(alpha, index + 1, epoch=0)
+            for index in range(challengers)
+        )
+        for actual, expected in zip(
+            normalized_allocations, expected_allocations
+        ):
+            if not math.isfinite(float(actual)) or float(actual) <= 0.0:
+                raise ValueError("challenger alpha allocations must be positive")
+            if not math.isclose(
+                float(actual), expected, rel_tol=0.0, abs_tol=1.0e-15
+            ):
+                raise ValueError(
+                    "challenger alpha allocations do not match the gate rule"
+                )
+        crossing_count = _bounded_int(
+            "threshold_crossing_count",
+            self.threshold_crossing_count,
+            0,
+            trials,
+        )
+        if not all(
+            math.isfinite(float(value))
+            for value in (
+                self.threshold_crossing_rate,
+                self.threshold_crossing_ci_low,
+                self.threshold_crossing_ci_high,
+            )
+        ):
+            raise ValueError("promotion calibration contains a non-finite value")
+        if not 0.0 <= self.threshold_crossing_rate <= 1.0:
+            raise ValueError("threshold_crossing_rate must be in [0, 1]")
+        if not (
+            0.0
+            <= self.threshold_crossing_ci_low
+            <= self.threshold_crossing_ci_high
+            <= 1.0
+        ):
+            raise ValueError("threshold crossing interval is invalid")
+        if len(self.first_promotion_steps) != trials:
+            raise ValueError("first_promotion_steps must have one value per trial")
+        if len(self.first_promoted_challenger_indices) != trials:
+            raise ValueError(
+                "first_promoted_challenger_indices must have one value per trial"
+            )
+        normalized_steps: list[int] = []
+        normalized_indices: list[int] = []
+        for step, challenger in zip(
+            self.first_promotion_steps,
+            self.first_promoted_challenger_indices,
+        ):
+            if isinstance(step, (bool, np.bool_)) or not isinstance(
+                step, (int, np.integer)
+            ):
+                raise ValueError("first_promotion_steps must be valid zero-based steps")
+            normalized_step = int(step)
+            if normalized_step < 0 or normalized_step > horizon:
+                raise ValueError("first_promotion_steps must be valid zero-based steps")
+            if isinstance(challenger, (bool, np.bool_)) or not isinstance(
+                challenger, (int, np.integer)
+            ):
+                raise ValueError("promoted challenger indices must be integers")
+            normalized_challenger = int(challenger)
+            if normalized_step == horizon:
+                if normalized_challenger != -1:
+                    raise ValueError(
+                        "no-promotion paths must use challenger index -1"
+                    )
+            elif normalized_challenger < 0 or normalized_challenger >= challengers:
+                raise ValueError("promoted challenger index is out of range")
+            normalized_steps.append(normalized_step)
+            normalized_indices.append(normalized_challenger)
+        expected_rate = crossing_count / trials
+        if not math.isclose(
+            self.threshold_crossing_rate, expected_rate, rel_tol=0.0, abs_tol=1.0e-12
+        ):
+            raise ValueError(
+                "threshold_crossing_rate is inconsistent with threshold_crossing_count"
+            )
+        expected_count = sum(step < horizon for step in normalized_steps)
+        if expected_count != crossing_count:
+            raise ValueError(
+                "threshold_crossing_count is inconsistent with first_promotion_steps"
+            )
+        object.__setattr__(self, "seed", int(self.seed))
+        object.__setattr__(self, "trials", trials)
+        object.__setattr__(self, "horizon", horizon)
+        object.__setattr__(self, "challenger_count", challengers)
+        object.__setattr__(self, "alpha", alpha)
+        object.__setattr__(self, "eta", validate_eta(self.eta))
+        object.__setattr__(self, "initial_wealth", float(self.initial_wealth))
+        object.__setattr__(
+            self,
+            "challenger_alpha_allocations",
+            normalized_allocations,
+        )
+        object.__setattr__(self, "threshold_crossing_count", crossing_count)
+        object.__setattr__(self, "first_promotion_steps", tuple(normalized_steps))
+        object.__setattr__(
+            self,
+            "first_promoted_challenger_indices",
+            tuple(normalized_indices),
+        )
+
+    @property
+    def challenger_thresholds(self) -> tuple[float, ...]:
+        """Per-slot e-value thresholds after geometric alpha allocation."""
+
+        return tuple(
+            self.initial_wealth / allocation
+            for allocation in self.challenger_alpha_allocations
+        )
+
+    @property
+    def config_identity(self) -> str:
+        payload = {
+            "score_factory_identity": self.score_factory_identity,
+            "trials": self.trials,
+            "horizon": self.horizon,
+            "challenger_count": self.challenger_count,
+            "alpha": self.alpha,
+            "eta": self.eta,
+            "initial_wealth": self.initial_wealth,
+            "seed": self.seed,
+            "challenger_alpha_allocations": list(
+                self.challenger_alpha_allocations
+            ),
+        }
+        return hashlib.sha256(
+            json.dumps(payload, sort_keys=True, separators=(",", ":")).encode()
+        ).hexdigest()
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "kind": "promotion_null_calibration",
+            "score_factory_identity": self.score_factory_identity,
+            "trials": self.trials,
+            "horizon": self.horizon,
+            "challenger_count": self.challenger_count,
+            "alpha": self.alpha,
+            "eta": self.eta,
+            "initial_wealth": self.initial_wealth,
+            "challenger_alpha_allocations": list(
+                self.challenger_alpha_allocations
+            ),
+            "challenger_thresholds": list(self.challenger_thresholds),
+            "seed": self.seed,
+            "threshold_crossing_count": self.threshold_crossing_count,
+            "threshold_crossing_rate": self.threshold_crossing_rate,
+            "threshold_crossing_ci_95": [
+                self.threshold_crossing_ci_low,
+                self.threshold_crossing_ci_high,
+            ],
+            "first_promotion_steps": list(self.first_promotion_steps),
+            "first_promoted_challenger_indices": list(
+                self.first_promoted_challenger_indices
+            ),
+            "config_identity": self.config_identity,
+        }
+
+
 def calibrate_eprocess_null(
     score_factory: EProcessScoreFactory,
     *,
@@ -745,6 +1007,124 @@ def calibrate_eprocess_null(
         threshold_crossing_ci_low=low,
         threshold_crossing_ci_high=high,
         first_crossing_steps=tuple(first_crossing_steps),
+    )
+
+
+def calibrate_promotion_null(
+    score_factory: PromotionScoreFactory,
+    *,
+    config: PromotionCalibrationConfig | None = None,
+) -> PromotionNullCalibrationResult:
+    """Simulate optional stopping through the complete multi-challenger gate.
+
+    ``score_factory`` must return bounded scores shaped ``(horizon,)`` for
+    one challenger or ``(horizon, challengers)`` for several challengers.  At
+    every step the gate observes candidates in registration order and stops
+    the path immediately on the first promotion.  The factory is responsible
+    for generating a declared null stream; this harness checks shape,
+    finiteness, and score bounds but cannot establish the conditional-mean
+    assumptions required for an anytime-valid market claim.
+    """
+
+    settings = config or PromotionCalibrationConfig()
+    identity = _score_factory_identity(score_factory)
+    allocations = tuple(
+        geometric_alpha_allocation(settings.alpha, index + 1, epoch=0)
+        for index in range(settings.challengers)
+    )
+    first_promotion_steps: list[int] = []
+    first_promoted_indices: list[int] = []
+    rng = np.random.default_rng(settings.seed)
+    for _ in range(settings.trials):
+        try:
+            raw_scores = np.asarray(
+                score_factory(rng, settings.horizon, settings.challengers),
+                dtype=float,
+            )
+        except (TypeError, ValueError, OverflowError) as exc:
+            raise ValueError(
+                "score_factory must return finite bounded promotion scores"
+            ) from exc
+        scores: np.ndarray[Any, Any]
+        if raw_scores.ndim == 1:
+            if settings.challengers != 1:
+                raise ValueError(
+                    "multi-challenger score_factory output must be two-dimensional"
+                )
+            scores = raw_scores.reshape(-1, 1)
+        elif raw_scores.ndim == 2:
+            scores = raw_scores
+        else:
+            raise ValueError(
+                "score_factory must return a one- or two-dimensional score array"
+            )
+        if scores.shape != (settings.horizon, settings.challengers):
+            raise ValueError(
+                "score_factory must return scores shaped "
+                f"({settings.horizon}, {settings.challengers})"
+            )
+        if not np.all(np.isfinite(scores)) or np.any(scores < -1.0) or np.any(
+            scores > 1.0
+        ):
+            raise ValueError("score_factory returned scores outside [-1, 1]")
+
+        gate = PromotionGate(
+            "incumbent",
+            alpha=settings.alpha,
+            eta=settings.eta,
+            initial_wealth=settings.initial_wealth,
+        )
+        challenger_ids = tuple(
+            f"challenger-{index}" for index in range(settings.challengers)
+        )
+        for index, challenger_id in enumerate(challenger_ids):
+            registered = gate.register_challenger(challenger_id)
+            if not math.isclose(
+                registered.alpha,
+                allocations[index],
+                rel_tol=0.0,
+                abs_tol=1.0e-15,
+            ):
+                raise ValueError("promotion gate alpha allocation is inconsistent")
+
+        first_step = settings.horizon
+        promoted_index = -1
+        for step in range(settings.horizon):
+            for index, challenger_id in enumerate(challenger_ids):
+                decision = gate.observe_score(
+                    challenger_id,
+                    float(scores[step, index]),
+                )
+                if decision.promoted:
+                    first_step = step
+                    promoted_index = index
+                    break
+            if first_step != settings.horizon:
+                break
+        first_promotion_steps.append(first_step)
+        first_promoted_indices.append(promoted_index)
+
+    crossing_count = sum(
+        step < settings.horizon for step in first_promotion_steps
+    )
+    rate = crossing_count / settings.trials
+    low, high = _wilson_interval(crossing_count, settings.trials)
+    return PromotionNullCalibrationResult(
+        score_factory_identity=identity,
+        trials=settings.trials,
+        horizon=settings.horizon,
+        challenger_count=settings.challengers,
+        alpha=settings.alpha,
+        eta=settings.eta,
+        initial_wealth=settings.initial_wealth,
+        seed=settings.seed,
+        challenger_alpha_allocations=allocations,
+        threshold_crossing_count=crossing_count,
+        threshold_crossing_rate=rate,
+        threshold_crossing_ci_low=low,
+        threshold_crossing_ci_high=high,
+        first_promotion_steps=tuple(first_promotion_steps),
+        first_promoted_challenger_indices=tuple(first_promoted_indices),
     )
 
 
@@ -850,14 +1230,19 @@ __all__ = [
     "CalibrationConfig",
     "EProcessCalibrationConfig",
     "EProcessNullCalibrationResult",
+    "MAX_CALIBRATION_CHALLENGERS",
     "MAX_CALIBRATION_FEATURES",
     "MAX_CALIBRATION_HORIZON",
     "MAX_CALIBRATION_SOURCE_ROWS",
     "MAX_CALIBRATION_TRIALS",
     "NullCalibrationResult",
+    "PromotionCalibrationConfig",
+    "PromotionNullCalibrationResult",
+    "PromotionScoreFactory",
     "StationaryBlockBootstrap",
     "ShiftCalibrationResult",
     "calibrate_null",
     "calibrate_eprocess_null",
+    "calibrate_promotion_null",
     "calibrate_shift",
 ]

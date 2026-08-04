@@ -6,14 +6,15 @@ Scope: bounded research/control layer only; no live-data or execution claim
 
 ## Reproducible engineering checks
 
-- Full suite: **198 passed**.
-- Configured coverage run: **80.12%** total coverage.
+- Full suite: **201 passed**.
+- Configured coverage run: **80.19%** total coverage.
 - Ruff: passed on `src` and `tests`.
 - Mypy: passed on all 20 source modules.
 - Dependency-light root import: passed without NumPy site packages.
 - Wheel build and isolated target-directory smoke: passed; SHA-256
-  `ad5b1e3d023320c589964cf293e04298b8383b3b9e760c6e7273f279671f9a06`;
-  the smoke also exercised the public sealed-study phase API from the wheel.
+  `b6de5434a0b7720c94944bb6e9815944fe4ae4c70275d59e129fe5141712f705`;
+  the smoke also exercised the public promotion-calibration API from the
+  wheel.
 - Authenticated checkpoint, manifest digest, promotion/evidence state, and
   detached restore tests: passed.
 - Study-manifest tests: passed for canonical split identity, ordered
@@ -36,6 +37,10 @@ Scope: bounded research/control layer only; no live-data or execution claim
 - E-process optional-stopping harness tests: passed for reproducible bounded
   score paths, predeclared constant eta, first-crossing termination, score
   bounds, malformed factory output, and identity recording.
+- Complete promotion-gate null harness tests: passed for pre-registered
+  multi-challenger streams, geometric per-slot alpha allocation, fixed
+  registration-order tie handling, first-promotion stopping, reproducibility,
+  negative-null closure, and malformed score dimensions.
 - Stationary block-bootstrap tests: passed for seeded reproducibility, source
   identity binding, feature-dimension rejection, and result-level factory
   identity recording.
@@ -78,6 +83,14 @@ therefore fail-closed.
   crossings. The 95% Wilson upper bound was 0.05401. This is a finite
   simulation of the bounded primitive, not a proof for a market score stream
   or its conditional-mean null.
+- A 1,000-path, 500-step, three-challenger Rademacher null through
+  `calibrate_promotion_null` with global `alpha=0.05`, constant `eta=0.5`, and
+  seed 31 produced 16 first promotions (rate 0.016; 95% Wilson interval
+  [0.00987, 0.02583]). The predeclared challenger-slot alphas were
+  [0.0125, 0.00625, 0.003125], with corresponding e-value thresholds
+  [80, 160, 320]. This exercises the complete gate and selection boundary,
+  but is still a finite simulation of a declared score factory, not a market
+  conditional-mean or promotion certificate.
 - The detector calibration harness was run on a declared AR(1) null and a
   volatility-shift alternative. Under the tested configuration the null
   alarmed on 32/32 paths at step 9. That result is intentionally retained as a

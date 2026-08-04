@@ -163,6 +163,14 @@ the crossing frequency. A Rademacher score stream is a useful algebraic null
 check; it does not verify the conditional-mean assumption for paired market
 utility or pay for data-dependent model selection.
 
+`calibrate_promotion_null` extends that check through the complete
+multi-challenger `PromotionGate`: challenger slots are registered before the
+stream is observed, geometric alpha allocations are recorded, and each path
+stops at its first selected promotion. This makes the selection boundary
+testable in a finite simulation. It remains empirical evidence for the
+declared score factory and one gate epoch, not a conditional-mean theorem or
+market-calibrated promotion certificate.
+
 When a `StudyManifest` is supplied, both causal replay adapters validate the
 phase and timeline index before prediction and carry the manifest digest in
 model state. A sealed holdout therefore fails closed at the adapter boundary;

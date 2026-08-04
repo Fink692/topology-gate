@@ -11,9 +11,11 @@ from topology_gate.calibration import (
     CalibrationCertificate,
     CalibrationConfig,
     EProcessCalibrationConfig,
+    PromotionCalibrationConfig,
     StationaryBlockBootstrap,
     calibrate_eprocess_null,
     calibrate_null,
+    calibrate_promotion_null,
     calibrate_shift,
 )
 from topology_gate.topology import RollingTopologyDetector, TopologyConfig
@@ -32,6 +34,48 @@ class _RademacherScores:
 
     def __call__(self, rng: np.random.Generator, horizon: int) -> np.ndarray:
         return np.where(rng.integers(0, 2, size=horizon) == 0, -1.0, 1.0)
+
+
+class _RademacherPromotionScores:
+    identity = "rademacher-promotion-score-null:v1"
+
+    def __call__(
+        self,
+        rng: np.random.Generator,
+        horizon: int,
+        challengers: int,
+    ) -> np.ndarray:
+        return np.where(
+            rng.integers(0, 2, size=(horizon, challengers)) == 0,
+            -1.0,
+            1.0,
+        )
+
+
+class _AllPositivePromotionScores:
+    identity = "all-positive-promotion-score:v1"
+
+    def __call__(
+        self,
+        rng: np.random.Generator,
+        horizon: int,
+        challengers: int,
+    ) -> np.ndarray:
+        del rng
+        return np.ones((horizon, challengers), dtype=float)
+
+
+class _AllNegativePromotionScores:
+    identity = "all-negative-promotion-score-null:v1"
+
+    def __call__(
+        self,
+        rng: np.random.Generator,
+        horizon: int,
+        challengers: int,
+    ) -> np.ndarray:
+        del rng
+        return -np.ones((horizon, challengers), dtype=float)
 
 
 def _zeros(rng: np.random.Generator, horizon: int, n_features: int) -> np.ndarray:
@@ -205,6 +249,66 @@ def test_eprocess_null_calibration_rejects_unbounded_or_malformed_scores() -> No
         )
     with pytest.raises(ValueError, match="eta"):
         EProcessCalibrationConfig(eta=1.1)
+
+
+def test_promotion_null_calibration_binds_gate_allocation_and_selection_order() -> None:
+    config = PromotionCalibrationConfig(
+        trials=8,
+        horizon=16,
+        challengers=3,
+        alpha=0.05,
+        eta=0.5,
+        seed=23,
+    )
+    result = calibrate_promotion_null(_AllPositivePromotionScores(), config=config)
+
+    assert result.threshold_crossing_count == config.trials
+    assert result.first_promotion_steps == (10,) * config.trials
+    assert result.first_promoted_challenger_indices == (0,) * config.trials
+    assert result.challenger_alpha_allocations == pytest.approx(
+        (0.0125, 0.00625, 0.003125)
+    )
+    assert result.challenger_thresholds == pytest.approx(
+        (80.0, 160.0, 320.0)
+    )
+    assert result.to_dict()["config_identity"] == result.config_identity
+
+
+def test_promotion_null_calibration_is_reproducible_and_negative_null_stays_closed() -> None:
+    config = PromotionCalibrationConfig(
+        trials=64,
+        horizon=128,
+        challengers=3,
+        alpha=0.05,
+        eta=0.5,
+        seed=29,
+    )
+    first = calibrate_promotion_null(_RademacherPromotionScores(), config=config)
+    second = calibrate_promotion_null(_RademacherPromotionScores(), config=config)
+    negative = calibrate_promotion_null(_AllNegativePromotionScores(), config=config)
+
+    assert first == second
+    assert first.score_factory_identity == _RademacherPromotionScores.identity
+    assert len(first.first_promotion_steps) == config.trials
+    assert first.threshold_crossing_count <= config.trials
+    assert negative.threshold_crossing_count == 0
+    assert negative.first_promotion_steps == (config.horizon,) * config.trials
+    assert negative.first_promoted_challenger_indices == (-1,) * config.trials
+
+
+def test_promotion_null_calibration_rejects_wrong_dimensions_and_limits() -> None:
+    with pytest.raises(ValueError, match="two-dimensional"):
+        calibrate_promotion_null(
+            lambda rng, horizon, challengers: np.zeros(horizon),
+            config=PromotionCalibrationConfig(trials=1, horizon=4, challengers=2),
+        )
+    with pytest.raises(ValueError, match="shaped"):
+        calibrate_promotion_null(
+            lambda rng, horizon, challengers: np.zeros((horizon, challengers + 1)),
+            config=PromotionCalibrationConfig(trials=1, horizon=4, challengers=2),
+        )
+    with pytest.raises(ValueError, match="challengers"):
+        PromotionCalibrationConfig(challengers=0)
 
 
 def test_calibration_result_records_observation_factory_identity() -> None:

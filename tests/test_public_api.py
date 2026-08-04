@@ -19,6 +19,8 @@ def test_root_all_is_unique_and_resolves_every_public_name() -> None:
         "CalibrationCertificate",
         "EProcessCalibrationConfig",
         "EProcessNullCalibrationResult",
+        "PromotionCalibrationConfig",
+        "PromotionNullCalibrationResult",
         "CausalFeaturePlan",
         "CausalNumericError",
         "CausalPromotionConfig",
@@ -53,6 +55,7 @@ def test_root_all_is_unique_and_resolves_every_public_name() -> None:
         "run_causal_rls_replay",
         "run_causal_promotion_replay",
         "calibrate_eprocess_null",
+        "calibrate_promotion_null",
         "compute_persistent_laplacian",
         "persistent_laplacian_backend",
     }

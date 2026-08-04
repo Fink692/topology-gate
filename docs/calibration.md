@@ -49,6 +49,15 @@ declared bounded stream; it cannot establish the required conditional-mean
 null, validate a market utility, or replace an alpha-allocation and selection
 audit.
 
+`calibrate_promotion_null` runs the same finite experiment through the full
+`PromotionGate`. Its score factory receives `(rng, horizon, challengers)` and
+returns one bounded stream per registered challenger. Candidates are
+pre-registered before observations, their geometric alpha allocations are
+recorded, and each path stops at the first gate promotion in registration
+order. This makes multi-challenger selection visible in the evidence. It
+still only tests the supplied finite score factory; it cannot prove the
+conditional-mean null, market validity, or behavior across future epochs.
+
 Minimum protocol for a research release:
 
 1. Freeze detector configuration, source revision, dependency fingerprint, and
@@ -64,3 +73,6 @@ Minimum protocol for a research release:
 6. Run an optional-stopping e-process null simulation with the exact bounded
    utility and predictable eta rule used by the causal promotion path; report
    it as empirical evidence, not as a theorem or market guarantee.
+7. When more than one challenger can compete, run the complete promotion-gate
+   harness and report the challenger count, per-slot alpha allocations, first
+   promoted candidate, and the selection rule alongside the crossing interval.

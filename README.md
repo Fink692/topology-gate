@@ -210,6 +210,12 @@ constant betting fraction and records the finite crossing interval. It is an
 empirical diagnostic of the declared stream, not a replacement for the
 conditional-mean assumption or a market-selection audit.
 
+Use `calibrate_promotion_null` when several challengers can compete. It runs
+the complete `PromotionGate`, records the geometric per-slot alpha allocation,
+and stops each path at the first selected promotion. This makes the finite
+selection boundary observable; it remains a declared-score simulation rather
+than a market-calibrated promotion certificate.
+
 ## Tests and typing
 
 Run the configured test suite with:
