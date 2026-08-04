@@ -58,7 +58,7 @@ where = ["src"]
 version = { attr = "topology_gate.__version__" }
 
 [tool.pytest.ini_options]
-addopts = "-ra --strict-markers --cov=topology_gate --cov-report=term-missing --cov-fail-under=75"
+addopts = "-ra --strict-markers --cov=topology_gate --cov-report=term-missing --cov-fail-under=80"
 pythonpath = ["src"]
 testpaths = ["tests"]
 markers = [

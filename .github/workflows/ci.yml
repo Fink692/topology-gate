@@ -34,3 +34,18 @@ jobs:
         run: |
           export SOURCE_DATE_EPOCH="$(git log -1 --format=%ct -- pyproject.toml src)"
           python -m pip wheel . --no-deps --wheel-dir "$RUNNER_TEMP/topology-gate-wheel"
+      - name: Verify deterministic wheel and dependency-free import
+        if: matrix.python-version == '3.12'
+        run: |
+          export SOURCE_DATE_EPOCH="$(git log -1 --format=%ct -- pyproject.toml src)"
+          first_dir="$(mktemp -d)"
+          second_dir="$(mktemp -d)"
+          target_dir="$(mktemp -d)"
+          python -m pip wheel . --no-deps --no-cache-dir --wheel-dir "$first_dir"
+          python -m pip wheel . --no-deps --no-cache-dir --wheel-dir "$second_dir"
+          first_wheel="$(find "$first_dir" -maxdepth 1 -name '*.whl' -print -quit)"
+          second_wheel="$(find "$second_dir" -maxdepth 1 -name '*.whl' -print -quit)"
+          test -n "$first_wheel" && test -n "$second_wheel"
+          test "$(sha256sum "$first_wheel" | cut -d ' ' -f 1)" = "$(sha256sum "$second_wheel" | cut -d ' ' -f 1)"
+          python -m pip install --no-deps --no-index --target "$target_dir" "$first_wheel"
+          PYTHONPATH="$target_dir" python -S -c "import topology_gate; print('dependency-free wheel import ok')"
