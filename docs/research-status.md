@@ -70,3 +70,8 @@ The calibration-only score-normalization experiment is recorded in
 [`public-market-score-normalization.md`](public-market-score-normalization.md).
 It improved the fixed-scale proxy to holdout net Sharpe `-0.1679`, but static
 RLS remained better and the challenger was not promoted.
+
+The requirement-by-requirement completion audit is in
+[`reports/completion-audit.md`](../reports/completion-audit.md). It records
+the exact evidence for each research direction and the six missing artifacts
+that keep the point-in-time market claim closed.
