@@ -267,9 +267,9 @@ therefore fail-closed.
   delayed labels, 5 bps turnover cost, and a sealed final 15% diagnostic
   holdout. Persistent-Laplacian calibration approved threshold `2.0`; the
   mean/covariance CPD calibration approved no candidate and was run only as a
-  fail-closed diagnostic at `32.0`. Static RLS holdout net Sharpe was `0.0944`
+  fail-closed diagnostic at `32.0`. Static RLS holdout net Sharpe was `0.0943`
   versus `-1.6411` for certified PL-RLS; the challenger e-process ended at
-  `3.63e-23` against threshold `80` and did not promote. This is explicitly
+  `3.62e-23` against threshold `80` and did not promote. This is explicitly
   public-final-history diagnostic evidence, not point-in-time market evidence;
   see [`docs/public-market-diagnostic.md`](../docs/public-market-diagnostic.md)
   and [`reports/public-market-diagnostic.json`](public-market-diagnostic.json).

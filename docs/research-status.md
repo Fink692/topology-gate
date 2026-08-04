@@ -53,3 +53,7 @@ current workspace status is recorded in
 The source procurement decision and alternatives are recorded in
 [`source-options.md`](source-options.md). No source has yet been received or
 authorized for a market claim.
+
+For a zero-cost path, run the public ETF diagnostic described in
+[`free-public-track.md`](free-public-track.md). It answers the control-layer
+hypothesis but deliberately does not upgrade the market-data gate.

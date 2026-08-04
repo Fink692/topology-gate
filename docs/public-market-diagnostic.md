@@ -24,7 +24,7 @@ The five matrix rows are therefore: static RLS, rolling-window RLS, exponential
 RLS, fail-closed unapproved CPD diagnostic, and certified PL-RLS.
 
 On the public final-history holdout, static RLS had MSE `0.6302`, mean net
-return `0.0000472`, and net Sharpe `0.0944`. Certified PL-RLS had MSE `0.7226`,
+return `0.0000472`, and net Sharpe `0.0943`. Certified PL-RLS had MSE `0.7226`,
 mean net return `-0.0008367`, and net Sharpe `-1.6411`. The challenger e-process
 ended at `3.63e-23` against its preallocated threshold `80`; it did not promote.
 These numbers are negative diagnostic evidence for this public proxy, not an
