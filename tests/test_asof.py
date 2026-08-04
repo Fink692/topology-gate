@@ -224,6 +224,66 @@ def test_point_in_time_panel_canonicalizes_asset_order_and_binds_universe() -> N
     assert first.to_dict()["digest"] == first.digest
 
 
+def test_point_in_time_panel_can_require_complete_expected_universe_coverage() -> None:
+    snapshot = _panel_book().materialize(3)
+    complete = PointInTimePanel.from_snapshot(
+        snapshot,
+        ("m-b", "m-a"),
+        ("value",),
+        expected_instrument_ids=("B", "A"),
+    )
+
+    assert complete.expected_instrument_ids == ("A", "B")
+    assert complete.to_dict()["expected_instrument_ids"] == ["A", "B"]
+    assert complete.digest != PointInTimePanel.from_snapshot(
+        snapshot,
+        ("m-b", "m-a"),
+        ("value",),
+    ).digest
+
+    with pytest.raises(UnavailableEventError, match="coverage"):
+        PointInTimePanel.from_snapshot(
+            snapshot,
+            ("m-a",),
+            ("value",),
+            expected_instrument_ids=("A", "B"),
+        )
+
+    with pytest.raises(ValueError, match="canonical sorted"):
+        PointInTimePanel(
+            decision_time=3,
+            instrument_ids=("A",),
+            record_ids=("m-a",),
+            field_names=("value",),
+            values=((1.0,),),
+            universe_digest=snapshot.universe_digest,
+            expected_instrument_ids=("B", "A"),
+        )
+
+    complete_from_snapshot = PointInTimePanel.from_snapshot(
+        snapshot,
+        ("m-b", "m-a"),
+        ("value",),
+        require_complete_universe=True,
+    )
+    assert complete_from_snapshot.expected_instrument_ids == ("A", "B")
+    with pytest.raises(UnavailableEventError, match="coverage"):
+        PointInTimePanel.from_snapshot(
+            snapshot,
+            ("m-a",),
+            ("value",),
+            require_complete_universe=True,
+        )
+    with pytest.raises(ValueError, match="mutually exclusive"):
+        PointInTimePanel.from_snapshot(
+            snapshot,
+            ("m-a", "m-b"),
+            ("value",),
+            expected_instrument_ids=("A", "B"),
+            require_complete_universe=True,
+        )
+
+
 def test_point_in_time_panel_rejects_duplicate_assets_missing_membership_and_fields() -> None:
     duplicate_asset_book = AsOfBook(
         observations=(

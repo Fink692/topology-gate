@@ -157,6 +157,11 @@ strictly increasing timeline indices to that manifest. The manifest digest is
 stored in model state, so a resumed replay cannot silently switch source
 identity or open a sealed holdout under a different study context.
 
+For cross-asset panels, `PointInTimePanel.from_snapshot` can also receive an
+explicit `expected_instrument_ids` set. A missing or unexpected instrument
+then fails closed, and the coverage assertion is included in the panel digest;
+omitting that argument remains an explicit partial-panel choice.
+
 The dependency-light `AsOfBook` is the corresponding data-boundary contract:
 observations, labels, and universe memberships carry event time, availability,
 source revision, and deterministic ingest order. Its snapshots exclude future
@@ -166,8 +171,11 @@ test fixture, not a market-data vendor or a survivorship-bias guarantee.
 `PointInTimePanel` is the explicit cross-asset selection contract layered on an
 as-of snapshot. It requires one visible record per instrument, a fixed field
 schema, deterministic instrument ordering, and carries both a panel digest and
-the snapshot's universe digest. Instrument-labelled `causal_numeric` and
-`causal_promotion` plans use that canonical ordering; unlabelled plans remain
+the snapshot's universe digest. Pass `expected_instrument_ids` when the study
+requires complete coverage of the pre-registered point-in-time universe; the
+coverage assertion is bound into the panel digest. Instrument-labelled
+`causal_numeric` and `causal_promotion` plans use that canonical ordering;
+unlabelled plans remain
 explicit legacy row adapters. This does not supply a vendor universe, dynamic
 membership history, or evidence of market completeness.
 

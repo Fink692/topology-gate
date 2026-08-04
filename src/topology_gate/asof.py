@@ -422,9 +422,11 @@ class PointInTimePanel:
     A panel is intentionally constructed from explicit record IDs.  The
     snapshot has already applied availability and source-revision rules; this
     layer adds deterministic instrument ordering, one record per instrument,
-    fixed field ordering, and a membership digest.  It is a data-boundary
-    artifact, not a vendor adapter or a claim that the selected universe is
-    economically complete.
+    fixed field ordering, and a membership digest.  Callers can additionally
+    provide ``expected_instrument_ids`` to make full point-in-time universe
+    coverage fail closed; that assertion is part of the panel identity.  It
+    is a data-boundary artifact, not a vendor adapter or a claim that the
+    source universe is economically complete.
     """
 
     decision_time: TimePoint
@@ -433,6 +435,7 @@ class PointInTimePanel:
     field_names: tuple[str, ...]
     values: tuple[tuple[float, ...], ...]
     universe_digest: str
+    expected_instrument_ids: tuple[str, ...] | None = None
 
     def __post_init__(self) -> None:
         decision = _time(self.decision_time, "decision_time")
@@ -455,12 +458,23 @@ class PointInTimePanel:
             item not in "0123456789abcdefABCDEF" for item in universe_digest
         ):
             raise ValueError("universe_digest must be a 64-character hexadecimal digest")
+        expected = self.expected_instrument_ids
+        if expected is not None:
+            if isinstance(expected, (str, bytes, bytearray)):
+                raise TypeError("expected_instrument_ids must be a sequence")
+            expected_values = tuple(_text(value, "expected instrument_id") for value in expected)
+            if not expected_values or len(set(expected_values)) != len(expected_values):
+                raise ValueError("expected_instrument_ids must be non-empty and unique")
+            if tuple(sorted(expected_values)) != expected_values:
+                raise ValueError("expected_instrument_ids must be in canonical sorted order")
+            expected = expected_values
         object.__setattr__(self, "decision_time", decision)
         object.__setattr__(self, "instrument_ids", instruments)
         object.__setattr__(self, "record_ids", records)
         object.__setattr__(self, "field_names", fields)
         object.__setattr__(self, "values", raw_rows)
         object.__setattr__(self, "universe_digest", universe_digest.lower())
+        object.__setattr__(self, "expected_instrument_ids", expected)
 
     @classmethod
     def from_snapshot(
@@ -470,6 +484,8 @@ class PointInTimePanel:
         field_names: Sequence[str],
         *,
         require_membership: bool = True,
+        expected_instrument_ids: Sequence[str] | None = None,
+        require_complete_universe: bool = False,
     ) -> "PointInTimePanel":
         """Select and canonicalize one row per instrument from a snapshot."""
 
@@ -487,6 +503,31 @@ class PointInTimePanel:
             raise ValueError("field_names must be non-empty and unique")
         if not isinstance(require_membership, bool):
             raise TypeError("require_membership must be boolean")
+        if not isinstance(require_complete_universe, bool):
+            raise TypeError("require_complete_universe must be boolean")
+        if require_complete_universe and expected_instrument_ids is not None:
+            raise ValueError(
+                "expected_instrument_ids and require_complete_universe are mutually exclusive"
+            )
+        expected: tuple[str, ...] | None
+        if require_complete_universe:
+            expected = tuple(sorted({item.instrument_id for item in snapshot.universe}))
+            if not expected:
+                raise UnavailableEventError(
+                    "complete point-in-time universe coverage requires an active universe"
+                )
+        elif expected_instrument_ids is None:
+            expected = None
+        else:
+            if isinstance(expected_instrument_ids, (str, bytes, bytearray)):
+                raise TypeError("expected_instrument_ids must be a sequence")
+            expected_values = tuple(
+                _text(value, "expected instrument_id")
+                for value in expected_instrument_ids
+            )
+            if not expected_values or len(set(expected_values)) != len(expected_values):
+                raise ValueError("expected_instrument_ids must be non-empty and unique")
+            expected = tuple(sorted(expected_values))
 
         rows: list[tuple[str, str, tuple[float, ...]]] = []
         seen_instruments: set[str] = set()
@@ -518,6 +559,14 @@ class PointInTimePanel:
             rows.append((observation.instrument_id, record_id, tuple(values)))
 
         rows.sort(key=lambda item: item[0])
+        selected_instruments = tuple(item[0] for item in rows)
+        if expected is not None and selected_instruments != expected:
+            missing = tuple(item for item in expected if item not in selected_instruments)
+            unexpected = tuple(item for item in selected_instruments if item not in expected)
+            raise UnavailableEventError(
+                "panel instrument coverage does not match the expected universe; "
+                f"missing={missing!r}, unexpected={unexpected!r}"
+            )
         return cls(
             decision_time=snapshot.decision_time,
             instrument_ids=tuple(item[0] for item in rows),
@@ -525,6 +574,7 @@ class PointInTimePanel:
             field_names=fields,
             values=tuple(item[2] for item in rows),
             universe_digest=snapshot.universe_digest,
+            expected_instrument_ids=expected,
         )
 
     @property
@@ -539,6 +589,8 @@ class PointInTimePanel:
             "values": [list(row) for row in self.values],
             "universe_digest": self.universe_digest,
         }
+        if self.expected_instrument_ids is not None:
+            payload["expected_instrument_ids"] = list(self.expected_instrument_ids)
         return hashlib.sha256(
             json.dumps(payload, sort_keys=True, separators=(",", ":")).encode()
         ).hexdigest()
@@ -552,6 +604,11 @@ class PointInTimePanel:
             "field_names": list(self.field_names),
             "values": [list(row) for row in self.values],
             "universe_digest": self.universe_digest,
+            "expected_instrument_ids": (
+                None
+                if self.expected_instrument_ids is None
+                else list(self.expected_instrument_ids)
+            ),
             "digest": self.digest,
         }
 

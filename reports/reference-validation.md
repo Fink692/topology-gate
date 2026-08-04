@@ -6,15 +6,16 @@ Scope: bounded research/control layer only; no live-data or execution claim
 
 ## Reproducible engineering checks
 
-- Full suite: **205 passed**.
-- Configured coverage run: **80.23%** total coverage.
+- Full suite: **207 passed**.
+- Configured coverage run: **80.24%** total coverage.
 - Ruff: passed on `src` and `tests`.
 - Mypy: passed on all 20 source modules.
 - Dependency-light root import: passed without NumPy site packages.
 - Wheel build and isolated target-directory smoke: passed; SHA-256
-  `f7f24a22ea86f367d6d34d497ccddbe63fd903d42a60c0838c92372c19b6d65a`;
-  the smoke exercised public online authorization, promotion-calibration
-  epochs, and checkpointed minimum-label burn-in configuration from the wheel.
+  `763940f6151c70e8224acce66ddd35170eb751b9f75c38522a461f1b0bd53900`;
+  the smoke exercised public complete-universe panel identity, certified
+  online authorization, promotion-calibration epochs, and checkpointed
+  minimum-label configuration from the wheel.
 - Authenticated checkpoint, manifest digest, promotion/evidence state, and
   detached restore tests: passed.
 - Study-manifest tests: passed for canonical split identity, ordered
@@ -29,8 +30,9 @@ Scope: bounded research/control layer only; no live-data or execution claim
   strict point-in-time universe membership, prediction-time factor freezing,
   one-shot versus resumed replay equivalence, missing-label context cleanup,
   neutral forgetting without an approved detector certificate, canonical
-  cross-asset panel ordering, panel/universe digest telemetry, and panel
-  identity equivalence under reversed binding input.
+  cross-asset panel ordering, expected-universe coverage rejection,
+  panel/universe digest telemetry, and panel identity equivalence under
+  reversed binding input.
 - Finite-null certificate tests: passed for conservative Wilson-bound approval,
   detector-identity binding, explicit rejection of an unapproved budget, and
   rejection of count/rate/interval inconsistencies.

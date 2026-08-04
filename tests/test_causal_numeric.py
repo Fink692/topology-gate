@@ -409,6 +409,59 @@ def test_instrument_labelled_plan_canonicalizes_cross_asset_order_and_records_pa
     assert forward.steps[0].feature_digest == reversed_order.steps[0].feature_digest
 
 
+def test_causal_panel_plan_can_require_complete_current_universe() -> None:
+    book = AsOfBook(
+        observations=(
+            panel_observation("a1", "A", 1.0),
+            panel_observation("b1", "B", 2.0),
+        ),
+        universe=(
+            UniverseMembership("A", 0, 100, 0, 0, 0),
+            UniverseMembership("B", 0, 100, 0, 0, 1),
+        ),
+        labels=(label("t1", 3, 4.0),),
+    )
+    complete_plan = CausalFeaturePlan(
+        {"t1": (FeatureBinding("a1", ("x",), "A"), FeatureBinding("b1", ("x",), "B"))},
+        state_bindings_by_target={
+            "t1": (FeatureBinding("a1", ("state",), "A"), FeatureBinding("b1", ("state",), "B"))
+        },
+        require_membership=True,
+        require_complete_universe=True,
+    )
+    complete = run_causal_rls_replay(
+        book,
+        (1,),
+        ("t1",),
+        plan=complete_plan,
+        learner=make_panel_learner(),
+        model_config=CausalRLSConfig(model_id="complete-universe"),
+    )
+    assert complete.feature_panel_digests[0] is not None
+
+    incomplete_plan = CausalFeaturePlan(
+        {"t1": (FeatureBinding("a1", ("x",), "A"),)},
+        state_bindings_by_target={"t1": (FeatureBinding("a1", ("state",), "A"),)},
+        require_membership=True,
+        require_complete_universe=True,
+    )
+    with pytest.raises(CausalNumericError, match="coverage"):
+        run_causal_rls_replay(
+            book,
+            (1,),
+            ("t1",),
+            plan=incomplete_plan,
+            learner=make_panel_learner(),
+            model_config=CausalRLSConfig(model_id="incomplete-universe"),
+        )
+
+    with pytest.raises(CausalNumericError, match="strict point-in-time membership"):
+        CausalFeaturePlan(
+            {"t1": (FeatureBinding("a1", ("x",), "A"),)},
+            require_complete_universe=True,
+        )
+
+
 def test_panel_plan_rejects_mixed_instrument_labels_and_unavailable_membership() -> None:
     mixed_plan = CausalFeaturePlan(
         {

@@ -152,6 +152,11 @@ cross-asset data contract, not a cross-asset market study. The separate
 components, rejects target/zero substitution and unavailable costs, and reports
 abstentions explicitly; it is an evaluation boundary, not market evidence.
 
+`PointInTimePanel.from_snapshot` can also receive an explicit
+`expected_instrument_ids` set. A missing or unexpected instrument then fails
+closed, and the coverage assertion is included in the panel digest; omitting
+that argument remains an explicit partial-panel choice.
+
 The `causal_promotion` adapter extends the same state boundary to paired
 challenger/incumbent learners and a registered `PromotionGate`. It freezes both
 predictions before labels arrive, advances bounded paired utility only at

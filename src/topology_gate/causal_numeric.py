@@ -121,11 +121,19 @@ def _normalize_binding_map(
 
 @dataclass(frozen=True, slots=True)
 class CausalFeaturePlan:
-    """Versioned feature/state bindings for each predicted target."""
+    """Versioned feature/state bindings for each predicted target.
+
+    ``require_complete_universe`` makes instrument-labelled panel extraction
+    require one visible row for every instrument active in the snapshot at the
+    decision boundary.  This is intentionally opt-in because a partial panel
+    can be a valid diagnostic choice, but it must not be mistaken for complete
+    cross-sectional coverage.
+    """
 
     bindings_by_target: Mapping[str, Sequence[FeatureBinding]]
     state_bindings_by_target: Mapping[str, Sequence[FeatureBinding]] | None = None
     require_membership: bool = False
+    require_complete_universe: bool = False
 
     def __post_init__(self) -> None:
         bindings = _normalize_binding_map(self.bindings_by_target, "bindings_by_target")
@@ -141,6 +149,12 @@ class CausalFeaturePlan:
                 )
         if not isinstance(self.require_membership, bool):
             raise CausalNumericError("require_membership must be boolean")
+        if not isinstance(self.require_complete_universe, bool):
+            raise CausalNumericError("require_complete_universe must be boolean")
+        if self.require_complete_universe and not self.require_membership:
+            raise CausalNumericError(
+                "complete-universe plans require strict point-in-time membership"
+            )
         if self.require_membership:
             for group in (*bindings.values(), *state_bindings.values()):
                 if any(binding.instrument_id is None for binding in group):
@@ -170,6 +184,7 @@ class CausalFeaturePlan:
             "schema": CAUSAL_NUMERIC_SCHEMA,
             "version": CAUSAL_NUMERIC_VERSION,
             "require_membership": self.require_membership,
+            "require_complete_universe": self.require_complete_universe,
             "bindings": {
                 target: identity_bindings(bindings)
                 for target, bindings in sorted(self.bindings_by_target.items())
@@ -290,6 +305,7 @@ class CausalFeaturePlan:
                 tuple(binding.record_id for binding in bindings),
                 field_names,
                 require_membership=self.require_membership,
+                require_complete_universe=self.require_complete_universe,
             )
         except (TypeError, ValueError) as exc:
             raise CausalNumericError(
