@@ -12,9 +12,8 @@ Scope: bounded research/control layer only; no live-data or execution claim
 - Mypy: passed on all 20 source modules.
 - Dependency-light root import: passed without NumPy site packages.
 - Wheel build and isolated target-directory smoke: passed; SHA-256
-  `b7fb2502044c3cd79e1393354d9e82961622f14760ee528d771bdef7e215598d`;
-  the smoke also exercised the public sealed-study manifest API from the
-  wheel.
+  `ad5b1e3d023320c589964cf293e04298b8383b3b9e760c6e7273f279671f9a06`;
+  the smoke also exercised the public sealed-study phase API from the wheel.
 - Authenticated checkpoint, manifest digest, promotion/evidence state, and
   detached restore tests: passed.
 - Study-manifest tests: passed for canonical split identity, ordered
