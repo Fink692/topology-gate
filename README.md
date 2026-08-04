@@ -38,7 +38,10 @@ failure during streaming rolls back the rejected observation.
 research proposal. It keeps a bounded rolling point cloud, extracts declared
 Betti counts and positive persistent-Laplacian eigenvalues, standardizes the
 current state only against earlier valid states, and emits a CUSUM score plus a
-suggested forgetting factor. It implements the same `observe`/stream-state
+suggested forgetting factor. The forgetting map includes an explicit,
+identity-bound `forgetting_score_scale`; its default is `1.0`, while a
+calibration-only score scale can be used when the accumulated CUSUM score is
+not on a unit scale. It implements the same `observe`/stream-state
 protocol as the causal numerical adapter, but its score is not calibrated by
 construction: accelerated forgetting still requires a matching approved
 finite-null certificate and a market study still requires point-in-time data.
@@ -171,6 +174,26 @@ reported as a tradable return result.
 
 This is an offline control component. It has no broker, network, order, account,
 or live-data side effect.
+
+## Free reproducible research track
+
+The full control-layer prototype and all proposed secondary directions have
+synthetic receipts in `reports/`. A public, no-cost adjusted-ETF diagnostic is
+available without a data subscription:
+
+```powershell
+$env:PYTHONPATH = 'src'
+py -3.12 examples\public_market_diagnostic.py `
+  --cache-dir "$env:TEMP\topology-gate-public-market-diagnostic" `
+  --output reports\public-market-diagnostic.json
+```
+
+The follow-up filtration sensitivity and calibration-only score-normalization
+experiments are documented in
+[`docs/public-market-sensitivity.md`](docs/public-market-sensitivity.md) and
+[`docs/public-market-score-normalization.md`](docs/public-market-score-normalization.md).
+They are research diagnostics on final adjusted history, not point-in-time or
+live-trading evidence.
 
 For point-in-time research identities, `RunSpec`/`RunManifest` freeze the input
 vintage, universe, configuration, backend, dependency, seed, and thread policy
