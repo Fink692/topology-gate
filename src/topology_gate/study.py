@@ -27,9 +27,15 @@ from .causal_numeric import (
     CausalRLSReplayResult,
     run_causal_rls_replay,
 )
+from .causal_promotion import (
+    CausalPromotionConfig,
+    CausalPromotionReplayResult,
+    run_causal_promotion_replay,
+)
 from .economic import EconomicDecision, EconomicEvidence
 from .manifest import ManifestValidationError, RunManifest, StudyManifest
-from .replay import ReplayState, ReplayStatus
+from .promotion import PromotionGate
+from .replay import ReplayConfig, ReplayState, ReplayStatus
 
 STUDY_INPUT_SCHEMA = "topology_gate.study_input_bundle"
 STUDY_INPUT_VERSION = 1
@@ -429,6 +435,18 @@ class StudyRLSRunResult:
         return tuple(decisions)
 
 
+@dataclass(frozen=True, slots=True)
+class StudyPromotionRunResult:
+    """Paired-promotion output paired with the same preflight receipt."""
+
+    audit: StudyInputAudit
+    replay: CausalPromotionReplayResult
+
+    @property
+    def promoted(self) -> bool:
+        return self.replay.promoted
+
+
 def run_causal_rls_study(
     bundle: StudyInputBundle,
     phase: str,
@@ -438,7 +456,7 @@ def run_causal_rls_study(
     detector: Any | None = None,
     calibration: Any | None = None,
     model_config: CausalRLSConfig | None = None,
-    replay_config: Any | None = None,
+    replay_config: ReplayConfig | None = None,
     model_state: Mapping[str, Any] | None = None,
     initial_state: ReplayState | None = None,
     require_complete_universe: bool = False,
@@ -474,6 +492,51 @@ def run_causal_rls_study(
     return StudyRLSRunResult(audit=audit, replay=result)
 
 
+def run_causal_promotion_study(
+    bundle: StudyInputBundle,
+    phase: str,
+    *,
+    plan: CausalFeaturePlan,
+    challenger: Any,
+    incumbent: Any,
+    gate: PromotionGate,
+    config: CausalPromotionConfig | None = None,
+    replay_config: ReplayConfig | None = None,
+    model_state: Mapping[str, Any] | None = None,
+    initial_state: ReplayState | None = None,
+    require_complete_universe: bool = False,
+    require_economic_evidence: bool = False,
+    require_observed_economic_evidence: bool = False,
+) -> StudyPromotionRunResult:
+    """Preflight a bundle, then run the shared paired-promotion transition."""
+
+    if not isinstance(bundle, StudyInputBundle):
+        raise StudyInputError("bundle must be a StudyInputBundle")
+    audit = bundle.audit(
+        phase,
+        require_complete_universe=require_complete_universe,
+        require_economic_evidence=require_economic_evidence,
+        require_observed_economic_evidence=require_observed_economic_evidence,
+    )
+    result = run_causal_promotion_replay(
+        bundle.as_of_book,
+        bundle.timeline.decision_times,
+        bundle.timeline.target_ids,
+        plan=plan,
+        challenger=challenger,
+        incumbent=incumbent,
+        gate=gate,
+        config=config,
+        replay_config=replay_config,
+        model_state=model_state,
+        initial_state=initial_state,
+        study_manifest=bundle.study_manifest,
+        study_phase=phase,
+        decision_indices=bundle.timeline.decision_indices,
+    )
+    return StudyPromotionRunResult(audit=audit, replay=result)
+
+
 __all__ = [
     "MAX_STUDY_TIMELINE",
     "STUDY_INPUT_SCHEMA",
@@ -481,7 +544,9 @@ __all__ = [
     "StudyInputAudit",
     "StudyInputBundle",
     "StudyInputError",
+    "StudyPromotionRunResult",
     "StudyRLSRunResult",
     "StudyTimeline",
+    "run_causal_promotion_study",
     "run_causal_rls_study",
 ]

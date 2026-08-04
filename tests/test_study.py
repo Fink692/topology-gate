@@ -13,6 +13,7 @@ from topology_gate.asof import (
     UniverseMembership,
 )
 from topology_gate.causal_numeric import CausalFeaturePlan, FeatureBinding
+from topology_gate.causal_promotion import CausalPromotionConfig
 from topology_gate.economic import EconomicEvidence, ExecutionCost, RealizedReturn
 from topology_gate.manifest import (
     RunManifest,
@@ -21,13 +22,43 @@ from topology_gate.manifest import (
     StudySpec,
     StudyWindow,
 )
+from topology_gate.promotion import PromotionGate
+from topology_gate.replay import ReplayConfig
 from topology_gate.rls import RLS, RLSConfig
 from topology_gate.study import (
     StudyInputBundle,
     StudyInputError,
+    StudyPromotionRunResult,
     StudyTimeline,
+    run_causal_promotion_study,
     run_causal_rls_study,
 )
+
+
+class _FixedLearner:
+    n_features = 1
+
+    def __init__(self, prediction: float) -> None:
+        self.prediction = prediction
+        self.updates = 0
+
+    def predict(self, features: tuple[float, ...]) -> float:
+        assert len(features) == 1
+        return self.prediction
+
+    def update(self, features: tuple[float, ...], target: float) -> None:
+        assert len(features) == 1
+        del target
+        self.updates += 1
+
+    def state_dict(self) -> dict[str, object]:
+        return {"prediction": self.prediction, "updates": self.updates}
+
+    def load_state_dict(self, state: dict[str, object]) -> None:
+        if set(state) != {"prediction", "updates"}:
+            raise ValueError("invalid fixed learner state")
+        self.prediction = float(state["prediction"])
+        self.updates = int(state["updates"])
 
 
 def _run_manifest() -> RunManifest:
@@ -275,6 +306,53 @@ def test_causal_study_wrapper_returns_preflight_receipt_and_economic_decisions()
     decisions = result.economic_decisions
     assert tuple(item.target_id for item in decisions) == ("t1", "t2")
     assert all(item.evaluated for item in decisions)
+
+
+def test_promotion_study_wrapper_reuses_the_same_source_preflight() -> None:
+    timeline = StudyTimeline(
+        decision_times=(1, 2),
+        target_ids=("t1", "t2"),
+        decision_indices=(0, 1),
+        expected_instrument_ids=(("ES",), ("ES",)),
+    )
+    bundle = _bundle(timeline)
+    plan = CausalFeaturePlan(
+        {
+            "t1": (FeatureBinding("m1", ("x",), "ES"),),
+            "t2": (FeatureBinding("m2", ("x",), "ES"),),
+        },
+        require_membership=True,
+    )
+    gate = PromotionGate("incumbent", alpha=0.9, eta=0.5)
+    gate.register_challenger("challenger")
+    gate.seal_registration()
+
+    result = run_causal_promotion_study(
+        bundle,
+        "calibration",
+        plan=plan,
+        challenger=_FixedLearner(0.0),
+        incumbent=_FixedLearner(1.0),
+        gate=gate,
+        config=CausalPromotionConfig(
+            promotion_id="study-paired",
+            challenger_id="challenger",
+            incumbent_id="incumbent",
+            eta=0.5,
+            utility_cap=1.0,
+        ),
+        replay_config=ReplayConfig(
+            model_id="study-paired",
+            score_id="none",
+            require_model_state=True,
+        ),
+        require_complete_universe=True,
+    )
+
+    assert isinstance(result, StudyPromotionRunResult)
+    assert result.audit.expected_universe_complete is True
+    assert result.replay.study_manifest_digest == bundle.study_manifest.digest
+    assert len(result.replay.steps) == 2
 
 
 def test_study_bundle_digest_binds_source_artifact_revisions() -> None:

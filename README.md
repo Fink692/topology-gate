@@ -225,8 +225,9 @@ For the vendor-to-model handoff, [`docs/study-runbook.md`](docs/study-runbook.md
 documents `StudyInputBundle`, `StudyTimeline`, and `run_causal_rls_study`. This
 preflights manifest phase indices, target-label visibility, expected
 point-in-time universe coverage, and optional economic evidence before entering
-the shared causal replay. It accepts normalized source artifacts; it is not a
-vendor adapter or economic validation by itself.
+the shared causal replay. `run_causal_promotion_study` applies the same
+preflight to paired challenger/e-process runs. It accepts normalized source
+artifacts; it is not a vendor adapter or economic validation by itself.
 
 `run_causal_promotion_replay` composes the same transition with paired
 challenger/incumbent learners and the existing alpha-spending promotion gate.

@@ -64,5 +64,11 @@ the resulting audit receipt with the final report. The wrapper uses the same
 delayed labels, topology evidence, and checkpoint state retain their existing
 causal semantics.
 
+Paired challenger studies use the analogous
+`run_causal_promotion_study(...)` wrapper. It performs the same source and
+phase audit before invoking `run_causal_promotion_replay`, so registration,
+label settlement, e-process updates, and checkpoint identities remain bound to
+the audited source bundle.
+
 This boundary is a source-integrity and execution protocol. It is not a market
 calibration certificate, a capacity model, or proof of economic performance.
