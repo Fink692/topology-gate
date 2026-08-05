@@ -15,6 +15,7 @@ import json
 import math
 from collections.abc import Sequence
 from dataclasses import dataclass, replace
+from pathlib import Path
 from typing import Any, Callable
 
 from .promotion import EProcess, PromotionGate, geometric_alpha_allocation, validate_eta
@@ -274,7 +275,9 @@ def _factory_identity(factory: Any) -> str:
         code = getattr(factory, "__code__", None)
         location = ""
         if code is not None:
-            location = f":{code.co_filename}:{code.co_firstlineno}"
+            # Keep receipts portable: absolute checkout paths are neither
+            # useful for reproducibility nor appropriate in public artifacts.
+            location = f":{Path(code.co_filename).name}:{code.co_firstlineno}"
         value = (
             f"{getattr(factory, '__module__', type(factory).__module__)}:"
             f"{getattr(factory, '__qualname__', type(factory).__qualname__)}"
@@ -295,7 +298,7 @@ def _score_factory_identity(factory: Any) -> str:
         code = getattr(factory, "__code__", None)
         location = ""
         if code is not None:
-            location = f":{code.co_filename}:{code.co_firstlineno}"
+            location = f":{Path(code.co_filename).name}:{code.co_firstlineno}"
         value = (
             f"{getattr(factory, '__module__', type(factory).__module__)}:"
             f"{getattr(factory, '__qualname__', type(factory).__qualname__)}"

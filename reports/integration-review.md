@@ -15,7 +15,7 @@ The release is still blocked by public-contract inconsistencies, a duplicate imp
 
 | Gate | Exact evidence | Result |
 |---|---|---|
-| Tests | `C:\Users\Kristjan Backman\AppData\Local\Programs\Python\Python312\python.exe -m pytest -p no:cacheprovider` | **PASS** — 50 collected, 50 passed in 5.78s |
+| Tests | `python -m pytest -p no:cacheprovider` | **PASS** — 50 collected, 50 passed in 5.78s |
 | Type check | `...Python312\python.exe -m mypy --cache-dir <external-temp>` | **PASS, qualified** — no issues in 10 files; `rls` and `backtest` are configured with `ignore_errors = true` |
 | Lint | `ruff check --no-cache src tests` | **PASS** — supplemental only; Ruff is not declared/pinned by the project |
 | Coverage | pytest-cov run with `--cov=topology_gate --cov-report=term-missing` | **PASS, no threshold** — 50 tests passed, 78% total coverage |

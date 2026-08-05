@@ -1,26 +1,105 @@
-# topology-gate
+# Topology Gate
 
-`topology-gate` is a small, typed Python package boundary for research on a
-topology-gated recursive quant model. It defines the objects and protocols that
-connect five independently implemented pieces:
+[![CI](https://github.com/Fink692/topology-gate/actions/workflows/ci.yml/badge.svg)](https://github.com/Fink692/topology-gate/actions/workflows/ci.yml)
+[![Python](https://img.shields.io/badge/python-3.10%2B-3776AB?logo=python&logoColor=white)](pyproject.toml)
+[![License](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 
-- a topology detector;
-- a recursive least-squares (RLS) learner;
-- an e-process gate;
-- a synthetic-data generator; and
-- an offline backtest/evaluation runner.
+Typed, dependency-light research infrastructure for recursive quant models that
+adapt their memory and promotion decisions under nonstationarity.
 
-This repository does not claim that a topology signal predicts returns or that a
-gate is statistically valid for a particular data-generating process. The
-algorithms, assumptions, and calibration procedures belong in their respective
-worker modules and must be evaluated empirically.
+> Research status: alpha. This is an offline research and paper-trading
+> repository, not an investment product or a live trading system.
+
+## Why this repository exists
+
+The hard question in a recursive model is often not how to add another
+predictor. It is when the model should learn, what it should forget, and when a
+challenger has earned the right to replace an incumbent. This repository makes
+those control decisions explicit and testable:
+
+- topology and change-detection adapters for adaptive forgetting;
+- recursive least-squares learning with causal delayed-label replay;
+- bounded e-process and robust expert promotion primitives;
+- source manifests, calibration certificates, checkpoints, and audit receipts;
+- synthetic experiments and free public-history diagnostics.
+
+The core package does not claim that topology predicts returns, that a detector
+is statistically calibrated for markets, or that a historical paper model will
+be profitable in the future. Every result is labeled by its data boundary and
+evidence status.
+
+## Current evidence at a glance
+
+The repository includes an intentionally simple SPY/GLD trend-filter paper
+model as an economic sanity check. On the checked-in final adjusted-history
+receipt, its 2023 onward holdout at a 5 bps turnover assumption reports 23.05%
+annualized return, 1.51 net Sharpe, and 18.28% maximum drawdown across 899 rows.
+The stricter annual walk-forward receipt reports 12.67% annualized return, 0.95
+net Sharpe, and 24.61% maximum drawdown at 5 bps; it contains losing years,
+including 2022.
+
+These are historical diagnostics—not verified live performance. The source is
+not point-in-time, does not establish delisting or capacity coverage, and the
+code never places an order. See the [paper-model report](reports/trend-filter-paper-model.json),
+[walk-forward report](reports/trend-filter-walkforward.json), and
+[research status](docs/research-status.md) for the full limitations.
+
+## Quick start
+
+```bash
+python -m pip install -e ".[dev]"
+python -m pytest
+ruff check src tests examples
+mypy src
+```
+
+Run the reproducible synthetic study:
+
+```bash
+PYTHONPATH=src python examples/integrated_synthetic_study.py
+```
+
+Run the no-cost public ETF diagnostic (it downloads final adjusted history and
+stores it outside the repository):
+
+```powershell
+$env:PYTHONPATH = 'src'
+python examples\trend_filter_paper_model.py `
+  --cache-dir "$env:TEMP\topology-gate-public-market-diagnostic" `
+  --output reports\trend-filter-paper-model.json
+```
+
+For a guarded paper-only signal, use
+[`examples/paper_signal_guard.py`](examples/paper_signal_guard.py). It checks
+data freshness, caps exposure at 1.0, requires manual confirmation, and has no
+broker or order-submission code.
+
+## Project map
+
+| Area | Entry points |
+| --- | --- |
+| Shared contracts | `src/topology_gate/types.py`, `src/topology_gate/config.py` |
+| Recursive learning | `src/topology_gate/rls.py`, `src/topology_gate/online.py` |
+| Topology and forgetting | `src/topology_gate/topology.py`, `src/topology_gate/pl_cusum.py`, `src/topology_gate/persistent.py` |
+| Promotion and evidence | `src/topology_gate/promotion.py`, `src/topology_gate/evidence.py`, `src/topology_gate/calibration.py` |
+| Causal replay and source boundaries | `src/topology_gate/replay.py`, `src/topology_gate/asof.py`, `src/topology_gate/study_package.py` |
+| Research receipts | `reports/`, `docs/research-status.md` |
+| Free paper-model track | `examples/trend_filter_*.py`, `examples/paper_*.py` |
+
+## Scope and limitations
+
+This repository does not provide a broker, live-data feed, account handling,
+order management, or portfolio-risk service. Final adjusted public history is
+useful for a low-cost diagnostic but is not point-in-time evidence. A licensed
+source package with historical universe membership, delistings, revisions,
+execution costs, and capacity evidence is required before making a market
+claim; the intake checklist is in [`docs/vendor-data-gate.md`](docs/vendor-data-gate.md).
 
 The default detector is a causal k-nearest-neighbour normalized-Laplacian
 spectral approximation. It is explicitly not a persistent-Laplacian or
 persistent-homology implementation. The e-process primitive is valid only for
 its documented bounded conditional-mean score and predictable betting rule;
-the surrounding caller must enforce data availability, selection, and risk
-controls.
+the caller must enforce data availability, selection, and risk controls.
 
 For small research goldens, the optional `persistent` worker exposes a bounded
 Euclidean Vietoris–Rips filtration over `F2`, persistence intervals, and a

@@ -2,7 +2,7 @@
 
 Date: 2026-08-04
 Reviewer: independent third-party review
-Scope: the repository tree at `C:\Users\Kristjan Backman\Documents\Codex\2026-08-04\yes-the-strongest-opportunity-is-not`.
+Scope: the repository tree at the project root.
 
 ## Disposition
 
@@ -26,7 +26,7 @@ No implementation or test file was modified. The only intended write from this r
 Evidence:
 
 - `git rev-parse --show-toplevel` returned `C:/Users/Kristjan Backman`, not the target directory.
-- There is no `.git` directory under the target directory; the only discovered Git directory is `C:\Users\Kristjan Backman\.git`.
+- The historical review was run before this project had its own repository metadata.
 - `git status --short` from the target reported the whole user home, including unrelated personal files, as untracked. `git ls-files -- pyproject.toml src tests docs` returned no tracked paths.
 
 Impact: the reviewed source cannot be tied to a code revision, review diff, or trusted dependency/provenance record. Any release or reproducibility result based on this tree is therefore not auditable.

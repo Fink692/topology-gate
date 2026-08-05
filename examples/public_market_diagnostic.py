@@ -626,7 +626,7 @@ def run(*, cache_dir: Path, output: Path | None, refresh: bool) -> dict[str, Any
             "point_in_time_universe_verified": False,
             "delisting_history_verified": False,
             "manifest": source_manifest,
-            "cache_dir": str(cache_dir),
+            "cache_dir": "<external-cache>",
         },
         "data": {
             "price_rows": int(prices.shape[0]),

@@ -309,7 +309,7 @@
       128.0,
       1024.0
     ],
-    "detector_factory_identity": "__main__:run.<locals>.factory:C:\\Users\\Kristjan Backman\\Documents\\Codex\\2026-08-04\\yes-the-strongest-opportunity-is-not\\examples\\public_market_score_normalization.py:125",
+    "detector_factory_identity": "__main__:run.<locals>.factory:public_market_score_normalization.py:125",
     "detector_family_identity": "persistent-laplacian-cusum-family:public-score-normalized:v1",
     "evaluation_observation_identity": "11e37d7a879b69a2a674a1768197671c66d31d97f1d96fa23e8da102225e86b8:threshold-split:evaluation:v1",
     "evaluation_result": {
@@ -440,7 +440,7 @@
   },
   "run_version": 1,
   "source": {
-    "cache_dir": "C:\\Users\\KRISTJ~1\\AppData\\Local\\Temp\\topology-gate-public-market-diagnostic",
+    "cache_dir": "<external-cache>",
     "delisting_history_verified": false,
     "final_adjusted_history": true,
     "point_in_time_universe_verified": false,

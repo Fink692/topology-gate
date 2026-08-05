@@ -18,7 +18,7 @@ The architecture document itself says the requested production architecture is n
 
 | Check | Observed result | What it establishes—and what it does not |
 |---|---:|---|
-| `C:\Users\Kristjan Backman\AppData\Local\Programs\Python\Python312\python.exe -m pytest -q` | **50 passed** | Current examples and unit/integration assertions pass. No null calibration, optional-stopping error-rate, selection, or economic-regret proof. |
+| `python -m pytest -q` | **50 passed** | Current examples and unit/integration assertions pass. No null calibration, optional-stopping error-rate, selection, or economic-regret proof. |
 | Ruff check | **Pass** (existing evidence) | Lint/style. No statistical meaning. |
 | mypy | **Pass** (existing evidence) | Static typing. No statistical meaning. |
 | `compileall` | **Pass** (existing evidence) | Syntax/bytecode compilation. No statistical meaning. |
@@ -175,14 +175,14 @@ Run these after the corresponding changes; all are bounded, reproducible command
 # Existing engineering gates
 ruff check .
 mypy
-& 'C:\Users\Kristjan Backman\AppData\Local\Programs\Python\Python312\python.exe' -m compileall -q src tests
-& 'C:\Users\Kristjan Backman\AppData\Local\Programs\Python\Python312\python.exe' -m pytest -q
+& python -m compileall -q src tests
+& python -m pytest -q
 ```
 
 Add and run the following focused tests (names are intentional acceptance criteria):
 
 ```powershell
-& 'C:\Users\Kristjan Backman\AppData\Local\Programs\Python\Python312\python.exe' -m pytest -q `
+& python -m pytest -q `
   tests/test_topology.py tests/test_topology_statistics.py `
   tests/test_promotion.py tests/test_eprocess_null.py `
   tests/test_online.py tests/test_backtest.py tests/test_causality.py
