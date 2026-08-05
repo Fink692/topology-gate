@@ -18,7 +18,6 @@ from pathlib import Path
 from typing import Any
 
 import numpy as np
-
 from free_etf_strategy_research import _metrics
 
 RISK_ASSETS = ("SPY", "QQQ", "DIA", "IWM", "EFA", "EEM")
