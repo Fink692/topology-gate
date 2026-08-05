@@ -53,3 +53,13 @@ python examples\paper_forward_monitor.py
 It keeps both the downloaded cache and JSONL paper ledger under the system
 temporary directory by default. The ledger contains no broker credentials and
 the monitor cannot submit orders.
+
+For a fixed-parameter cross-asset check, run:
+
+```powershell
+python examples\cross_asset_trend_validation.py `
+  --output "$env:TEMP\topology-gate-cross-asset.json"
+```
+
+This checks the same 100-session rule on SPY, QQQ, DIA, IWM, EFA, and EEM,
+with cash when the signal is off.

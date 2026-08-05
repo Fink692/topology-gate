@@ -1,0 +1,369 @@
+{
+  "claim_status": "public-final-history cross-asset diagnostic only",
+  "created_at_utc": "2026-08-05T00:25:43+00:00",
+  "kind": "cross_asset_fixed_trend_validation",
+  "limitations": [
+    "The universe and adjusted histories are not point-in-time verified.",
+    "This is not a live-trading system or profitability guarantee.",
+    "Cash is modeled at zero return and does not include interest or operational friction."
+  ],
+  "results": {
+    "DIA": {
+      "15bps": {
+        "all": {
+          "annualized_return": 0.041761103627869334,
+          "max_drawdown": 0.28663653589090365,
+          "mean_daily_return": 0.0001854322772022268,
+          "net_sharpe": 0.43403163323386246,
+          "rows": 4926.0
+        },
+        "holdout_2023_onward": {
+          "annualized_return": 0.08675854902062374,
+          "max_drawdown": 0.11482328407978248,
+          "mean_daily_return": 0.00035100950910129996,
+          "net_sharpe": 0.863466606128126,
+          "rows": 899.0
+        }
+      },
+      "25bps": {
+        "all": {
+          "annualized_return": 0.030034610070339474,
+          "max_drawdown": 0.3139740065841702,
+          "mean_daily_return": 0.00014056829019451264,
+          "net_sharpe": 0.32857386652746207,
+          "rows": 4926.0
+        },
+        "holdout_2023_onward": {
+          "annualized_return": 0.07522705463195756,
+          "max_drawdown": 0.12542004313001598,
+          "mean_daily_return": 0.00030874032111464806,
+          "net_sharpe": 0.7581131421822481,
+          "rows": 899.0
+        }
+      },
+      "5bps": {
+        "all": {
+          "annualized_return": 0.05360916702702001,
+          "max_drawdown": 0.25823870741047183,
+          "mean_daily_return": 0.000230296264209941,
+          "net_sharpe": 0.5392740810638081,
+          "rows": 4926.0
+        },
+        "holdout_2023_onward": {
+          "annualized_return": 0.09840199203374755,
+          "max_drawdown": 0.10440325220143543,
+          "mean_daily_return": 0.0003932786970879518,
+          "net_sharpe": 0.9682603572982855,
+          "rows": 899.0
+        }
+      }
+    },
+    "EEM": {
+      "15bps": {
+        "all": {
+          "annualized_return": 0.027631602171787062,
+          "max_drawdown": 0.40118542257753276,
+          "mean_daily_return": 0.00015797549219476956,
+          "net_sharpe": 0.25135213756928176,
+          "rows": 4926.0
+        },
+        "holdout_2023_onward": {
+          "annualized_return": 0.07423252708353933,
+          "max_drawdown": 0.18119469278300893,
+          "mean_daily_return": 0.0003392666061229592,
+          "net_sharpe": 0.513450060023967,
+          "rows": 899.0
+        }
+      },
+      "25bps": {
+        "all": {
+          "annualized_return": 0.015524003449987944,
+          "max_drawdown": 0.4572821620253753,
+          "mean_daily_return": 0.00011108146052607283,
+          "net_sharpe": 0.17649494470116986,
+          "rows": 4926.0
+        },
+        "holdout_2023_onward": {
+          "annualized_return": 0.06042520556038533,
+          "max_drawdown": 0.19708106530181468,
+          "mean_daily_return": 0.0002880986417180648,
+          "net_sharpe": 0.43529939988904065,
+          "rows": 899.0
+        }
+      },
+      "5bps": {
+        "all": {
+          "annualized_return": 0.0398712040257192,
+          "max_drawdown": 0.339355545235393,
+          "mean_daily_return": 0.0002048695238634663,
+          "net_sharpe": 0.3262710820271726,
+          "rows": 4926.0
+        },
+        "holdout_2023_onward": {
+          "annualized_return": 0.08820551716657832,
+          "max_drawdown": 0.17498098450019361,
+          "mean_daily_return": 0.0003904345705278535,
+          "net_sharpe": 0.5915964081924624,
+          "rows": 899.0
+        }
+      }
+    },
+    "EFA": {
+      "15bps": {
+        "all": {
+          "annualized_return": 0.028325177029087767,
+          "max_drawdown": 0.2841014160636579,
+          "mean_daily_return": 0.0001396362420019126,
+          "net_sharpe": 0.29275180563016656,
+          "rows": 4926.0
+        },
+        "holdout_2023_onward": {
+          "annualized_return": 0.12144475424004919,
+          "max_drawdown": 0.12395405290603811,
+          "mean_daily_return": 0.00048802407967324976,
+          "net_sharpe": 0.9532165898733564,
+          "rows": 899.0
+        }
+      },
+      "25bps": {
+        "all": {
+          "annualized_return": 0.018309726804968784,
+          "max_drawdown": 0.3325438642784635,
+          "mean_daily_return": 0.00010086238897714605,
+          "net_sharpe": 0.21121238793432318,
+          "rows": 4926.0
+        },
+        "holdout_2023_onward": {
+          "annualized_return": 0.11454765067287442,
+          "max_drawdown": 0.1300670643334877,
+          "mean_daily_return": 0.0004635524445230829,
+          "net_sharpe": 0.9051376575471634,
+          "rows": 899.0
+        }
+      },
+      "5bps": {
+        "all": {
+          "annualized_return": 0.03842896218950287,
+          "max_drawdown": 0.26519287699567595,
+          "mean_daily_return": 0.0001784100950266792,
+          "net_sharpe": 0.37424024510883896,
+          "rows": 4926.0
+        },
+        "holdout_2023_onward": {
+          "annualized_return": 0.1283775818423467,
+          "max_drawdown": 0.11780425898539582,
+          "mean_daily_return": 0.0005124957148234167,
+          "net_sharpe": 1.000963108144095,
+          "rows": 899.0
+        }
+      }
+    },
+    "IWM": {
+      "15bps": {
+        "all": {
+          "annualized_return": 0.020289227020893197,
+          "max_drawdown": 0.40294502452896275,
+          "mean_daily_return": 0.00012507374509006285,
+          "net_sharpe": 0.2086637266971096,
+          "rows": 4926.0
+        },
+        "holdout_2023_onward": {
+          "annualized_return": 0.062166613405704396,
+          "max_drawdown": 0.16074115686479795,
+          "mean_daily_return": 0.0002916999355449289,
+          "net_sharpe": 0.45210715887638286,
+          "rows": 899.0
+        }
+      },
+      "25bps": {
+        "all": {
+          "annualized_return": 0.007151317401585144,
+          "max_drawdown": 0.4533163854564457,
+          "mean_daily_return": 7.371361516720453e-05,
+          "net_sharpe": 0.12288376983769451,
+          "rows": 4926.0
+        },
+        "holdout_2023_onward": {
+          "annualized_return": 0.046495450365715785,
+          "max_drawdown": 0.19850155048632356,
+          "mean_daily_return": 0.00023274554177407232,
+          "net_sharpe": 0.36059115176755885,
+          "rows": 899.0
+        }
+      },
+      "5bps": {
+        "all": {
+          "annualized_return": 0.033585114104067504,
+          "max_drawdown": 0.3583354533179731,
+          "mean_daily_return": 0.00017643387501292118,
+          "net_sharpe": 0.29441727814531393,
+          "rows": 4926.0
+        },
+        "holdout_2023_onward": {
+          "annualized_return": 0.07805643347353275,
+          "max_drawdown": 0.14362984759277164,
+          "mean_daily_return": 0.0003506543293157854,
+          "net_sharpe": 0.5434076560615259,
+          "rows": 899.0
+        }
+      }
+    },
+    "QQQ": {
+      "15bps": {
+        "all": {
+          "annualized_return": 0.07437503949713187,
+          "max_drawdown": 0.32567636012128853,
+          "mean_daily_return": 0.00032689321040315673,
+          "net_sharpe": 0.5660086389966692,
+          "rows": 4926.0
+        },
+        "holdout_2023_onward": {
+          "annualized_return": 0.2068986890634692,
+          "max_drawdown": 0.138460867859163,
+          "mean_daily_return": 0.0007985813568027404,
+          "net_sharpe": 1.2422831660192117,
+          "rows": 899.0
+        }
+      },
+      "25bps": {
+        "all": {
+          "annualized_return": 0.06248323186824889,
+          "max_drawdown": 0.34176091990726987,
+          "mean_daily_return": 0.0002828412412598356,
+          "net_sharpe": 0.48900652666001015,
+          "rows": 4926.0
+        },
+        "holdout_2023_onward": {
+          "annualized_return": 0.19713960441442335,
+          "max_drawdown": 0.14104649682035153,
+          "mean_daily_return": 0.0007663232922866114,
+          "net_sharpe": 1.192295062657777,
+          "rows": 899.0
+        }
+      },
+      "5bps": {
+        "all": {
+          "annualized_return": 0.08638783313926779,
+          "max_drawdown": 0.3092155233490659,
+          "mean_daily_return": 0.00037094517954647797,
+          "net_sharpe": 0.642918450415829,
+          "rows": 4926.0
+        },
+        "holdout_2023_onward": {
+          "annualized_return": 0.2167274726769195,
+          "max_drawdown": 0.13587005524309193,
+          "mean_daily_return": 0.0008308394213188695,
+          "net_sharpe": 1.2918676053543425,
+          "rows": 899.0
+        }
+      }
+    },
+    "SPY": {
+      "15bps": {
+        "all": {
+          "annualized_return": 0.07011256907910868,
+          "max_drawdown": 0.2091388320220533,
+          "mean_daily_return": 0.00029440656284722617,
+          "net_sharpe": 0.6558673839911191,
+          "rows": 4926.0
+        },
+        "holdout_2023_onward": {
+          "annualized_return": 0.18477657281442483,
+          "max_drawdown": 0.08543015102132068,
+          "mean_daily_return": 0.0006989504511216251,
+          "net_sharpe": 1.541983827991705,
+          "rows": 899.0
+        }
+      },
+      "25bps": {
+        "all": {
+          "annualized_return": 0.059915488306957254,
+          "max_drawdown": 0.2287170360056463,
+          "mean_daily_return": 0.00025644472768685266,
+          "net_sharpe": 0.5708378433974253,
+          "rows": 4926.0
+        },
+        "holdout_2023_onward": {
+          "annualized_return": 0.1791324624363846,
+          "max_drawdown": 0.08683839554529238,
+          "mean_daily_return": 0.00068004055123286,
+          "net_sharpe": 1.4987706426189724,
+          "rows": 899.0
+        }
+      },
+      "5bps": {
+        "all": {
+          "annualized_return": 0.0803974086747341,
+          "max_drawdown": 0.19335499035668924,
+          "mean_daily_return": 0.00033236839800759974,
+          "net_sharpe": 0.7405010760586519,
+          "rows": 4926.0
+        },
+        "holdout_2023_onward": {
+          "annualized_return": 0.1904420085733698,
+          "max_drawdown": 0.08451420725669556,
+          "mean_daily_return": 0.0007178603510103905,
+          "net_sharpe": 1.5847154110006891,
+          "rows": 899.0
+        }
+      }
+    }
+  },
+  "rule": {
+    "lookback_sessions": 100,
+    "signal_timing": "close compared with prior closes; next-session return"
+  },
+  "source": {
+    "common_end": "2026-08-04",
+    "common_start": "2007-01-03",
+    "defensive_mode": "cash",
+    "manifest": [
+      {
+        "bytes": 546578,
+        "sha256": "cb260b62844202fbcf0f85e36803e94475e89e2822a55dd2b98f12304e1a759a",
+        "ticker": "SPY"
+      },
+      {
+        "bytes": 543980,
+        "sha256": "02f31e1e2221f754c677a33d96cebe7ef0e6d49226cbe3fffc3bcb02b1beca6d",
+        "ticker": "QQQ"
+      },
+      {
+        "bytes": 549066,
+        "sha256": "27dd62854764e704b496e8b44d7b70bd2d1fcca0e1f6e00caf1149263cd30388",
+        "ticker": "DIA"
+      },
+      {
+        "bytes": 546047,
+        "sha256": "b2954c5db11e81c0a4e96638bc7d0396d0b5e9432e6dabf4d822ee233fcc2789",
+        "ticker": "IWM"
+      },
+      {
+        "bytes": 535820,
+        "sha256": "76f1d85219d40ebd4cc90e02d2adbe77bd11044957d8196f3f6c0a5fb2b03476",
+        "ticker": "EFA"
+      },
+      {
+        "bytes": 543585,
+        "sha256": "580a76f4d5b685ba7baeed024d3554f4e088fb52dd6b33a647bbdb213e4329d7",
+        "ticker": "EEM"
+      },
+      {
+        "bytes": 539598,
+        "sha256": "90b195c6f211342181a227e7e6b4d36c34b8639852581d7187bf435e83b5bb43",
+        "ticker": "GLD"
+      }
+    ],
+    "point_in_time_verified": false,
+    "provider": "Yahoo Finance chart endpoint",
+    "risk_assets": [
+      "SPY",
+      "QQQ",
+      "DIA",
+      "IWM",
+      "EFA",
+      "EEM"
+    ],
+    "rows": 4927
+  }
+}
