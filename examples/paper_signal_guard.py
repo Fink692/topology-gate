@@ -15,7 +15,6 @@ from typing import Any
 
 import numpy as np
 from free_etf_strategy_research import _load_prices
-from trend_filter_paper_model import _positions
 
 STALE_AFTER_CALENDAR_DAYS = 3
 MAX_GROSS_EXPOSURE = 1.0
@@ -34,8 +33,12 @@ def run(*, cache_dir: Path, output: Path | None) -> dict[str, Any]:
     if not np.all(np.isfinite(prices[-101:])) or np.any(prices[-101:] <= 0.0):
         raise RuntimeError("paper signal rejected: latest price window is invalid")
 
-    positions = _positions(prices, 100, 5)
-    signal = positions[-2].copy()
+    lookback = 100
+    signal = np.zeros(prices.shape[1], dtype=float)
+    risk_on = prices[-1, 0] > np.mean(prices[-lookback - 1 : -1, 0])
+    signal[0] = float(risk_on)
+    if not risk_on:
+        signal[5] = 1.0
     gross = float(np.sum(np.abs(signal)))
     if gross > MAX_GROSS_EXPOSURE + 1.0e-12:
         raise RuntimeError("paper signal rejected: gross exposure exceeds limit")
@@ -45,8 +48,8 @@ def run(*, cache_dir: Path, output: Path | None) -> dict[str, Any]:
         "kind": "guarded_paper_signal",
         "generated_at_utc": dt.datetime.now(dt.timezone.utc).replace(microsecond=0).isoformat(),
         "source": {"last_observation_date": dates[-1], "age_calendar_days": age_days, "manifest": manifest},
-        "model": {"risk_asset": "SPY", "defensive_asset": "GLD", "lookback_sessions": 100},
-        "signal": {"decision_for_next_session": target, "gross_exposure": gross, "signal_observation_date": dates[-2]},
+        "model": {"risk_asset": "SPY", "defensive_asset": "GLD", "lookback_sessions": lookback},
+        "signal": {"decision_for_next_session": target, "gross_exposure": gross, "signal_observation_date": dates[-1]},
         "risk_controls": {
             "paper_only": True,
             "live_execution": False,

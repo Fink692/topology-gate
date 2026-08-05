@@ -43,3 +43,13 @@ python examples\paper_signal_guard.py `
 
 The guard rejects stale or invalid data, caps gross exposure at 1.0, forbids
 shorting and leverage, requires manual confirmation, and never places orders.
+
+For ongoing forward paper observation, run the monitor once per trading day:
+
+```powershell
+python examples\paper_forward_monitor.py
+```
+
+It keeps both the downloaded cache and JSONL paper ledger under the system
+temporary directory by default. The ledger contains no broker credentials and
+the monitor cannot submit orders.
