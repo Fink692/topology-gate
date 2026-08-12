@@ -53,6 +53,11 @@ ruff check src tests examples
 mypy src
 ```
 
+The supported interpreters are Python 3.10, 3.11, and 3.12. GitHub Actions
+runs the lint, type-check, compile, wheel-build, and test gates across all
+three versions; the 3.12 job also verifies that the built wheel imports with
+the standard library alone.
+
 Run the reproducible synthetic study:
 
 ```bash
